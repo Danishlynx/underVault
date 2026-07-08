@@ -108,6 +108,7 @@ export class DescentScene extends Phaser.Scene {
 
   private queue: number[] = [];
   private lastStep = 0;
+  private lastGrainShift = 0;
   private facing: number = DIRS.S;
   private overlayOpen = false;
   private baselineDiscoveries = 0;
@@ -165,6 +166,7 @@ export class DescentScene extends Phaser.Scene {
     this.vignette.depth = DEPTH_VIGNETTE;
     this.grain = this.add.tileSprite(sw >> 1, sh >> 1, sw, sh, "uv-grain");
     this.grain.setScrollFactor(0);
+    this.grain.setAlpha(0.55);
     this.grain.depth = DEPTH_GRAIN;
 
     // Orientation flips re-flow the fixed chrome + HUD
@@ -429,7 +431,12 @@ export class DescentScene extends Phaser.Scene {
     this.hud.updateFrame(time);
     flickerHalo(this.halo, effectiveRadius(this.state));
     pulseGlows(this.glowPool, time);
-    this.grain.setTilePosition(Math.random() * 128, Math.random() * 128);
+    // grain drifts slowly instead of re-rolling every frame (04 §5: ambient
+    // flicker lives in world light, never as screen-wide shimmer)
+    if (time - this.lastGrainShift > 120) {
+      this.lastGrainShift = time;
+      this.grain.setTilePosition(Math.random() * 128, Math.random() * 128);
+    }
 
     // idle breathing / moth flutter (flipX owns mirroring; scale stays +)
     this.entityViews.forEach((view, id) => {

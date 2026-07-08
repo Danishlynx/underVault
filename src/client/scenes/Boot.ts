@@ -15,14 +15,18 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     makeIsoTextures(this);
-    // Radial light halo (candle glow) — canvas gradient, tinted at use site.
-    const size = 256;
+    // Radial light halo (candle glow) — high-res gradient with dense stops
+    // so FIT upscaling doesn't band into visible rings.
+    const size = 512;
     const canvas = this.textures.createCanvas("halo", size, size);
     if (canvas !== null) {
       const ctx = canvas.getContext();
-      const g = ctx.createRadialGradient(size / 2, size / 2, 8, size / 2, size / 2, size / 2);
-      g.addColorStop(0, "rgba(255, 217, 138, 0.55)"); // --flame-hi core
-      g.addColorStop(0.55, "rgba(245, 169, 63, 0.22)"); // --flame falloff
+      const g = ctx.createRadialGradient(size / 2, size / 2, 12, size / 2, size / 2, size / 2);
+      g.addColorStop(0, "rgba(255, 217, 138, 0.5)"); // --flame-hi core
+      g.addColorStop(0.25, "rgba(250, 193, 100, 0.34)");
+      g.addColorStop(0.5, "rgba(245, 169, 63, 0.2)"); // --flame falloff
+      g.addColorStop(0.72, "rgba(245, 169, 63, 0.09)");
+      g.addColorStop(0.88, "rgba(245, 169, 63, 0.03)");
       g.addColorStop(1, "rgba(245, 169, 63, 0)");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, size, size);

@@ -801,7 +801,8 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
       img.data[i] = v;
       img.data[i + 1] = v;
       img.data[i + 2] = v;
-      img.data[i + 3] = 14; // whisper-quiet grain
+      // truly whisper-quiet: most pixels carry no grain at all
+      img.data[i + 3] = crand() < 0.35 ? 7 : 0;
     }
     ctx.putImageData(img, 0, 0);
     grain.refresh();
