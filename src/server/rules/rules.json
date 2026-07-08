@@ -1,0 +1,16 @@
+{
+  "comment": "★ SECRET rules table v1 (slice scope). Never imported from client/ or shared/ — tools/no-secret-leak enforces. Shape per CLAUDE.md appendix; condition-specific rules precede wildcard rules for the same triple.",
+  "rules": [
+    { "id": "r-rat-bump", "subject": "rat", "interaction": "bump", "object": "self", "effect": "die", "layer": 0 },
+    { "id": "r-moth-bump", "subject": "moth", "interaction": "bump", "object": "self", "effect": "die", "layer": 0 },
+    { "id": "r-worm-bump-lit", "subject": "wickworm", "interaction": "bump", "object": "self", "effect": "ignite-die", "condition": { "candle": "lit" }, "layer": 1 },
+    { "id": "r-worm-bump-dark", "subject": "wickworm", "interaction": "bump", "object": "self", "effect": "immune", "layer": 1 },
+    { "id": "r-beast-bump", "subject": "beast", "interaction": "bump", "object": "self", "effect": "immune", "layer": 1 },
+    { "id": "r-moth-dies-webbing", "subject": "moth", "interaction": "dies-over", "object": "webbing", "effect": "ignite-tile", "layer": 2 },
+    { "id": "r-rat-fire", "subject": "rat", "interaction": "fire", "object": "self", "effect": "die", "layer": 0 },
+    { "id": "r-worm-fire", "subject": "wickworm", "interaction": "fire", "object": "self", "effect": "die", "layer": 0 },
+    { "id": "r-moth-fire", "subject": "moth", "interaction": "fire", "object": "self", "effect": "die", "layer": 0 },
+    { "id": "r-beast-fire", "subject": "beast", "interaction": "fire", "object": "self", "effect": "melt", "layer": 2 },
+    { "id": "r-beast-aura", "subject": "beast", "interaction": "in-aura", "object": "brazier", "effect": "melt", "layer": 1 }
+  ]
+}
