@@ -176,10 +176,14 @@ export class Hud {
     const c = this.fixed(s.add.container(x, y));
     const circle = s.add.circle(0, 0, HUD.iconToggle >> 1, COLOR.surface2, 1);
     circle.setStrokeStyle(1, COLOR.borderVoid, 1);
+    // scrollFactor(0) on the interactive CHILD too — container scrollFactor
+    // alone leaves the input hit area drifting once the camera scrolls
+    circle.setScrollFactor(0);
     circle.setInteractive({ useHandCursor: true });
     const text = s.add
       .text(0, 0, label, { fontFamily: SANS, fontSize: "12px", color: "#b7ae9c" })
       .setOrigin(0.5, 0.5);
+    text.setScrollFactor(0);
     c.add([circle, text]);
     if (label === "CUP") circle.on("pointerdown", onTap);
     return c;
@@ -216,7 +220,8 @@ export class Hud {
     this.meterFill.setScale(1, frac);
     const low = state.wax < START_WAX * 0.3;
     this.meterFlame.setFillStyle(state.candle === Candle.SNUFFED ? COLOR.boneDim : low ? COLOR.ember : COLOR.flameHi, 1);
-    this.meterFlame.setVisible(state.graceLeft === 0 || state.candle !== Candle.SNUFFED);
+    // flame visible only while it actually burns: not snuffed AND not in grace
+    this.meterFlame.setVisible(state.graceLeft === 0 && state.candle !== Candle.SNUFFED);
     if (this.waxTextTimer > this.scene.time.now) this.waxText.setText(String(state.wax));
 
     // Cup toggle state

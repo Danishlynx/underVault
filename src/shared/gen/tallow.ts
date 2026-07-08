@@ -112,26 +112,30 @@ export function generateTallow(rng: Uint32Array, floor: number): FloorData | nul
   tiles[at(px, py)] = Tile.ENTRY;
 
   // ── BFS distance map from entry (doors count as passable — they open) ────
-  const dist = new Int32Array(n).fill(-1);
-  const queue: number[] = [at(px, py)];
-  dist[at(px, py)] = 0;
-  let qi = 0;
   const passable = (t: number): boolean =>
     (TILE_FLAGS[t]! & F_WALK) !== 0 || t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK;
-  while (qi < queue.length) {
-    const i = queue[qi++]!;
-    const x = i % w;
-    const y = (i / w) | 0; // non-negative int division
-    for (let d = 0; d < 4; d++) {
-      const nx = x + DX[d]!;
-      const ny = y + DY[d]!;
-      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-      const ni = at(nx, ny);
-      if (dist[ni]! >= 0 || !passable(tiles[ni]!)) continue;
-      dist[ni] = dist[i]! + 1;
-      queue.push(ni);
+  const bfsFromEntry = (): Int32Array => {
+    const d = new Int32Array(n).fill(-1);
+    const queue: number[] = [at(px, py)];
+    d[at(px, py)] = 0;
+    let qi = 0;
+    while (qi < queue.length) {
+      const i = queue[qi++]!;
+      const x = i % w;
+      const y = (i / w) | 0; // non-negative int division
+      for (let k = 0; k < 4; k++) {
+        const nx = x + DX[k]!;
+        const ny = y + DY[k]!;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const ni = at(nx, ny);
+        if (d[ni]! >= 0 || !passable(tiles[ni]!)) continue;
+        d[ni] = d[i]! + 1;
+        queue.push(ni);
+      }
     }
-  }
+    return d;
+  };
+  const dist = bfsFromEntry();
 
   // Connectivity: every carved tile must be reachable (spanning tree should
   // guarantee it; verify anyway — this guard survives future biome variants)
@@ -171,6 +175,10 @@ export function generateTallow(rng: Uint32Array, floor: number): FloorData | nul
   if (floor < MAX_FLOOR) {
     const farRoom = rooms[ranked[ranked.length - 1]!]!;
     if (placeInRoom(farRoom, Tile.STAIRS_DOWN) < 0) return null;
+  } else {
+    // slice bottom floor: an extra waystone in the far room (DECISIONS 24)
+    const farRoom = rooms[ranked[ranked.length - 1]!]!;
+    if (placeInRoom(farRoom, Tile.WAYSTONE) < 0) return null;
   }
   const midRoom = rooms[ranked[ranked.length >> 1]!]!;
   if (placeInRoom(midRoom, Tile.WAYSTONE) < 0) return null;
@@ -253,7 +261,15 @@ export function generateTallow(rng: Uint32Array, floor: number): FloorData | nul
   dropPickups(Tile.WAX_STUB, 1);
   if (chance(rng, Stream.GEN, 1, 2)) dropPickups(Tile.WAX_CAKE, 1);
 
-  // ── Spawns (SPAWN stream; ≥ min distance from entry) ─────────────────────
+  // ── Post-placement connectivity: doors stay passable but BRAZIERS BLOCK —
+  //    a brazier on a room's sole entrance would seal it silently otherwise
+  //    (review finding). Recompute and require every walkable tile reachable.
+  const dist2 = bfsFromEntry();
+  for (let i = 0; i < n; i++) {
+    if (passable(tiles[i]!) && dist2[i]! < 0) return null;
+  }
+
+  // ── Spawns (SPAWN stream; ≥ min distance from entry, post-placement map) ─
   const entities: Entity[] = [];
   let nextEntityId = 1;
   const spawnTable = SPAWN_TABLE[floor] ?? SPAWN_TABLE[3]!;
@@ -271,7 +287,7 @@ export function generateTallow(rng: Uint32Array, floor: number): FloorData | nul
       for (let i = 0; i < n; i++) {
         const tt = tiles[i]!;
         if (tt !== Tile.FLOOR && tt !== Tile.MOSS && tt !== Tile.WEBBING) continue;
-        if (dist[i]! < SPAWN_MIN_DIST_FROM_ENTRY) continue;
+        if (dist2[i]! < SPAWN_MIN_DIST_FROM_ENTRY) continue;
         if (occupied(i % w, (i / w) | 0)) continue;
         cands.push(i);
       }

@@ -137,6 +137,21 @@ describe("the Dark Grace", () => {
     expect(s.candle).toBe(Candle.LIT);
   });
 
+  test("snuffed at 0 wax still enters grace — no unkillable soft-lock", () => {
+    // review finding: damage draining wax to 0 while SNUFFED must still
+    // deliver the delver to the dark
+    const fdEmpty = floorFromAscii(["#####", "#@..#", "#####"]);
+    let s = makeState(fdEmpty);
+    s = runActions(s, [Action.SNUFF, Action.SNUFF]);
+    expect(s.candle).toBe(Candle.SNUFFED);
+    s.wax = 0; // as if bitten down while dark
+    s = runActions(s, [Action.WAIT]);
+    expect(s.graceLeft).toBe(25);
+    for (let i = 0; i < 25; i++) s = runActions(s, [Action.WAIT]);
+    expect(s.status).toBe(Status.DEAD);
+    expect(s.deathCause).toBe(DeathCause.TAKEN_BY_THE_DARK);
+  });
+
   test("dead state rejects without advancing the tick", () => {
     let s = makeState(fd);
     s.wax = 1;
@@ -176,6 +191,16 @@ describe("candle channels", () => {
     s = runActions(s, [Action.RELIGHT]);
     expect(s.candle).toBe(Candle.LIT);
     expect(s.wax).toBe(498);
+  });
+
+  test("SNUFF while already snuffed burns nothing (wax stays frozen)", () => {
+    let s = makeState(fd);
+    s = runActions(s, [Action.SNUFF, Action.SNUFF]);
+    expect(s.candle).toBe(Candle.SNUFFED);
+    const w = s.wax;
+    s = runActions(s, [Action.SNUFF]); // demoted to wait — must not burn
+    expect(s.wax).toBe(w);
+    expect(s.candle).toBe(Candle.SNUFFED);
   });
 
   test("any other verb cancels a channel", () => {

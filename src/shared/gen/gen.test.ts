@@ -55,7 +55,7 @@ describe("Tallow Halls generator", () => {
         }
         expect(entries).toBe(1);
         expect(stairs).toBe(floor < MAX_FLOOR ? 1 : 0); // slice: floor 3 is the bottom
-        expect(waystones).toBe(1);
+        expect(waystones).toBe(floor === MAX_FLOOR ? 2 : 1); // extra on the bottom (DECISIONS 24)
         expect(braziers).toBeGreaterThanOrEqual(1);
         expect(braziers).toBeLessThanOrEqual(2);
 

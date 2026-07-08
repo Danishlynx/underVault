@@ -21,6 +21,9 @@ if (!fs.existsSync(path.join(ROOT, "package.json"))) {
 }
 
 const SERVER_DIR = path.resolve(ROOT, "src", "server").toLowerCase();
+// dev/ is the DEV-ONLY bridge to server rules — shipped surfaces importing it
+// would smuggle the secret table into the bundle (transitive-import bypass).
+const DEV_DIR = path.resolve(ROOT, "dev").toLowerCase();
 const SCAN_ROOTS = ["src/client", "src/shared"];
 const EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".js", ".mjs"]);
 
@@ -45,8 +48,8 @@ function lineOf(text: string, index: number): number {
   return line;
 }
 
-function isInsideServer(resolved: string): boolean {
-  const rel = path.relative(SERVER_DIR, resolved.toLowerCase());
+function isInside(dir: string, resolved: string): boolean {
+  const rel = path.relative(dir, resolved.toLowerCase());
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
 
@@ -73,11 +76,11 @@ for (const rootRel of SCAN_ROOTS) {
         const spec = m[1]!;
         if (spec.startsWith(".")) {
           const resolved = path.resolve(path.dirname(file), spec);
-          if (isInsideServer(resolved)) {
+          if (isInside(SERVER_DIR, resolved) || isInside(DEV_DIR, resolved)) {
             violations.push({ file, line: lineOf(text, m.index), spec });
           }
-        } else if (/(^|\/)server\//.test(spec)) {
-          // alias/baseUrl-style specifier naming server/ — flag conservatively
+        } else if (/(^|\/)server\//.test(spec) || /(^|\/)dev\//.test(spec)) {
+          // alias/baseUrl-style specifier naming server/ or dev/ — flag conservatively
           violations.push({ file, line: lineOf(text, m.index), spec });
         }
       }

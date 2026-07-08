@@ -18,6 +18,7 @@ import {
 import {
   Action,
   Candle,
+  Effect,
   Ev,
   EntityKind,
   Status,
@@ -137,13 +138,16 @@ export class DescentScene extends Phaser.Scene {
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (this.overlayOpen) return;
       if (p.y > CANVAS.height - 80 || p.y < 60) return; // HUD zones own their input
+      if (p.x < 64 && p.y > 90 && p.y < 470) return; // CandleMeter strip owns its input
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       const tx = Math.floor(wp.x / C);
       const ty = Math.floor(wp.y / C);
       const dx = tx - this.state.px;
       const dy = ty - this.state.py;
       if (dx === 0 && dy === 0) {
-        this.enqueue(Action.WAIT);
+        // tap self: descend when standing on stairs (matches the toast copy)
+        const onStairs = this.state.tiles[this.state.py * this.state.w + this.state.px] === Tile.STAIRS_DOWN;
+        this.enqueue(onStairs ? Action.DESCEND : Action.WAIT);
         return;
       }
       if (Math.abs(dx) + Math.abs(dy) !== 1) return;
@@ -164,11 +168,13 @@ export class DescentScene extends Phaser.Scene {
 
   private enqueueSnuff(): void {
     if (this.state.candle === Candle.SNUFFED) return;
+    if (this.queue.length > 0) return; // channels must queue whole or not at all
     for (let i = 0; i < SNUFF_TICKS; i++) this.enqueue(Action.SNUFF);
   }
 
   private enqueueRelight(): void {
     if (this.state.candle !== Candle.SNUFFED) return;
+    if (this.queue.length > 0) return; // channels must queue whole or not at all
     for (let i = 0; i < RELIGHT_TICKS; i++) this.enqueue(Action.RELIGHT);
   }
 
@@ -182,15 +188,24 @@ export class DescentScene extends Phaser.Scene {
     }
   }
 
+  private meaningfulLearned(): number {
+    let n = 0;
+    for (const r of this.rules.learned) {
+      if (r.effect !== Effect.NONE) n++;
+    }
+    return n;
+  }
+
   private step(op: number): void {
-    const before = this.rules.learned.length;
+    const before = this.meaningfulLearned();
     const result = tickResolving(this.state, op, this.rules, (key) => this.ports.resolveRule(key));
     this.state = result.state;
     this.visibleMask = result.visible;
 
-    if (this.rules.learned.length > before) {
+    if (this.meaningfulLearned() > before) {
       // 02 §4: first-time outcome — at M2 this is where the anticipation
       // beat + synchronous flush live. Locally it resolves instantly.
+      // (Effect.NONE learns stay silent — the Waystone would filter them.)
       this.hud.toast("◆ The Vault yields a truth — bank it at a Waystone", "discovery");
     }
 
@@ -313,9 +328,13 @@ export class DescentScene extends Phaser.Scene {
   }
 
   private runSummary(): { ticks: number; discoveries: number; floor: number; day: number } {
+    let discoveries = 0;
+    for (const r of this.rules.learned.slice(this.baselineDiscoveries)) {
+      if (r.effect !== Effect.NONE) discoveries++;
+    }
     return {
       ticks: this.state.tick,
-      discoveries: this.rules.learned.length - this.baselineDiscoveries,
+      discoveries,
       floor: this.state.floor,
       day: DEV_DAY,
     };
@@ -325,21 +344,25 @@ export class DescentScene extends Phaser.Scene {
     const host = this.host();
     if (host === null || this.overlayOpen) return;
     this.overlayOpen = true;
-    openWaystoneSheet(host, this.rules.learned, () => {
+    // only THIS run's discoveries are bankable (session cache persists, but
+    // unbanked truths die with the delver — 01 §10)
+    openWaystoneSheet(host, this.rules.learned.slice(this.baselineDiscoveries), () => {
       this.overlayOpen = false;
     });
   }
 
   private openEpitaph(): void {
     const host = this.host();
-    if (host === null || this.overlayOpen) return;
+    if (host === null) return;
+    closeAllSheets(host); // death outranks any open sheet (waystone same-tick)
     this.overlayOpen = true;
     openEpitaphSheet(host, this.state, this.runSummary(), () => this.restartRun());
   }
 
   private openExit(): void {
     const host = this.host();
-    if (host === null || this.overlayOpen) return;
+    if (host === null) return;
+    closeAllSheets(host);
     this.overlayOpen = true;
     openExitSheet(host, this.state, this.runSummary(), () => this.restartRun());
   }

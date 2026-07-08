@@ -41,10 +41,10 @@ candidates; flip them in the named data file, not in code.
    grace still works. Death cause: "Taken by the Dark".
 10. ⚖ **Cupped radius rounding:** `base >> 1` (4→2, 3→1, 2→1, 1→0). Own tile is
     always visible.
-11. ⚖ **Brazier aura radius 3** (integer disc `d² ≤ r²+r`), pauses base burn
-    (cost-1 actions become 0) but **not** surcharges (force 5, brazier 30,
-    salt/chalk costs). Lighting at exactly wax 30 is legal → instant grace,
-    immediately paused by the fresh aura.
+11. ⚖ **Brazier aura radius 3** (integer disc `d² ≤ r²+r`), pauses ALL
+    cost-1 burn (move/wait/interact/salt/chalk) but **not** surcharges
+    (force door 5, light brazier 30). Lighting at exactly wax 30 is legal →
+    instant grace, immediately paused by the fresh aura.
 12. ⚖ **Cup toggle costs 1 tick, 0 wax** ("free" read as wax-free, not
     time-free). Snuff = 2 consecutive SNUFF actions (channel; any other action
     cancels); relight = 3 RELIGHT actions, needs wax > 0 AND (Flint in inventory
@@ -115,3 +115,28 @@ candidates; flip them in the named data file, not in code.
 29. **Dev bundle is 1.43 MB** (whole Phaser 4, no splitting) — the ≤1.2 MB
     budget (02 §8) applies to the M2 real `game.html` entrypoint with lazy
     per-biome packs; byte-report will enforce it then. Not a slice concern.
+
+## From the adversarial review (2026-07-08)
+
+30. **Grace now starts at 0 wax regardless of candle state.** Originally
+    snuffed-at-0 skipped grace ("wax frozen"), but bites drain wax through a
+    snuffed candle → a drained snuffed delver became permanently unkillable
+    (damage no-op, relight impossible). Supersedes the note in item 12.
+31. **Generator re-verifies connectivity AFTER doors/braziers place**
+    (braziers block movement and could seal a room's only entrance after the
+    original check); spawn distances now use the post-placement map.
+32. **M2 flag — seed width:** the 32-bit daySeed is offline-brute-forceable
+    from any floor payload (regenerate floor 1 for all 2³² seeds and compare
+    tiles), and splitmix32-derived stream states are invertible. Before M2,
+    widen daySeed to 2×u32 minimum and derive client-visible stream states
+    through a server-secret salt. The FloorPayloadLike port contract must
+    not ship seed-recoverable material.
+33. **no-secret-leak also bans `dev/` imports from shipped surfaces** —
+    a client import of dev/rules-adapter.ts would have transitively bundled
+    the secret rules table while the guard passed.
+34. Client papercuts fixed: tap-self on stairs now descends (matches toast);
+    CandleMeter strip no longer double-fires world taps; snuff/relight
+    channels enqueue whole-or-not-at-all; discovery toast silent on
+    Effect.NONE learns; Epitaph force-opens over a same-tick Waystone sheet;
+    Waystone lists only the current run's discoveries; HUD flame icon hides
+    when snuffed; HUD button hit areas pinned against camera scroll.

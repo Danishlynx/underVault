@@ -213,6 +213,7 @@ export function tick(state: SimState, action: number, rules: RuleTable): TickRes
   let cost: number = ACTION_COST[action] ?? COST_BASIC;
   let noise = 0;
   let demoted = false;
+  let snuffCompleted = false; // the completing snuff tick still burns 1
 
   const demote = (): void => {
     demoted = true;
@@ -298,6 +299,7 @@ export function tick(state: SimState, action: number, rules: RuleTable): TickRes
       s.candleTimer--;
       if (s.candleTimer === 0) {
         s.candle = Candle.SNUFFED;
+        snuffCompleted = true;
         ev(ctx, Ev.CANDLE_STATE, s.candle);
       }
       break; // snuff-channel ticks still burn 1 (candle alight until done)
@@ -391,9 +393,10 @@ export function tick(state: SimState, action: number, rules: RuleTable): TickRes
     s.noiseLevel = 0;
   }
 
-  // 5. Wax burn: snuffed = frozen; brazier aura pauses base burn only
+  // 5. Wax burn: snuffed = frozen (except the tick the snuff completes);
+  //    brazier aura pauses cost-1 burn only
   let burn = cost;
-  if (s.candle === Candle.SNUFFED && action !== Action.SNUFF) burn = 0;
+  if (s.candle === Candle.SNUFFED && !snuffCompleted) burn = 0;
   else if (burn === COST_BASIC && inBrazierAura(s, s.px, s.py)) burn = 0;
   if (burn > 0) s.wax = s.wax > burn ? s.wax - burn : 0;
 
@@ -427,7 +430,10 @@ export function tick(state: SimState, action: number, rules: RuleTable): TickRes
           ev(ctx, Ev.DIED, s.deathCause);
         }
       }
-    } else if (s.wax === 0 && s.candle !== Candle.SNUFFED && s.status !== Status.DESCENDING) {
+    } else if (s.wax === 0 && s.status !== Status.DESCENDING) {
+      // Grace starts at 0 wax REGARDLESS of candle state — a snuffed delver
+      // drained to 0 by bites must still be claimable by the dark, or damage
+      // becomes a no-op and the run soft-locks (review finding).
       s.graceLeft = GRACE_TICKS;
       ev(ctx, Ev.GRACE_STARTED);
     }
