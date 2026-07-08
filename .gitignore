@@ -1,0 +1,8 @@
+node_modules/
+dist/
+webroot/
+coverage/
+*.tsbuildinfo
+.devvit/
+.env
+*.log
