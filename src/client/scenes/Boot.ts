@@ -6,6 +6,7 @@
 
 import Phaser from "phaser";
 import { COLOR_CSS } from "../../../design/tokens/tokens.js";
+import { makeIsoTextures } from "../render/tilemap.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -13,6 +14,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    makeIsoTextures(this);
     // Radial light halo (candle glow) — canvas gradient, tinted at use site.
     const size = 256;
     const canvas = this.textures.createCanvas("halo", size, size);

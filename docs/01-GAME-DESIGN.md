@@ -86,7 +86,7 @@ The candle is measured in **wax** (integer units). **Wax burns per game tick, no
 
 ## 6. World Structure
 
-- **Grid:** orthogonal tile grid per floor, 24×24 up to 40×40 by biome. 16 px art at 3× (48 px cells), portrait camera.
+- **Grid:** logic is an orthogonal tile grid per floor (24×24 up to 40×40 by biome), 4-direction movement — **presented isometrically** (2:1 dimetric, 64×32 ground diamonds, tall 64×96 walls), portrait camera. Inspecting any tile shows its grid reference ("Fl. VII · K4") so players can cite exact locations in comments and signs.
 - **Tower:** floors 1→25 this season, grouped into biomes of 4; **the Bottom** is floor 25.
 - **Daily Reshuffle (00:00 UTC):** entire tower regenerates from the day-seed. *Everyone gets identical layouts.* Layout knowledge expires nightly; rule knowledge never does.
 - **Biome ladder** (unlocked weekly by the Great Gate, §11):
@@ -203,7 +203,7 @@ A constructed script: 26 letter-glyphs + 10 numerals, **stable mapping all seaso
 
 ## 14. UX / UI Direction
 
-- **Art:** illuminated-manuscript-meets-deep-dark. Surface Guildhall = parchment, ink, wax-seal red accents. Below = near-black, one warm amber (flame) + one verdigris (the strange). Display serif (Codex) + humanist sans (HUD) + the cipher bitmap font. 16 px pixel art with normal maps — *painterly-lit pixel art* is the distinctive look that defeats "AI slop" suspicion.
+- **Art:** illuminated-manuscript-meets-deep-dark. Surface Guildhall = parchment, ink, wax-seal red accents. Below = near-black, one warm amber (flame) + one verdigris (the strange). Display serif (Codex) + humanist sans (HUD) + the cipher bitmap font. **2:1 isometric pixel art with normal-mapped tall walls** — candlelight visibly rakes up wall faces, entities self-shadow; *painterly-lit isometric depth* is the distinctive look that defeats "AI slop" suspicion.
 - **Two entry surfaces** (maps to Devvit inline/expanded): **Guildhall** inline in the feed — instant-loading (<1 s), shows day number, omen rumor strip, Gate ticker, Codex %, your lineage line, and one verb: **STRIKE THE MATCH**. The **Descent** opens in expanded/fullscreen mode.
 - **Controls:** tap tile to path-step, tap self to wait, long-press to inspect, swipe-hold for cone aim, two persistent buttons (Cup / Snuff). One thumb, portrait.
 - **Onboarding:** 60-second scripted first descent teaching *verbs only* — the world stays unexplained on principle. First-session death is designed to be interesting.
