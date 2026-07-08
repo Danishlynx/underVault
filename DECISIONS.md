@@ -160,6 +160,30 @@ candidates; flip them in the named data file, not in code.
     entity billboards with a deliberate right-facing asymmetry so E/W
     `setFlipX` reads. Same texture keys the W4 atlases will replace.
 
+## Fidelity pass (operator: "highest possible settings", 2026-07-08)
+
+41. **Per-tile lighting replaces binary fog** (`lights.ts`): every visible
+    tile gets a light value from candle + lit braziers + fires with soft
+    distance falloff; tints lerp cool-dark → warm candle-white. Remembered
+    tiles render as a dark **verdigris memory ghost** (ancestor of the W4
+    Quantize memory-view). All renderer-side; the sim's FOV mask stays the
+    only truth about visibility. ⚖ ambient floor 0.14, falloff `r+1.4`.
+42. **Texture shading derives from tokens only**: `shade()`/`mix()` in
+    tilemap.ts scale/blend token RGB — no foreign hues. Cosmetic speckle
+    uses a FIXED-seed LCG at texture-build time (identical every boot; fx
+    quarantine untouched). Stone diamonds get 3 positional variants.
+43. **Motion**: 85 ms glide tweens for all billboards, idle breathing
+    (kind-specific period), 2-frame moth wing flutter, pulsing source
+    glows, HUD candle-flame breath. All per-frame cosmetics in client only.
+44. **Atmosphere**: drop shadows under player/monsters, additive glows on
+    braziers/fires/waystones, dust motes following the candle radius,
+    baked vignette + animated film grain (screen-fixed under the HUD) —
+    the 02 §8 filter stack (Vignette→Noise) approximated without touching
+    the Filters API; the real stack lands at W4.
+45. **HUD**: drawn 24px-grid item icons (flint/salt/chalk) replace unicode
+    glyphs; occupied slots get the 04 §3.5 amber underline; candle meter
+    gained an additive flame glow; depth plaque gained its double rule.
+
 34. Client papercuts fixed: tap-self on stairs now descends (matches toast);
     CandleMeter strip no longer double-fires world taps; snuff/relight
     channels enqueue whole-or-not-at-all; discovery toast silent on

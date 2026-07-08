@@ -42,6 +42,7 @@ export class Hud {
   private slotCharges: Phaser.GameObjects.Text[] = [];
   private meterFill!: Phaser.GameObjects.Rectangle;
   private meterFlame!: Phaser.GameObjects.Arc;
+  private meterGlow!: Phaser.GameObjects.Image;
   private waxText!: Phaser.GameObjects.Text;
   private waxTextTimer = 0;
   private graceText!: Phaser.GameObjects.Text;
@@ -66,9 +67,11 @@ export class Hud {
   private build(): void {
     const s = this.scene;
 
-    // Depth plaque (top-left)
-    const plaque = this.fixed(s.add.rectangle(16, 16, 96, 36, COLOR.surface, 0.9).setOrigin(0, 0));
+    // Depth plaque (top-left) — double-rule frame (04 §2.3 sacred panels)
+    const plaque = this.fixed(s.add.rectangle(16, 16, 96, 36, COLOR.surface, 0.92).setOrigin(0, 0));
     plaque.setStrokeStyle(1, COLOR.borderVoid, 1);
+    const plaqueInner = this.fixed(s.add.rectangle(20, 20, 88, 28, COLOR.surface, 0).setOrigin(0, 0));
+    plaqueInner.setStrokeStyle(1, COLOR.borderVoid, 0.5);
     this.depthText = this.fixed(
       s.add.text(16 + 48, 16 + 18, "Fl. I", {
         fontFamily: SERIF,
@@ -104,7 +107,11 @@ export class Hud {
     this.meterFill = this.fixed(
       s.add.rectangle(meterX + 1, meterY + meterH - 1, HUD.candleMeterW - 2, meterH - 2, COLOR.parchment, 0.95).setOrigin(0, 1),
     );
-    this.meterFlame = this.fixed(s.add.circle(meterX + (HUD.candleMeterW >> 1), meterY - 8, 6, COLOR.flameHi, 1));
+    this.meterGlow = this.fixed(s.add.image(meterX + (HUD.candleMeterW >> 1), meterY - 8, "halo"));
+    this.meterGlow.setBlendMode(Phaser.BlendModes.ADD);
+    this.meterGlow.setDisplaySize(44, 44);
+    this.meterGlow.setTint(COLOR.flame);
+    this.meterFlame = this.fixed(s.add.circle(meterX + (HUD.candleMeterW >> 1), meterY - 8, 5, COLOR.flameHi, 1));
     this.waxText = this.fixed(
       s.add.text(meterX + 20, meterY - 14, "", { fontFamily: SANS, fontSize: "14px", color: "#b7ae9c" }),
     );
@@ -131,16 +138,16 @@ export class Hud {
       const cell = this.fixed(s.add.container(x, BAR_Y + 12));
       const bg = s.add.rectangle(0, 0, HUD.slotCell, HUD.slotCell, COLOR.surface2, 1).setOrigin(0, 0);
       bg.setStrokeStyle(1, COLOR.borderVoid, 1);
-      const glyph = s.add
-        .text(HUD.slotCell >> 1, (HUD.slotCell >> 1) - 4, "", { fontFamily: SANS, fontSize: "16px", color: "#b7ae9c" })
-        .setOrigin(0.5, 0.5);
+      const underline = s.add.rectangle(4, HUD.slotCell - 3, HUD.slotCell - 8, 1, COLOR.flame, 0).setOrigin(0, 0);
+      const icon = s.add.image(HUD.slotCell >> 1, (HUD.slotCell >> 1) - 2, "icon-flint").setVisible(false);
       const charges = s.add
-        .text(HUD.slotCell - 4, HUD.slotCell - 14, "", { fontFamily: SANS, fontSize: "11px", color: "#f5a93f" })
+        .text(HUD.slotCell - 4, HUD.slotCell - 15, "", { fontFamily: SANS, fontSize: "11px", color: "#f5a93f" })
         .setOrigin(1, 0);
-      cell.add([bg, glyph, charges]);
+      cell.add([bg, underline, icon, charges]);
       this.slots.push(cell);
       this.slotCharges.push(charges);
-      (cell as unknown as { glyphText: Phaser.GameObjects.Text }).glyphText = glyph;
+      (cell as unknown as { iconImg: Phaser.GameObjects.Image }).iconImg = icon;
+      (cell as unknown as { underlineRect: Phaser.GameObjects.Rectangle }).underlineRect = underline;
     }
 
     // Snuff (hold-to-confirm 450 ms) — right side; doubles as RELIGHT when snuffed
@@ -209,6 +216,10 @@ export class Hud {
       }
     }
     if (this.waxText.text !== "" && now > this.waxTextTimer) this.waxText.setText("");
+    // candle-flame breath
+    if (this.meterGlow.visible) {
+      this.meterGlow.setAlpha(0.7 + 0.3 * Math.sin(now / 180));
+    }
   }
 
   update(state: SimState, radius: number, day: number): void {
@@ -221,7 +232,10 @@ export class Hud {
     const low = state.wax < START_WAX * 0.3;
     this.meterFlame.setFillStyle(state.candle === Candle.SNUFFED ? COLOR.boneDim : low ? COLOR.ember : COLOR.flameHi, 1);
     // flame visible only while it actually burns: not snuffed AND not in grace
-    this.meterFlame.setVisible(state.graceLeft === 0 && state.candle !== Candle.SNUFFED);
+    const burning = state.graceLeft === 0 && state.candle !== Candle.SNUFFED;
+    this.meterFlame.setVisible(burning);
+    this.meterGlow.setVisible(burning);
+    this.meterGlow.setTint(low ? COLOR.ember : COLOR.flame);
     if (this.waxTextTimer > this.scene.time.now) this.waxText.setText(String(state.wax));
 
     // Cup toggle state
@@ -230,13 +244,21 @@ export class Hud {
     // Snuff button doubles as LIGHT when snuffed
     this.snuffLabel.setText(state.candle === Candle.SNUFFED ? "LIGHT" : "SNUFF");
 
-    // Slots
+    // Slots: drawn icons + occupied amber underline (04 §3.5)
     for (let i = 0; i < 6; i++) {
       const item = state.inv[i]!;
       const charges = state.invCharges[i]!;
-      const glyph = (this.slots[i] as unknown as { glyphText: Phaser.GameObjects.Text }).glyphText;
-      glyph.setText(item === Item.FLINT ? "⚒" : item === Item.SALT ? "∴" : item === Item.CHALK ? "≠" : "");
-      glyph.setAlpha(item !== Item.NONE && charges === 0 ? 0.3 : 1);
+      const icon = (this.slots[i] as unknown as { iconImg: Phaser.GameObjects.Image }).iconImg;
+      const underline = (this.slots[i] as unknown as { underlineRect: Phaser.GameObjects.Rectangle }).underlineRect;
+      if (item === Item.NONE) {
+        icon.setVisible(false);
+        underline.setAlpha(0);
+      } else {
+        icon.setTexture(item === Item.FLINT ? "icon-flint" : item === Item.SALT ? "icon-salt" : "icon-chalk");
+        icon.setVisible(true);
+        icon.setAlpha(charges === 0 ? 0.28 : 1);
+        underline.setAlpha(charges === 0 ? 0.15 : 0.8);
+      }
       this.slotCharges[i]!.setText(item === Item.SALT || item === Item.CHALK ? String(charges) : "");
     }
 

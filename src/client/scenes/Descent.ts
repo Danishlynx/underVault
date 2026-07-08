@@ -1,9 +1,9 @@
 /**
  * The Descent — run controller + ISO world renderer + input (02 §8, 04 §4.3).
- * Square-grid sim, isometric presentation: the sim never learns iso exists.
- * All projection/depth/hit-testing comes from render/iso.ts (single owner).
- * Ground = standard isometric TilemapLayer; walls/doors/props/entities are
- * upright y-sorted billboards; walls SE of the player fade to 35%/120 ms.
+ * Fidelity pass: per-tile candlelight tints, verdigris memory-ghost for
+ * remembered tiles, glide tweens, drop shadows, breathing idle animation,
+ * moth wing flutter, pooled source glows, dust motes, vignette + film grain.
+ * The sim never learns any of this exists; projection/depth stay in iso.ts.
  */
 
 import Phaser from "phaser";
@@ -32,7 +32,17 @@ import { PORTS_KEY } from "../game.js";
 import type { GamePorts } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import { entityTextureFor, groundIndexFor, propTextureFor } from "../render/tilemap.js";
-import { drawFog, flickerHalo, positionHalo } from "../render/lights.js";
+import {
+  computeLightMap,
+  flickerHalo,
+  MEMORY_TINT,
+  positionHalo,
+  pulseGlows,
+  syncSourceGlows,
+  tintForLight,
+  UNSEEN_TINT,
+  type GlowPool,
+} from "../render/lights.js";
 import {
   calibrate,
   depthOf,
@@ -58,10 +68,13 @@ const RULES_KEY = "uv-session-rules";
 const DEV_DAY = 1;
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
-const DEPTH_FOG = 0.5; // above ground layer (0), below every billboard (≥1)
 const DEPTH_CURSOR = 550;
-const DEPTH_HALO = 600; // above world (≤ ~470), below HUD (1000)
+const DEPTH_DUST = 580;
+const DEPTH_HALO = 600; // above world (≤ ~470), below chrome
+const DEPTH_VIGNETTE = 900;
+const DEPTH_GRAIN = 901; // HUD sits at 1000+
 const LONG_PRESS_MS = 400;
+const GLIDE_MS = 85;
 
 interface PropView {
   sprite: Phaser.GameObjects.Image;
@@ -78,13 +91,19 @@ export class DescentScene extends Phaser.Scene {
   private map: Phaser.Tilemaps.Tilemap | null = null;
   private groundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private lastTiles!: Uint8Array;
-  private props = new Map<number, PropView>(); // tile index → billboard
-  private overlays = new Map<string, Phaser.GameObjects.Image>(); // "salt:i" etc.
-  private fogG!: Phaser.GameObjects.Graphics;
+  private props = new Map<number, PropView>();
+  private overlays = new Map<string, Phaser.GameObjects.Image>();
+  private glowPool: GlowPool = { images: new Map() };
   private cursorG!: Phaser.GameObjects.Graphics;
   private halo!: Phaser.GameObjects.Image;
+  private vignette!: Phaser.GameObjects.Image;
+  private grain!: Phaser.GameObjects.TileSprite;
+  private dust: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private playerView!: Phaser.GameObjects.Image;
+  private playerShadow!: Phaser.GameObjects.Image;
   private entityViews = new Map<number, Phaser.GameObjects.Image>();
+  private entityShadows = new Map<number, Phaser.GameObjects.Image>();
+  private entityKinds = new Map<number, number>();
   private entityLastX = new Map<number, number>();
   private hud!: Hud;
 
@@ -114,11 +133,15 @@ export class DescentScene extends Phaser.Scene {
     this.overlayOpen = false;
     this.queue = [];
     this.entityViews.clear();
+    this.entityShadows.clear();
+    this.entityKinds.clear();
     this.entityLastX.clear();
     this.props.clear();
     this.overlays.clear();
+    this.glowPool = { images: new Map() };
     this.map = null;
     this.groundLayer = null;
+    this.dust = null;
 
     const f = this.ports.getFloor(1);
     this.state = initState(f.floorData, f.rngInit);
@@ -127,13 +150,38 @@ export class DescentScene extends Phaser.Scene {
     this.halo = this.add.image(0, 0, "halo");
     this.halo.setBlendMode(Phaser.BlendModes.ADD);
     this.halo.depth = DEPTH_HALO;
-    this.fogG = this.add.graphics();
-    this.fogG.depth = DEPTH_FOG;
     this.cursorG = this.add.graphics();
     this.cursorG.depth = DEPTH_CURSOR;
 
+    this.playerShadow = this.add.image(0, 0, "iso-shadow");
     this.playerView = this.add.image(0, 0, "iso-player");
     this.playerView.setOrigin(0.5, 1);
+
+    // Atmosphere chrome (screen-fixed, under the HUD)
+    this.vignette = this.add.image(CANVAS.width >> 1, CANVAS.height >> 1, "uv-vignette");
+    this.vignette.setScrollFactor(0);
+    this.vignette.depth = DEPTH_VIGNETTE;
+    this.grain = this.add.tileSprite(CANVAS.width >> 1, CANVAS.height >> 1, CANVAS.width, CANVAS.height, "uv-grain");
+    this.grain.setScrollFactor(0);
+    this.grain.depth = DEPTH_GRAIN;
+
+    // Dust motes drifting through the candle's reach
+    this.dust = this.add.particles(0, 0, "iso-mote", {
+      lifespan: 2800,
+      frequency: 340,
+      quantity: 1,
+      speedY: { min: -12, max: -4 },
+      speedX: { min: -5, max: 5 },
+      alpha: { start: 0.34, end: 0 },
+      scale: { start: 0.9, end: 0.35 },
+      emitZone: {
+        type: "random",
+        source: new Phaser.Geom.Rectangle(-84, -64, 168, 116),
+        quantity: 1,
+      },
+      follow: this.playerView,
+    });
+    this.dust.setDepth(DEPTH_DUST);
 
     this.buildFloor();
 
@@ -145,11 +193,11 @@ export class DescentScene extends Phaser.Scene {
     });
 
     this.bindInput();
-    this.redraw();
+    this.redraw(true);
     this.hud.toast("The match catches. The Vault is listening.", "info");
   }
 
-  // ── Floor construction (iso TilemapLayer ground + billboards) ────────────
+  // ── Floor construction ───────────────────────────────────────────────────
   private buildFloor(): void {
     const s = this.state;
     this.groundLayer?.destroy();
@@ -158,8 +206,13 @@ export class DescentScene extends Phaser.Scene {
     this.props.clear();
     this.overlays.forEach((o) => o.destroy());
     this.overlays.clear();
+    this.glowPool.images.forEach((g) => g.destroy());
+    this.glowPool.images.clear();
     this.entityViews.forEach((v) => v.destroy());
     this.entityViews.clear();
+    this.entityShadows.forEach((v) => v.destroy());
+    this.entityShadows.clear();
+    this.entityKinds.clear();
     this.entityLastX.clear();
 
     const mapData = new Phaser.Tilemaps.MapData({
@@ -179,22 +232,18 @@ export class DescentScene extends Phaser.Scene {
     this.groundLayer = layer;
     layer.setDepth(0);
 
-    // Calibrate the projection to the layer's own convention so billboards
-    // and diamonds can never drift (iso.ts owns the formula thereafter).
     const p00 = layer.tileToWorldXY(0, 0);
     calibrate(p00.x + HALF_W, p00.y + HALF_H);
 
     this.lastTiles = new Uint8Array(s.tiles.length);
-    this.lastTiles.fill(255); // force full first sync
+    this.lastTiles.fill(255);
     this.syncTiles();
 
     const b = worldBounds(s.w, s.h);
     this.cameras.main.setBounds(b.x, b.y, b.width, b.height);
-    this.cameras.main.startFollow(this.playerView, true, 0.15, 0.15);
+    this.cameras.main.startFollow(this.playerView, true, 0.12, 0.12);
   }
 
-  /** Diff sim tiles → ground indices + prop billboards (doors open, webbing
-   *  burns away, pickups vanish, braziers light). */
   private syncTiles(): void {
     const s = this.state;
     for (let i = 0; i < s.tiles.length; i++) {
@@ -203,7 +252,7 @@ export class DescentScene extends Phaser.Scene {
       this.lastTiles[i] = t;
       const x = i % s.w;
       const y = (i / s.w) | 0;
-      this.groundLayer?.putTileAt(groundIndexFor(t), x, y);
+      this.groundLayer?.putTileAt(groundIndexFor(t, x, y), x, y);
 
       const want = propTextureFor(t);
       const have = this.props.get(i);
@@ -215,7 +264,8 @@ export class DescentScene extends Phaser.Scene {
         const c = gridToScreen(x, y);
         const sprite = this.add.image(c.sx, c.sy + HALF_H, want);
         sprite.setOrigin(0.5, 1);
-        sprite.depth = depthOf(x, y, t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE ? Layer.ITEM : Layer.WALL);
+        const isItem = t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE;
+        sprite.depth = depthOf(x, y, isItem ? Layer.ITEM : Layer.WALL);
         this.props.set(i, { sprite, tile: t, occluded: false });
       } else if (want !== "") {
         this.props.get(i)!.tile = t;
@@ -223,7 +273,7 @@ export class DescentScene extends Phaser.Scene {
     }
   }
 
-  // ── Input (diamond hit-test; tap on release, long-press = inspect) ──────
+  // ── Input ────────────────────────────────────────────────────────────────
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (kb !== null) {
@@ -251,8 +301,8 @@ export class DescentScene extends Phaser.Scene {
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (this.overlayOpen) return;
-      if (p.y > CANVAS.height - 80 || p.y < 60) return; // HUD bar zones
-      if (p.x < 64 && p.y > 90 && p.y < 470) return; // CandleMeter strip
+      if (p.y > CANVAS.height - 80 || p.y < 60) return;
+      if (p.x < 64 && p.y > 90 && p.y < 470) return;
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       this.pressTile = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
       this.pressAt = this.time.now;
@@ -263,10 +313,10 @@ export class DescentScene extends Phaser.Scene {
       const press = this.pressTile;
       this.pressTile = null;
       if (press === null || this.pressConsumed || this.overlayOpen) return;
-      if (this.time.now - this.pressAt >= LONG_PRESS_MS) return; // handled as inspect
+      if (this.time.now - this.pressAt >= LONG_PRESS_MS) return;
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       const up = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
-      if (up === null || up.x !== press.x || up.y !== press.y) return; // dragged off
+      if (up === null || up.x !== press.x || up.y !== press.y) return;
       this.tapTile(press.x, press.y);
     });
 
@@ -279,9 +329,8 @@ export class DescentScene extends Phaser.Scene {
       const t = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
       this.cursorG.clear();
       if (t === null) return;
-      // ink-line diamond cursor (04 §4.3)
       const c = gridToScreen(t.x, t.y);
-      this.cursorG.lineStyle(1, COLOR.bone, 0.9);
+      this.cursorG.lineStyle(1.2, COLOR.bone, 0.85);
       this.cursorG.beginPath();
       this.cursorG.moveTo(c.sx, c.sy - HALF_H);
       this.cursorG.lineTo(c.sx + HALF_W, c.sy);
@@ -289,6 +338,8 @@ export class DescentScene extends Phaser.Scene {
       this.cursorG.lineTo(c.sx - HALF_W, c.sy);
       this.cursorG.closePath();
       this.cursorG.strokePath();
+      this.cursorG.lineStyle(1, COLOR.flameHi, 0.25);
+      this.cursorG.strokeCircle(c.sx, c.sy, 3);
     });
   }
 
@@ -310,7 +361,6 @@ export class DescentScene extends Phaser.Scene {
     this.enqueue(interactable ? Action.INTERACT_N + dir : Action.MOVE_N + dir);
   }
 
-  /** Long-press inspect: grid-reference plaque (01 §6, 04 §4.3). */
   private inspect(tx: number, ty: number): void {
     const i = ty * this.state.w + tx;
     if (this.state.seen[i]! !== 1) {
@@ -345,7 +395,7 @@ export class DescentScene extends Phaser.Scene {
 
   private enqueueSnuff(): void {
     if (this.state.candle === Candle.SNUFFED) return;
-    if (this.queue.length > 0) return; // channels queue whole or not at all
+    if (this.queue.length > 0) return;
     for (let i = 0; i < SNUFF_TICKS; i++) this.enqueue(Action.SNUFF);
   }
 
@@ -355,12 +405,29 @@ export class DescentScene extends Phaser.Scene {
     for (let i = 0; i < RELIGHT_TICKS; i++) this.enqueue(Action.RELIGHT);
   }
 
-  // ── Turn processing ──────────────────────────────────────────────────────
+  // ── Frame loop (cosmetics only — the world moves per action) ────────────
   override update(time: number): void {
     this.hud.updateFrame(time);
     flickerHalo(this.halo, effectiveRadius(this.state));
+    pulseGlows(this.glowPool, time);
+    this.grain.setTilePosition(Math.random() * 128, Math.random() * 128);
 
-    // long-press fires while held (04: long-press = inspect)
+    // idle breathing / moth flutter (flipX owns mirroring; scale stays +)
+    this.entityViews.forEach((view, id) => {
+      if (!view.visible) return;
+      const kind = this.entityKinds.get(id)!;
+      if (kind === EntityKind.MOTH) {
+        const frame = ((time / 130) | 0) % 2 === 0 ? "iso-ent-3" : "iso-ent-3b";
+        if (view.texture.key !== frame) view.setTexture(frame);
+        view.setScale(1, 1 + 0.04 * Math.sin(time / 90 + id));
+      } else {
+        const speed = kind === EntityKind.BEAST ? 640 : 300;
+        const amp = kind === EntityKind.BEAST ? 0.02 : 0.035;
+        view.setScale(1, 1 + amp * Math.sin(time / speed + id * 1.7));
+      }
+    });
+    this.playerView.setScale(1, 1 + 0.02 * Math.sin(time / 420));
+
     if (this.pressTile !== null && !this.pressConsumed && time - this.pressAt >= LONG_PRESS_MS) {
       this.pressConsumed = true;
       this.inspect(this.pressTile.x, this.pressTile.y);
@@ -400,9 +467,10 @@ export class DescentScene extends Phaser.Scene {
       this.buildFloor();
       this.cameras.main.flash(MOTION.ceremonial, 11, 10, 16);
       this.hud.toast(`Floor ${this.state.floor}. The dark is thicker here.`, "warning");
+      this.redraw(true);
+    } else {
+      this.redraw(false);
     }
-
-    this.redraw();
 
     if (this.state.status === Status.DEAD) this.openEpitaph();
     else if (this.state.status === Status.EXITED) this.openExit();
@@ -441,20 +509,58 @@ export class DescentScene extends Phaser.Scene {
   }
 
   // ── Rendering ────────────────────────────────────────────────────────────
-  private redraw(): void {
+  private glide(img: Phaser.GameObjects.Image, x: number, y: number, depth: number, instant: boolean): void {
+    this.tweens.killTweensOf(img);
+    img.depth = depth;
+    if (instant) {
+      img.setPosition(x, y);
+    } else {
+      this.tweens.add({ targets: img, x, y, duration: GLIDE_MS, ease: "Sine.easeOut" });
+    }
+  }
+
+  private redraw(instant: boolean): void {
     const s = this.state;
     this.syncTiles();
-    drawFog(this.fogG, s, this.visibleMask);
-    positionHalo(this.halo, s, effectiveRadius(s));
 
-    // player billboard (feet planted on the diamond)
+    const effR = effectiveRadius(s);
+    const light = computeLightMap(s, this.visibleMask, effR);
+
+    // ground: candlelight tints, memory ghost, unseen black
+    const layer = this.groundLayer;
+    if (layer !== null) {
+      for (let y = 0; y < s.h; y++) {
+        for (let x = 0; x < s.w; x++) {
+          const tile = layer.getTileAt(x, y);
+          if (tile === null) continue;
+          const i = y * s.w + x;
+          if (this.visibleMask[i]! === 1) {
+            tile.tint = tintForLight(light[i]!);
+          } else if (s.seen[i]! === 1) {
+            tile.tint = MEMORY_TINT;
+          } else {
+            tile.tint = UNSEEN_TINT;
+          }
+        }
+      }
+    }
+
+    positionHalo(this.halo, s, effR);
+    this.halo.setTint(COLOR.flame);
+    syncSourceGlows(this, this.glowPool, s, this.visibleMask, DEPTH_HALO - 1);
+
+    // player + shadow
     const pc = gridToScreen(s.px, s.py);
-    this.playerView.setPosition(pc.sx, pc.sy + HALF_H - 2);
-    this.playerView.depth = depthOf(s.px, s.py, Layer.ENTITY);
+    const pi = s.py * s.w + s.px;
+    this.glide(this.playerView, pc.sx, pc.sy + HALF_H - 2, depthOf(s.px, s.py, Layer.ENTITY), instant);
+    this.glide(this.playerShadow, pc.sx, pc.sy + 4, depthOf(s.px, s.py, Layer.CORPSE), instant);
     this.playerView.setFlipX(this.facing === DIRS.W);
-    this.playerView.setTint(s.candle === Candle.SNUFFED ? COLOR.boneDim : 0xffffff);
+    this.playerView.setTint(
+      s.candle === Candle.SNUFFED ? MEMORY_TINT : tintForLight(Math.min(light[pi]! + 0.25, 1)),
+    );
+    this.playerShadow.setAlpha(this.visibleMask[pi]! === 1 ? 0.8 : 0.3);
 
-    // overlays: salt / chalk / fire as flat tinted diamonds
+    // flat overlays: salt / chalk / fire
     const wantOverlay = (kind: string, i: number, tint: number, alpha: number): void => {
       const key = `${kind}:${i}`;
       let img = this.overlays.get(key);
@@ -463,7 +569,7 @@ export class DescentScene extends Phaser.Scene {
         const y = (i / s.w) | 0;
         const c = gridToScreen(x, y);
         img = this.add.image(c.sx, c.sy, "iso-diamond");
-        img.depth = depthOf(x, y, Layer.CORPSE); // flat, just above ground
+        img.depth = depthOf(x, y, Layer.CORPSE);
         this.overlays.set(key, img);
       }
       img.setTint(tint);
@@ -472,12 +578,14 @@ export class DescentScene extends Phaser.Scene {
     };
     this.overlays.forEach((img) => img.setVisible(false));
     for (let i = 0; i < s.tiles.length; i++) {
-      if (s.salt[i]! !== 0) wantOverlay("salt", i, COLOR.parchment, 0.5);
-      if (s.chalk[i]! !== 0) wantOverlay("chalk", i, COLOR.parchment, 0.35);
-      if (s.fire[i]! > 0) wantOverlay("fire", i, COLOR.ember, 0.8);
+      if (this.visibleMask[i]! !== 1 && s.seen[i]! !== 1) continue;
+      const dim = this.visibleMask[i]! === 1 ? 1 : 0.45;
+      if (s.salt[i]! !== 0) wantOverlay("salt", i, COLOR.parchment, 0.45 * dim);
+      if (s.chalk[i]! !== 0) wantOverlay("chalk", i, COLOR.parchment, 0.32 * dim);
+      if (s.fire[i]! > 0) wantOverlay("fire", i, COLOR.ember, 0.75 * dim);
     }
 
-    // props: visibility (hidden until seen, dim when remembered) + occlusion
+    // props: lit tint / memory ghost / hidden — plus wall occlusion fade
     this.props.forEach((prop, i) => {
       const x = i % s.w;
       const y = (i / s.w) | 0;
@@ -485,9 +593,11 @@ export class DescentScene extends Phaser.Scene {
       const vis = this.visibleMask[i]! === 1;
       prop.sprite.setVisible(seen);
       if (!seen) return;
-      const isWallish = prop.tile === Tile.WALL || prop.tile === Tile.DOOR_CLOSED || prop.tile === Tile.DOOR_STUCK;
+      prop.sprite.setTint(vis ? tintForLight(Math.min(light[i]! + 0.08, 1)) : MEMORY_TINT);
+      const isWallish =
+        prop.tile === Tile.WALL || prop.tile === Tile.DOOR_CLOSED || prop.tile === Tile.DOOR_STUCK;
       const shouldOcclude = isWallish && occludes(s.px, s.py, x, y);
-      const targetAlpha = shouldOcclude ? OCCLUDED_ALPHA : vis ? 1 : 0.4;
+      const targetAlpha = shouldOcclude ? OCCLUDED_ALPHA : 1;
       if (shouldOcclude !== prop.occluded) {
         prop.occluded = shouldOcclude;
         this.tweens.add({ targets: prop.sprite, alpha: targetAlpha, duration: OCCLUSION_FADE_MS });
@@ -496,41 +606,57 @@ export class DescentScene extends Phaser.Scene {
       }
     });
 
-    // entities: upright billboards, E/W flip, visible only in candlelight
+    // entities: glide, flip, breathe (in update), candle-lit tint + shadow
     const alive = new Set<number>();
     for (const ent of s.entities) {
       alive.add(ent.id);
       let view = this.entityViews.get(ent.id);
+      let shadowView = this.entityShadows.get(ent.id);
       if (view === undefined) {
         view = this.add.image(0, 0, entityTextureFor(ent.kind));
         view.setOrigin(0.5, 1);
+        shadowView = this.add.image(0, 0, "iso-shadow");
+        if (ent.kind === EntityKind.BEAST) shadowView.setScale(1.6, 1.6);
+        else if (ent.kind === EntityKind.MOTH) shadowView.setScale(0.5, 0.5);
         this.entityViews.set(ent.id, view);
+        this.entityShadows.set(ent.id, shadowView);
+        this.entityKinds.set(ent.id, ent.kind);
         this.entityLastX.set(ent.id, ent.x);
       }
       const c = gridToScreen(ent.x, ent.y);
-      view.setPosition(c.sx, c.sy + HALF_H - 2);
-      view.depth = depthOf(ent.x, ent.y, Layer.ENTITY);
+      const i = ent.y * s.w + ent.x;
+      const isMoth = ent.kind === EntityKind.MOTH;
+      this.glide(view, c.sx, c.sy + HALF_H - (isMoth ? 14 : 2), depthOf(ent.x, ent.y, Layer.ENTITY), instant);
+      if (shadowView !== undefined) {
+        this.glide(shadowView, c.sx, c.sy + 4, depthOf(ent.x, ent.y, Layer.CORPSE), instant);
+      }
       const lastX = this.entityLastX.get(ent.id)!;
       if (ent.x !== lastX) view.setFlipX(ent.x < lastX);
       this.entityLastX.set(ent.id, ent.x);
-      const tileVisible = this.visibleMask[ent.y * s.w + ent.x]! === 1;
+
+      const tileVisible = this.visibleMask[i]! === 1;
       const burrowed = ent.kind === EntityKind.WICKWORM && ent.state === WormState.BURROWED;
       const telegraph = ent.kind === EntityKind.WICKWORM && ent.state === WormState.TELEGRAPH;
       view.setVisible(tileVisible && !burrowed);
+      shadowView?.setVisible(tileVisible && !burrowed);
+      view.setTint(tintForLight(Math.min(light[i]! + 0.18, 1)));
       view.setAlpha(telegraph ? 0.6 : 1);
     }
     this.entityViews.forEach((view, id) => {
       if (!alive.has(id)) {
         view.destroy();
         this.entityViews.delete(id);
+        this.entityShadows.get(id)?.destroy();
+        this.entityShadows.delete(id);
+        this.entityKinds.delete(id);
         this.entityLastX.delete(id);
       }
     });
 
-    this.hud.update(s, effectiveRadius(s), DEV_DAY);
+    this.hud.update(s, effR, DEV_DAY);
   }
 
-  // ── Sheets (DOM overlays) ────────────────────────────────────────────────
+  // ── Sheets ───────────────────────────────────────────────────────────────
   private host(): HTMLElement | null {
     return this.game.canvas.parentElement;
   }
