@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>The Undervault — dev slice</title>
+    <link rel="stylesheet" href="../design/tokens/tokens.css" />
+    <style>
+      /* DEV-ONLY harness chrome; production entry is game.html at M2 */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--void);
+      }
+      #app {
+        position: relative;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #app canvas {
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
