@@ -47,7 +47,7 @@ import {
   DX,
   DY,
 } from "./constants.js";
-import { Stream, rollInt } from "./rng.js";
+import { Stream, chance, rollInt } from "./rng.js";
 
 export interface Ctx {
   s: SimState;
@@ -313,6 +313,20 @@ function stepToward(s: SimState, e: Entity, tx: number, ty: number, ignoreSalt: 
   return true;
 }
 
+/** One random drift step from the ai stream (deterministic). */
+function wanderStep(s: SimState, e: Entity, ignoreSalt: boolean): boolean {
+  const r = rollInt(s.rng, Stream.AI, 5);
+  if (r >= 4) return false; // sometimes just twitch in place
+  const nx = e.x + DX[r]!;
+  const ny = e.y + DY[r]!;
+  if (canEnter(s, e, nx, ny, ignoreSalt, false)) {
+    e.x = nx;
+    e.y = ny;
+    return true;
+  }
+  return false;
+}
+
 function stepAway(s: SimState, e: Entity, tx: number, ty: number, ignoreSalt: boolean): boolean {
   const d0 = manh(e.x, e.y, tx, ty);
   let bestDir = -1;
@@ -365,11 +379,17 @@ export function aiPass(ctx: Ctx, effRadius: number): string | null {
     switch (e.kind) {
       case EntityKind.RAT: {
         const dist = manh(e.x, e.y, s.px, s.py);
-        if (effRadius >= RAT_FLEE_RADIUS && dist <= effRadius + 2) {
-          stepAway(s, e, s.px, s.py, false); // flees light (01 §8 #1)
-        } else if (effRadius <= RAT_SWARM_RADIUS) {
+        if (effRadius <= RAT_SWARM_RADIUS) {
+          // the dark emboldens them (01 §8 #1)
           if (dist === 1) damagePlayer(ctx, DMG[EntityKind.RAT]!, DmgSource.MONSTER, e.kind);
-          else stepToward(s, e, s.px, s.py, false, false); // swarms in dark
+          else stepToward(s, e, s.px, s.py, false, false);
+        } else if (effRadius >= RAT_FLEE_RADIUS && dist < effRadius) {
+          // INSIDE the light → retreat to its rim (staying visible there:
+          // eyes at the edge of the candlelight, not gone from the world)
+          stepAway(s, e, s.px, s.py, false);
+        } else if (effRadius >= RAT_FLEE_RADIUS && dist <= effRadius + 1) {
+          // at the rim: hold, with a nervous sideways skitter
+          if (chance(s.rng, Stream.AI, 1, 3)) wanderStep(s, e, false);
         } else {
           // L1: drifts toward floor drippings — following a rat finds wax
           let bx = -1, by = -1, bd = RAT_WAX_SENSE + 1;
@@ -385,7 +405,8 @@ export function aiPass(ctx: Ctx, effRadius: number): string | null {
               by = y;
             }
           }
-          if (bx >= 0 && bd > 0) stepToward(s, e, bx, by, false, false);
+          if (bx >= 0 && bd > 1) stepToward(s, e, bx, by, false, false);
+          else if (chance(s.rng, Stream.AI, 1, 2)) wanderStep(s, e, false); // nibbling, never a statue
         }
         break;
       }
@@ -463,15 +484,7 @@ export function aiPass(ctx: Ctx, effRadius: number): string | null {
           if (s.candle === Candle.LIT && dist <= MOTH_FLAME_SENSE) {
             e.state = MothState.SEEK;
           } else {
-            const r = rollInt(s.rng, Stream.AI, 5);
-            if (r < 4) {
-              const nx = e.x + DX[r]!;
-              const ny = e.y + DY[r]!;
-              if (canEnter(s, e, nx, ny, true, false)) {
-                e.x = nx;
-                e.y = ny;
-              }
-            }
+            wanderStep(s, e, true);
           }
         }
         break;

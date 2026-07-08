@@ -9,67 +9,67 @@
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "bfc1d95e"
+      "h32": "996e60ae"
     },
     {
       "tick": 64,
-      "h32": "836d18fb"
+      "h32": "cee3f5cc"
     },
     {
       "tick": 96,
-      "h32": "98eec7b5"
+      "h32": "c8bb2df8"
     },
     {
       "tick": 128,
-      "h32": "2cc5dccd"
+      "h32": "d6a572cd"
     },
     {
       "tick": 160,
-      "h32": "47c6159b"
+      "h32": "971653d6"
     },
     {
       "tick": 192,
-      "h32": "3c5d4425"
+      "h32": "8d49e51b"
     },
     {
       "tick": 224,
-      "h32": "9a952a0d"
+      "h32": "41f74f9c"
     },
     {
       "tick": 256,
-      "h32": "e1d88867"
+      "h32": "0af3e4fa"
     },
     {
       "tick": 288,
-      "h32": "c2e8f2b9"
+      "h32": "05268b16"
     },
     {
       "tick": 320,
-      "h32": "8190a4e7"
+      "h32": "33f0c627"
     },
     {
       "tick": 352,
-      "h32": "e8c19bbf"
+      "h32": "17d57bfb"
     },
     {
       "tick": 384,
-      "h32": "fc23d415"
+      "h32": "e5c38121"
     },
     {
       "tick": 416,
-      "h32": "e818cfdc"
+      "h32": "d35a5a4d"
     },
     {
       "tick": 448,
-      "h32": "3bee17f2"
+      "h32": "ef745cd8"
     },
     {
       "tick": 480,
-      "h32": "207669bd"
+      "h32": "efe2b5d0"
     }
   ],
   "finalTick": 500,
-  "finalH32": "2fe5eb96",
+  "finalH32": "17f0d06b",
   "finalStatus": 0,
   "finalWax": 459,
   "finalFloor": 1

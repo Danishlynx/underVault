@@ -59,7 +59,7 @@ export const RAT_WAX_SENSE = 8; // drifts toward pickups within this range
 export const WORM_HEAT_SENSE = 12; // senses CUPPED flames within this (01 §8 L1)
 export const WORM_VIBRATION_SENSE = 3; // senses any player within this
 export const WORM_SURFACED_TICKS = 2; // vulnerable window after lunge
-export const MOTH_FLAME_SENSE = 8; // seeks LIT flames within this
+export const MOTH_FLAME_SENSE = 10; // seeks LIT flames within this (⚖ was 8; moths never met anyone)
 export const MOTH_SCATTER_TICKS = 6; // wander duration after cupping sheds it
 export const BEAST_MAX_STEP = 2; // moves min(noise, 2) — 01 §8 #7
 

@@ -9,11 +9,11 @@
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "82307f2d"
+      "h32": "b858cc2f"
     }
   ],
   "finalTick": 57,
-  "finalH32": "8cec5ef0",
+  "finalH32": "240590f2",
   "finalStatus": 2,
   "finalWax": 457,
   "finalFloor": 1

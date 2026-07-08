@@ -116,6 +116,7 @@ export class DescentScene extends Phaser.Scene {
   private pressTile: { x: number; y: number } | null = null;
   private pressAt = 0;
   private pressConsumed = false;
+  private pendingBump: { x: number; y: number } | null = null;
 
   constructor() {
     super("Descent");
@@ -497,6 +498,7 @@ export class DescentScene extends Phaser.Scene {
     } else {
       this.redraw(false);
     }
+    this.playBump();
 
     if (this.state.status === Status.DEAD) this.openEpitaph();
     else if (this.state.status === Status.EXITED) this.openExit();
@@ -529,9 +531,31 @@ export class DescentScene extends Phaser.Scene {
       case Ev.WORM_TELEGRAPH:
         this.cameras.main.shake(80, 0.002);
         break;
+      case Ev.BLOCKED:
+        this.pendingBump = { x: e.a, y: e.b }; // applied after redraw's glide
+        break;
       default:
         break;
     }
+  }
+
+  /** Visible thud against a wall — silent blocked moves read as a hang. */
+  private playBump(): void {
+    const b = this.pendingBump;
+    this.pendingBump = null;
+    if (b === null) return;
+    const target = gridToScreen(b.x, b.y);
+    const here = gridToScreen(this.state.px, this.state.py);
+    const dx = (target.sx - here.sx) * 0.14;
+    const dy = (target.sy - here.sy) * 0.14;
+    this.tweens.add({
+      targets: this.playerView,
+      x: `+=${dx}`,
+      y: `+=${dy}`,
+      duration: 55,
+      yoyo: true,
+      ease: "Sine.easeOut",
+    });
   }
 
   // ── Rendering ────────────────────────────────────────────────────────────
@@ -666,7 +690,10 @@ export class DescentScene extends Phaser.Scene {
       const burrowed = ent.kind === EntityKind.WICKWORM && ent.state === WormState.BURROWED;
       const telegraph = ent.kind === EntityKind.WICKWORM && ent.state === WormState.TELEGRAPH;
       view.setVisible(tileVisible && !burrowed);
-      shadowView?.setVisible(tileVisible && !burrowed);
+      // a burrowed worm still shows as a low mound of disturbed earth —
+      // an invisible tile-blocker read as a bug in playtest
+      shadowView?.setVisible(tileVisible);
+      shadowView?.setAlpha(burrowed ? 0.55 : 0.8);
       view.setTint(tintForLight(Math.min(light[i]! + 0.18, 1)));
       view.setAlpha(telegraph ? 0.6 : 1);
     }

@@ -4,24 +4,24 @@
   "simVersion": 1,
   "daySeed": 20260708,
   "botSeed": 12,
-  "actionCount": 109,
-  "actionsB64": "AW0ADCCCCCOACACCGCFBBBCBABBBCBEBBBBEEEEEEAIEEFCEBBBERCCECDBDHDDCCDCDDCGCGCGCCCDFBBBBBBBFBBBERDDEDEIIKAIIIIIIIIIIEA==",
+  "actionCount": 107,
+  "actionsB64": "AWsADCCCCCOACACCGCFBBBCBABBBCBEBBBBEEEEEEAEEBBCBIERCCDDEHDBDCCDCDDCCGCGCGCCCBFDBBBBBBBFBBBERDDDEIIIIKAIIIIIIIIIA",
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "e0e910fc"
+      "h32": "1ea9c7fd"
     },
     {
       "tick": 64,
-      "h32": "24162cb8"
+      "h32": "586fbdd7"
     },
     {
       "tick": 96,
-      "h32": "297aa92b"
+      "h32": "315a6edb"
     }
   ],
-  "finalTick": 109,
-  "finalH32": "38885439",
+  "finalTick": 107,
+  "finalH32": "5d8e615a",
   "finalStatus": 1,
   "finalWax": 0,
   "finalFloor": 3

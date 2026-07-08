@@ -64,6 +64,18 @@ describe("wax economy", () => {
     expect(s.tick).toBe(4);
   });
 
+  test("walking into a door opens it (bump-to-open)", () => {
+    let s = makeState(fd);
+    s = runActions(s, [Action.MOVE_E]); // (2,1), door below at (2,2)
+    s = runActions(s, [Action.MOVE_S]); // bump the closed door
+    expect(s.tiles[2 * 7 + 2]).toBe(Tile.DOOR_OPEN);
+    expect(s.px).toBe(2); // opening costs the turn; you step through next
+    expect(s.py).toBe(1);
+    expect(s.wax).toBe(498); // −1 move, −1 open
+    s = runActions(s, [Action.MOVE_S]);
+    expect(s.py).toBe(2); // now through the doorway
+  });
+
   test("door 1, stuck door 5, brazier 30, pickup +20", () => {
     let s = makeState(fd);
     s = runActions(s, [Action.INTERACT_S]); // closed door below (2,2)? player at (1,1): S = (1,2) floor → invalid? no: (1,2) is '.' → invalid interact → wait-demote

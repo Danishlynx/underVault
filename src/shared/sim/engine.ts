@@ -234,6 +234,7 @@ export function tick(state: SimState, action: number, rules: RuleTable): TickRes
       const nx = s.px + DX[d]!;
       const ny = s.py + DY[d]!;
       const target = inBounds(s, nx, ny) ? entityAt(s, nx, ny) : undefined;
+      const targetTile = inBounds(s, nx, ny) ? s.tiles[idx(s, nx, ny)]! : Tile.VOID;
       if (target !== undefined) {
         const abort = bumpEntity(ctx, target); // outcome is SECRET
         if (abort !== null) return { needRule: abort };
@@ -245,6 +246,16 @@ export function tick(state: SimState, action: number, rules: RuleTable): TickRes
         collectWax(ctx);
         const t = s.tiles[idx(s, nx, ny)]!;
         noise = t === Tile.MOSS || t === Tile.WEBBING ? NOISE_SOFT : NOISE_STONE;
+      } else if (targetTile === Tile.DOOR_CLOSED || targetTile === Tile.DOOR_STUCK) {
+        // walking into a door opens it (roguelike convention — silent
+        // BLOCKED here read as "the game is broken" in playtest)
+        const out = interactTile(ctx, nx, ny);
+        if (out !== "invalid") {
+          cost = out.cost;
+          noise = NOISE_INTERACT;
+        } else {
+          ev(ctx, Ev.BLOCKED, nx, ny);
+        }
       } else {
         ev(ctx, Ev.BLOCKED, nx, ny);
       }
