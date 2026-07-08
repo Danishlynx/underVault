@@ -26,8 +26,8 @@ function lerpColor(a: number, b: number, t: number): number {
 
 const COOL_DARK = lerpColor(COLOR.void, COLOR.surface2, 0.55); // lit-but-far
 const WARM_WHITE = lerpColor(0xffffff, COLOR.flameHi, 0.22); // candle-close
-export const MEMORY_TINT = lerpColor(COLOR.void, COLOR.verdigrisDim, 0.5); // ghost
-export const UNSEEN_TINT = 0x000000;
+export const MEMORY_TINT = lerpColor(COLOR.void, COLOR.verdigrisDim, 0.34); // ghost
+// (unseen tiles render at alpha 0 — see Descent.redraw; no tint constant)
 
 /** light 0..1 → multiplicative tint. */
 export function tintForLight(light: number): number {

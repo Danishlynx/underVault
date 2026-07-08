@@ -183,6 +183,15 @@ candidates; flip them in the named data file, not in code.
 45. **HUD**: drawn 24px-grid item icons (flint/salt/chalk) replace unicode
     glyphs; occupied slots get the 04 §3.5 amber underline; candle meter
     gained an additive flame glow; depth plaque gained its double rule.
+46. **Agent eyes: `tools/dev-harness/snap.ts` + `puppeteer-core` (devDep).**
+    Drives the locally installed Edge headless at the vite server, captures
+    console/page errors and screenshots (optionally after scripted keys).
+    Dev-only, never bundled, downloads nothing (invariant 4 intact). It
+    caught a texture-bake crash (shade(mix(...)) color-format mismatch)
+    that typecheck could not; also produces the DoD screenshots.
+47. **Unseen tiles are alpha-0**, not black-tinted — black diamonds against
+    the `--void` background leaked the whole map as a silhouette grid.
+    Memory ghost deepened (verdigris blend 0.5 → 0.34).
 
 34. Client papercuts fixed: tap-self on stairs now descends (matches toast);
     CandleMeter strip no longer double-fires world taps; snuff/relight

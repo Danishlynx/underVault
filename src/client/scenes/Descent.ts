@@ -40,7 +40,6 @@ import {
   pulseGlows,
   syncSourceGlows,
   tintForLight,
-  UNSEEN_TINT,
   type GlowPool,
 } from "../render/lights.js";
 import {
@@ -526,7 +525,7 @@ export class DescentScene extends Phaser.Scene {
     const effR = effectiveRadius(s);
     const light = computeLightMap(s, this.visibleMask, effR);
 
-    // ground: candlelight tints, memory ghost, unseen black
+    // ground: candlelight tints, memory ghost; unseen tiles do not exist
     const layer = this.groundLayer;
     if (layer !== null) {
       for (let y = 0; y < s.h; y++) {
@@ -536,10 +535,12 @@ export class DescentScene extends Phaser.Scene {
           const i = y * s.w + x;
           if (this.visibleMask[i]! === 1) {
             tile.tint = tintForLight(light[i]!);
+            tile.setAlpha(1);
           } else if (s.seen[i]! === 1) {
             tile.tint = MEMORY_TINT;
+            tile.setAlpha(1);
           } else {
-            tile.tint = UNSEEN_TINT;
+            tile.setAlpha(0); // the dark is absolute — no silhouette grid
           }
         }
       }

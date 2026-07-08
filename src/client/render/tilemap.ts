@@ -19,22 +19,29 @@ const TILE_KINDS = 16;
 export const FLOOR_VARIANTS = 3; // strip indices 16, 17 reuse FLOOR look
 
 // ── Token-derived color math ───────────────────────────────────────────────
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+// shade()/mix() outputs must be composable (shade(mix(...)) is common), so
+// the parser accepts both "#rrggbb" tokens and its own "rgba(...)" output.
+function parseColor(c: string): [number, number, number] {
+  if (c.startsWith("#")) {
+    const h = c.slice(1);
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  const m = /rgba?\(([\d.]+),([\d.]+),([\d.]+)/.exec(c.replace(/\s/g, ""));
+  if (m !== null) return [Number(m[1]), Number(m[2]), Number(m[3])];
+  throw new Error(`unparseable color: ${c}`);
 }
 function rgbToCss(r: number, g: number, b: number, a = 1): string {
   return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
 }
-/** Lighten (f>1) / darken (f<1) a token color. */
-export function shade(hex: string, f: number, a = 1): string {
-  const [r, g, b] = hexToRgb(hex);
+/** Lighten (f>1) / darken (f<1) a token-derived color. */
+export function shade(color: string, f: number, a = 1): string {
+  const [r, g, b] = parseColor(color);
   return rgbToCss(Math.min(255, r * f), Math.min(255, g * f), Math.min(255, b * f), a);
 }
-/** Blend token a → b by t. */
-export function mix(hexA: string, hexB: string, t: number, alpha = 1): string {
-  const a = hexToRgb(hexA);
-  const b = hexToRgb(hexB);
+/** Blend token-derived color a → b by t. */
+export function mix(colorA: string, colorB: string, t: number, alpha = 1): string {
+  const a = parseColor(colorA);
+  const b = parseColor(colorB);
   return rgbToCss(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, alpha);
 }
 
