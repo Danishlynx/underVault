@@ -1,0 +1,51 @@
+/* GENERATED from docs/04-UI-SPEC.md §2 (design-owned values).
+ * Created by Code because design/ was absent at Track B start — see DECISIONS.md.
+ * Do not hand-tune values here without updating 04 §2.
+ */
+:root {
+  /* §2.1 Color */
+  --void: #0b0a10;
+  --surface: #16131c;
+  --surface-2: #1e1a26;
+  --flame: #f5a93f;
+  --flame-hi: #ffd98a;
+  --ember: #c9701e;
+  --verdigris: #4fb39a;
+  --verdigris-dim: #2e6b5c;
+  --parchment: #eae0c9;
+  --parchment-aged: #d6c7a3;
+  --ink: #2a2520;
+  --ink-soft: #4a443b;
+  --bone: #b7ae9c;
+  --bone-dim: #7e786c;
+  --seal: #a33b2e;
+  --gold-ink: #c8a24b;
+  --disproven: #6e6a63;
+
+  /* §2.2 Typography */
+  --font-display: "IM Fell English", "Cormorant", serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --size-display-1: 28px;
+  --size-display-2: 22px;
+  --size-display-3: 18px;
+  --size-body: 15px;
+  --size-body-sm: 13px;
+  --lh-body: 1.45;
+  --lh-display: 1.2;
+
+  /* §2.3 Space, Shape, Depth */
+  --grid: 4px;
+  --pad-component: 12px;
+  --pad-component-lg: 16px;
+  --gutter-mobile: 16px;
+  --gutter-web: 24px;
+  --radius: 2px;
+  --border-void: #2e2938;
+
+  /* §5 Motion */
+  --dur-micro: 120ms;
+  --dur-standard: 200ms;
+  --dur-sheet: 250ms;
+  --dur-ceremonial: 600ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}

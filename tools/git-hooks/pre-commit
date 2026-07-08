@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+// Local stand-in for "golden CI from week 1; drift blocks merge" (03 §5).
+// Node shebang (not sh): MinGit on Windows ships no bash. ESM syntax: the
+// repo package.json declares "type": "module".
+import { execSync } from "node:child_process";
+try {
+  execSync("npm run check", { stdio: "inherit" });
+} catch {
+  process.exit(1);
+}
