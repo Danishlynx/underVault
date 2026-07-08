@@ -21,6 +21,7 @@ const URL = arg("--url", "http://localhost:5173/");
 const OUT = arg("--out", path.join(process.cwd(), "snap.png"));
 const WAIT = Number(arg("--wait", "4000"));
 const KEYS = arg("--keys", "");
+const LANDSCAPE = process.argv.includes("--landscape");
 
 const EDGE_PATHS = [
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
@@ -31,11 +32,13 @@ async function main(): Promise<void> {
   const edge = EDGE_PATHS.find((p) => fs.existsSync(p));
   if (edge === undefined) throw new Error("Edge not found");
 
+  const vw = LANDSCAPE ? 940 : 520;
+  const vh = LANDSCAPE ? 520 : 940;
   const browser = await puppeteer.launch({
     executablePath: edge,
     headless: true,
-    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--window-size=520,940"],
-    defaultViewport: { width: 520, height: 940 },
+    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", `--window-size=${vw},${vh}`],
+    defaultViewport: { width: vw, height: vh },
   });
   const page = await browser.newPage();
 

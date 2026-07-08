@@ -7,7 +7,7 @@
  */
 
 import Phaser from "phaser";
-import { COLOR, CANVAS, MOTION } from "../../../design/tokens/tokens.js";
+import { COLOR, MOTION } from "../../../design/tokens/tokens.js";
 import {
   descendState,
   effectiveRadius,
@@ -156,13 +156,22 @@ export class DescentScene extends Phaser.Scene {
     this.playerView = this.add.image(0, 0, "iso-player");
     this.playerView.setOrigin(0.5, 1);
 
-    // Atmosphere chrome (screen-fixed, under the HUD)
-    this.vignette = this.add.image(CANVAS.width >> 1, CANVAS.height >> 1, "uv-vignette");
+    // Atmosphere chrome (screen-fixed, under the HUD; sized per orientation)
+    const sw = this.scale.width;
+    const sh = this.scale.height;
+    this.vignette = this.add.image(sw >> 1, sh >> 1, "uv-vignette");
     this.vignette.setScrollFactor(0);
+    this.vignette.setDisplaySize(sw, sh);
     this.vignette.depth = DEPTH_VIGNETTE;
-    this.grain = this.add.tileSprite(CANVAS.width >> 1, CANVAS.height >> 1, CANVAS.width, CANVAS.height, "uv-grain");
+    this.grain = this.add.tileSprite(sw >> 1, sh >> 1, sw, sh, "uv-grain");
     this.grain.setScrollFactor(0);
     this.grain.depth = DEPTH_GRAIN;
+
+    // Orientation flips re-flow the fixed chrome + HUD
+    this.scale.on("resize", this.onResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off("resize", this.onResize, this);
+    });
 
     // Dust motes drifting through the candle's reach
     this.dust = this.add.particles(0, 0, "iso-mote", {
@@ -194,6 +203,16 @@ export class DescentScene extends Phaser.Scene {
     this.bindInput();
     this.redraw(true);
     this.hud.toast("The match catches. The Vault is listening.", "info");
+  }
+
+  private onResize(gameSize: Phaser.Structs.Size): void {
+    const w = gameSize.width;
+    const h = gameSize.height;
+    this.vignette.setPosition(w >> 1, h >> 1);
+    this.vignette.setDisplaySize(w, h);
+    this.grain.setPosition(w >> 1, h >> 1);
+    this.grain.setSize(w, h);
+    this.hud.layout(w, h);
   }
 
   // ── Floor construction ───────────────────────────────────────────────────
@@ -300,8 +319,9 @@ export class DescentScene extends Phaser.Scene {
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (this.overlayOpen) return;
-      if (p.y > CANVAS.height - 80 || p.y < 60) return;
-      if (p.x < 64 && p.y > 90 && p.y < 470) return;
+      if (p.y > this.scale.height - 80 || p.y < 60) return; // HUD bar zones
+      const mb = this.hud.meterBounds();
+      if (p.x < mb.x + mb.w && p.y > mb.y && p.y < mb.y + mb.h) return; // meter strip
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       this.pressTile = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
       this.pressAt = this.time.now;

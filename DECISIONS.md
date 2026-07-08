@@ -192,6 +192,13 @@ candidates; flip them in the named data file, not in code.
 47. **Unseen tiles are alpha-0**, not black-tinted — black diamonds against
     the `--void` background leaked the whole map as a silhouette grid.
     Memory ghost deepened (verdigris blend 0.5 → 0.34).
+48. **Landscape mode (operator request):** portrait keeps the decided
+    480×854 internal res; landscape flips to 854×480 with live
+    `setGameSize` swap on window resize and a full HUD re-flow
+    (`Hud.layout(w,h)`: meter height adapts, slots center, buttons pin to
+    edges). The "decided" list names portrait only — extension flagged
+    here; 03 §4's device matrix already expects portrait+landscape web.
+    Both orientations screenshot-verified via the snap tool.
 
 34. Client papercuts fixed: tap-self on stairs now descends (matches toast);
     CandleMeter strip no longer double-fires world taps; snuff/relight
