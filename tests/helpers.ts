@@ -83,14 +83,15 @@ export function stubRules(entries: Record<string, number> = {}, fallback = Effec
 
 export function runActions(
   state: SimState,
-  actions: readonly number[],
+  actions: readonly (number | { op: number; arg: number })[],
   rules?: { table: MutableRuleTable; resolve: (key: string) => number },
 ): SimState {
   const r = rules ?? stubRules();
   let s = state;
   for (const a of actions) {
     if (s.status !== Status.ALIVE) break;
-    s = tickResolving(s, a, r.table, r.resolve).state;
+    const step = typeof a === "number" ? { op: a, arg: 0 } : a;
+    s = tickResolving(s, step, r.table, r.resolve).state;
   }
   return s;
 }

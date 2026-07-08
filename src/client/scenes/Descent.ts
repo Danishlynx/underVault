@@ -1,9 +1,9 @@
 /**
- * The Descent — run controller + ISO world renderer + input (02 §8, 04 §4.3).
- * Fidelity pass: per-tile candlelight tints, verdigris memory-ghost for
- * remembered tiles, glide tweens, drop shadows, breathing idle animation,
- * moth wing flutter, pooled source glows, dust motes, vignette + film grain.
- * The sim never learns any of this exists; projection/depth stay in iso.ts.
+ * The Descent v2 — the whole day loop, locally: Guildhall → match-strike
+ * (audio unlock) → run (full bestiary, items, doors, shrines, omens) →
+ * bank ≤3 at waystones → death/exit/victory ceremonies → next day.
+ * The sim is the only truth; this scene renders SimState, forwards Steps,
+ * and narrates through toasts + the synthesized audio graph.
  */
 
 import Phaser from "phaser";
@@ -21,17 +21,31 @@ import {
   Effect,
   Ev,
   EntityKind,
+  Item,
+  MimicState,
   Status,
   Tile,
   WormState,
   type OutcomeEvent,
   type SimState,
+  type Step,
 } from "../../shared/sim/types.js";
-import { RELIGHT_TICKS, SNUFF_TICKS } from "../../shared/sim/constants.js";
+import {
+  RELIGHT_TICKS,
+  SNUFF_TICKS,
+  SIGN_TEMPLATES,
+  ECHO_KEYFRAMES,
+  biomeFor,
+} from "../../shared/sim/constants.js";
 import { PORTS_KEY } from "../game.js";
-import type { GamePorts } from "../net/ports.js";
+import type { EchoRecord, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
-import { entityTextureFor, groundIndexFor, propTextureFor } from "../render/tilemap.js";
+import {
+  entityTextureFor,
+  groundIndexFor,
+  isWallishTile,
+  propTextureFor,
+} from "../render/tilemap.js";
 import {
   computeLightMap,
   flickerHalo,
@@ -60,20 +74,67 @@ import {
 } from "../render/iso.js";
 import { Hud } from "../render/hud.js";
 import { closeAllSheets } from "../ui/dom.js";
-import { openEpitaphSheet, openExitSheet, openWaystoneSheet } from "../ui/sheets.js";
+import {
+  openEpitaphSheet,
+  openExitSheet,
+  openHeirloomSheet,
+  openVictorySheet,
+  openWaystoneSheet,
+} from "../ui/sheets.js";
+import { openGuildhall } from "../ui/guildhall.js";
+import { openCodexSheet } from "../ui/codex.js";
+import { openSignComposer } from "../ui/signs.js";
+import { earnedNouns } from "../ui/vocab.js";
+import { AudioGraph, type Cue } from "../audio/graph.js";
 
 const DIRS = { N: 0, E: 1, S: 2, W: 3 } as const;
 const RULES_KEY = "uv-session-rules";
-const DEV_DAY = 1;
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+const AUDIO_KEY = "uv-audio";
+const AUTOSTART_KEY = "uv-autostart";
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+  "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
+  "XXI", "XXII", "XXIII", "XXIV", "XXV"];
 
 const DEPTH_CURSOR = 550;
 const DEPTH_DUST = 580;
-const DEPTH_HALO = 600; // above world (≤ ~470), below chrome
+const DEPTH_HALO = 600;
+const DEPTH_GHOST = 590;
 const DEPTH_VIGNETTE = 900;
-const DEPTH_GRAIN = 901; // HUD sits at 1000+
+const DEPTH_GRAIN = 901;
 const LONG_PRESS_MS = 400;
 const GLIDE_MS = 85;
+
+const TILE_NAMES: Record<number, string> = {
+  [Tile.WALL]: "vault wall",
+  [Tile.FLOOR]: "stone floor",
+  [Tile.MOSS]: "soft moss",
+  [Tile.WEBBING]: "dry webbing",
+  [Tile.DOOR_CLOSED]: "a closed door",
+  [Tile.DOOR_STUCK]: "a stuck door",
+  [Tile.DOOR_OPEN]: "an open door",
+  [Tile.DOOR_IRON]: "an iron door",
+  [Tile.DOOR_SIGIL]: "a sigil-carved door",
+  [Tile.DOOR_HUNGER]: "a door with a mouth",
+  [Tile.DOOR_CHOIR]: "a door strung like a harp",
+  [Tile.ENTRY]: "the way out",
+  [Tile.STAIRS_DOWN]: "stairs down",
+  [Tile.WAYSTONE]: "a waystone",
+  [Tile.BRAZIER_UNLIT]: "a cold brazier",
+  [Tile.BRAZIER_LIT]: "a lit brazier",
+  [Tile.WAX_DRIP]: "wax drippings",
+  [Tile.WAX_STUB]: "a candle stub",
+  [Tile.WAX_CAKE]: "a wax cake",
+  [Tile.WATER]: "black water",
+  [Tile.GLOWMOSS]: "glowmoss",
+  [Tile.INSCRIPTION]: "a carved inscription",
+  [Tile.CHEST]: "a chest",
+  [Tile.PLATE]: "a floor plate",
+  [Tile.ALTAR]: "a tallow altar",
+  [Tile.POOL]: "a mirror pool",
+  [Tile.FONT]: "a nameless font",
+  [Tile.SEAL]: "the Bottom Seal",
+  [Tile.KEY_DROP]: "an iron key",
+};
 
 interface PropView {
   sprite: Phaser.GameObjects.Image;
@@ -81,15 +142,24 @@ interface PropView {
   occluded: boolean;
 }
 
+interface EchoPlayback {
+  frames: EchoRecord["frames"];
+  index: number;
+  img: Phaser.GameObjects.Image;
+  nextAt: number;
+}
+
 export class DescentScene extends Phaser.Scene {
   private ports!: GamePorts;
   private rules!: SessionRules;
-  private state!: SimState;
-  private visibleMask!: Uint8Array;
+  private audio!: AudioGraph;
+  private state: SimState | null = null;
+  private visibleMask: Uint8Array = new Uint8Array(0);
+  private running = false;
 
   private map: Phaser.Tilemaps.Tilemap | null = null;
   private groundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-  private lastTiles!: Uint8Array;
+  private lastTiles: Uint8Array = new Uint8Array(0);
   private props = new Map<number, PropView>();
   private overlays = new Map<string, Phaser.GameObjects.Image>();
   private glowPool: GlowPool = { images: new Map() };
@@ -106,12 +176,20 @@ export class DescentScene extends Phaser.Scene {
   private entityLastX = new Map<number, number>();
   private hud!: Hud;
 
-  private queue: number[] = [];
+  private queue: Step[] = [];
   private lastStep = 0;
   private lastGrainShift = 0;
   private facing: number = DIRS.S;
   private overlayOpen = false;
-  private baselineDiscoveries = 0;
+
+  private runBaseline = 0; // rules.learned length at run start
+  private bankedKeys = new Set<string>();
+  private recovered: LearnedRule[] = [];
+  private echoRing: { x: number; y: number; candle: number }[] = [];
+  private floorEchoes: EchoRecord[] = [];
+  private echoPlayed = new Set<number>();
+  private activeEcho: EchoPlayback | null = null;
+  private lastTellAt = 0;
 
   private pressTile: { x: number; y: number } | null = null;
   private pressAt = 0;
@@ -124,43 +202,45 @@ export class DescentScene extends Phaser.Scene {
 
   create(): void {
     this.ports = this.registry.get(PORTS_KEY) as GamePorts;
-    const existing = this.registry.get(RULES_KEY) as SessionRules | undefined;
-    this.rules = existing ?? new SessionRules();
+    const existingRules = this.registry.get(RULES_KEY) as SessionRules | undefined;
+    this.rules = existingRules ?? new SessionRules();
     this.registry.set(RULES_KEY, this.rules);
-    this.baselineDiscoveries = this.rules.learned.length;
+    const existingAudio = this.registry.get(AUDIO_KEY) as AudioGraph | undefined;
+    this.audio = existingAudio ?? new AudioGraph();
+    this.registry.set(AUDIO_KEY, this.audio);
 
-    const host = this.game.canvas.parentElement;
+    const host = this.host();
     if (host !== null) closeAllSheets(host);
     this.overlayOpen = false;
+    this.running = false;
+    this.state = null;
     this.queue = [];
+    this.props.clear();
+    this.overlays.clear();
     this.entityViews.clear();
     this.entityShadows.clear();
     this.entityKinds.clear();
     this.entityLastX.clear();
-    this.props.clear();
-    this.overlays.clear();
     this.glowPool = { images: new Map() };
     this.map = null;
     this.groundLayer = null;
     this.dust = null;
+    this.activeEcho = null;
 
-    const f = this.ports.getFloor(1);
-    this.state = initState(f.floorData, f.rngInit);
-    this.visibleMask = visibleFor(this.state);
-
+    // chrome
+    const sw = this.scale.width;
+    const sh = this.scale.height;
     this.halo = this.add.image(0, 0, "halo");
     this.halo.setBlendMode(Phaser.BlendModes.ADD);
     this.halo.depth = DEPTH_HALO;
+    this.halo.setVisible(false);
     this.cursorG = this.add.graphics();
     this.cursorG.depth = DEPTH_CURSOR;
-
     this.playerShadow = this.add.image(0, 0, "iso-shadow");
+    this.playerShadow.setVisible(false);
     this.playerView = this.add.image(0, 0, "iso-player");
     this.playerView.setOrigin(0.5, 1);
-
-    // Atmosphere chrome (screen-fixed, under the HUD; sized per orientation)
-    const sw = this.scale.width;
-    const sh = this.scale.height;
+    this.playerView.setVisible(false);
     this.vignette = this.add.image(sw >> 1, sh >> 1, "uv-vignette");
     this.vignette.setScrollFactor(0);
     this.vignette.setDisplaySize(sw, sh);
@@ -170,57 +250,138 @@ export class DescentScene extends Phaser.Scene {
     this.grain.setAlpha(0.55);
     this.grain.depth = DEPTH_GRAIN;
 
-    // Orientation flips re-flow the fixed chrome + HUD
     this.scale.on("resize", this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off("resize", this.onResize, this);
     });
 
-    // Dust motes drifting through the candle's reach
-    this.dust = this.add.particles(0, 0, "iso-mote", {
-      lifespan: 2800,
-      frequency: 340,
-      quantity: 1,
-      speedY: { min: -12, max: -4 },
-      speedX: { min: -5, max: 5 },
-      alpha: { start: 0.34, end: 0 },
-      scale: { start: 0.9, end: 0.35 },
-      emitZone: {
-        type: "random",
-        source: new Phaser.Geom.Rectangle(-84, -64, 168, 116),
-        quantity: 1,
-      },
-      follow: this.playerView,
-    });
-    this.dust.setDepth(DEPTH_DUST);
-
-    this.buildFloor();
-
     this.hud = new Hud(this, {
       onCup: () => this.enqueue(Action.CUP),
       onSnuffComplete: () => this.enqueueSnuff(),
       onRelight: () => this.enqueueRelight(),
-      onRestart: () => this.restartRun(),
+      onRestart: () => this.finishRun(false),
+      onUseSlot: (slot) => this.useSlot(slot),
+      onToggleMute: () => {
+        this.audio.setMuted(!this.audio.muted);
+        return this.audio.muted;
+      },
     });
 
     this.bindInput();
+
+    if (this.registry.get(AUTOSTART_KEY) === true) {
+      this.registry.set(AUTOSTART_KEY, false);
+      this.matchStrike();
+    } else {
+      this.showGuildhall();
+    }
+  }
+
+  private host(): HTMLElement | null {
+    return this.game.canvas.parentElement;
+  }
+
+  // ── Day flow ─────────────────────────────────────────────────────────────
+  private showGuildhall(): void {
+    const host = this.host();
+    if (host === null) return;
+    this.overlayOpen = true;
+    let closeHall: (() => void) | null = null;
+    closeHall = openGuildhall(
+      host,
+      this.ports.getGuildhall(),
+      () => {
+        closeHall?.();
+        this.overlayOpen = false;
+        this.matchStrike();
+      },
+      () => {
+        const h2 = this.host();
+        if (h2 !== null) {
+          openCodexSheet(h2, this.ports.getCodex(), () => undefined);
+        }
+      },
+    );
+  }
+
+  private matchStrike(): void {
+    // 04 §4.2 — the audio unlock and the brand moment
+    this.audio.unlock();
+    this.audio.play("match-strike");
+    this.cameras.main.flash(MOTION.matchStrike, 245, 169, 63); // --flame bloom
+    this.time.delayedCall(500, () => this.startRun());
+  }
+
+  private startRun(): void {
+    const setup = this.ports.getRunSetup();
+    const f = this.ports.getFloor(1);
+    this.state = initState(f.floorData, f.rngInit, {
+      mods: setup.mods,
+      heirloom: setup.heirloom,
+      noSalt: setup.noSalt,
+    });
+    this.floorEchoes = f.echoes;
+    this.echoPlayed.clear();
+    this.visibleMask = visibleFor(this.state);
+    this.runBaseline = this.rules.learned.length;
+    this.bankedKeys.clear();
+    this.recovered = [];
+    this.echoRing = [];
+    this.running = true;
+    this.playerView.setVisible(true);
+    this.playerShadow.setVisible(true);
+
+    if (this.dust === null) {
+      this.dust = this.add.particles(0, 0, "iso-mote", {
+        lifespan: 2800,
+        frequency: 340,
+        quantity: 1,
+        speedY: { min: -12, max: -4 },
+        speedX: { min: -5, max: 5 },
+        alpha: { start: 0.34, end: 0 },
+        scale: { start: 0.9, end: 0.35 },
+        emitZone: {
+          type: "random",
+          source: new Phaser.Geom.Rectangle(-84, -64, 168, 116),
+          quantity: 1,
+        },
+        follow: this.playerView,
+      });
+      this.dust.setDepth(DEPTH_DUST);
+    }
+
+    this.buildFloor();
     this.redraw(true);
     this.hud.toast("The match catches. The Vault is listening.", "info");
   }
 
-  private onResize(gameSize: Phaser.Structs.Size): void {
-    const w = gameSize.width;
-    const h = gameSize.height;
-    this.vignette.setPosition(w >> 1, h >> 1);
-    this.vignette.setDisplaySize(w, h);
-    this.grain.setPosition(w >> 1, h >> 1);
-    this.grain.setSize(w, h);
-    this.hud.layout(w, h);
+  /** Run over (death handled separately): rest ends the day. */
+  private finishRun(restAtDusk: boolean): void {
+    if (this.state !== null && this.running) {
+      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.ports.reportExit();
+    }
+    this.running = false;
+    if (restAtDusk) this.ports.nextDay();
+    this.registry.set(AUTOSTART_KEY, !restAtDusk);
+    this.scene.restart();
+  }
+
+  private learnedThisRun(): LearnedRule[] {
+    return this.rules.learned
+      .slice(this.runBaseline)
+      .filter((r) => r.effect !== Effect.NONE)
+      .concat(this.recovered);
+  }
+
+  private unbankedThisRun(): LearnedRule[] {
+    return this.learnedThisRun().filter((r) => !this.bankedKeys.has(r.key));
   }
 
   // ── Floor construction ───────────────────────────────────────────────────
   private buildFloor(): void {
     const s = this.state;
+    if (s === null) return;
     this.groundLayer?.destroy();
     this.map?.destroy();
     this.props.forEach((p) => p.sprite.destroy());
@@ -235,6 +396,10 @@ export class DescentScene extends Phaser.Scene {
     this.entityShadows.clear();
     this.entityKinds.clear();
     this.entityLastX.clear();
+    if (this.activeEcho !== null) {
+      this.activeEcho.img.destroy();
+      this.activeEcho = null;
+    }
 
     const mapData = new Phaser.Tilemaps.MapData({
       name: `floor-${s.floor}`,
@@ -267,6 +432,7 @@ export class DescentScene extends Phaser.Scene {
 
   private syncTiles(): void {
     const s = this.state;
+    if (s === null) return;
     for (let i = 0; i < s.tiles.length; i++) {
       const t = s.tiles[i]!;
       if (t === this.lastTiles[i]!) continue;
@@ -294,6 +460,16 @@ export class DescentScene extends Phaser.Scene {
     }
   }
 
+  private onResize(gameSize: Phaser.Structs.Size): void {
+    const w = gameSize.width;
+    const h = gameSize.height;
+    this.vignette.setPosition(w >> 1, h >> 1);
+    this.vignette.setDisplaySize(w, h);
+    this.grain.setPosition(w >> 1, h >> 1);
+    this.grain.setSize(w, h);
+    this.hud.layout(w, h);
+  }
+
   // ── Input ────────────────────────────────────────────────────────────────
   private bindInput(): void {
     const kb = this.input.keyboard;
@@ -318,13 +494,14 @@ export class DescentScene extends Phaser.Scene {
       kb.on("keydown-ENTER", () => this.enqueue(Action.DESCEND));
       kb.on("keydown-R", () => this.enqueueRelight());
       kb.on("keydown-X", () => this.enqueueSnuff());
+      kb.on("keydown-B", () => this.openSigns()); // plant a sign
     }
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-      if (this.overlayOpen) return;
-      if (p.y > this.scale.height - 80 || p.y < 60) return; // HUD bar zones
+      if (this.overlayOpen || !this.running || this.state === null) return;
+      if (p.y > this.scale.height - 80 || p.y < 60) return;
       const mb = this.hud.meterBounds();
-      if (p.x < mb.x + mb.w && p.y > mb.y && p.y < mb.y + mb.h) return; // meter strip
+      if (p.x < mb.x + mb.w && p.y > mb.y && p.y < mb.y + mb.h) return;
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       this.pressTile = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
       this.pressAt = this.time.now;
@@ -334,7 +511,7 @@ export class DescentScene extends Phaser.Scene {
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
       const press = this.pressTile;
       this.pressTile = null;
-      if (press === null || this.pressConsumed || this.overlayOpen) return;
+      if (press === null || this.pressConsumed || this.overlayOpen || this.state === null) return;
       if (this.time.now - this.pressAt >= LONG_PRESS_MS) return;
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       const up = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
@@ -343,13 +520,10 @@ export class DescentScene extends Phaser.Scene {
     });
 
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
-      if (this.overlayOpen) {
-        this.cursorG.clear();
-        return;
-      }
+      this.cursorG.clear();
+      if (this.overlayOpen || !this.running || this.state === null) return;
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       const t = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
-      this.cursorG.clear();
       if (t === null) return;
       const c = gridToScreen(t.x, t.y);
       this.cursorG.lineStyle(1.2, COLOR.bone, 0.85);
@@ -360,86 +534,129 @@ export class DescentScene extends Phaser.Scene {
       this.cursorG.lineTo(c.sx - HALF_W, c.sy);
       this.cursorG.closePath();
       this.cursorG.strokePath();
-      this.cursorG.lineStyle(1, COLOR.flameHi, 0.25);
-      this.cursorG.strokeCircle(c.sx, c.sy, 3);
     });
   }
 
   private tapTile(tx: number, ty: number): void {
-    const dx = tx - this.state.px;
-    const dy = ty - this.state.py;
+    const s = this.state;
+    if (s === null) return;
+    const dx = tx - s.px;
+    const dy = ty - s.py;
     if (dx === 0 && dy === 0) {
-      const onStairs = this.state.tiles[ty * this.state.w + tx] === Tile.STAIRS_DOWN;
+      const onStairs = s.tiles[ty * s.w + tx] === Tile.STAIRS_DOWN;
       this.enqueue(onStairs ? Action.DESCEND : Action.WAIT);
       return;
     }
     if (Math.abs(dx) + Math.abs(dy) !== 1) return;
     const dir = dy === -1 ? DIRS.N : dx === 1 ? DIRS.E : dy === 1 ? DIRS.S : DIRS.W;
     this.facing = dir;
-    const t = this.state.tiles[ty * this.state.w + tx]!;
-    const interactable =
-      t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK || t === Tile.BRAZIER_UNLIT ||
-      t === Tile.WAYSTONE || t === Tile.STAIRS_DOWN || t === Tile.ENTRY;
-    this.enqueue(interactable ? Action.INTERACT_N + dir : Action.MOVE_N + dir);
+    const t = s.tiles[ty * s.w + tx]!;
+    const interactable = propTextureFor(t) !== "" || t === Tile.WAYSTONE || t === Tile.STAIRS_DOWN || t === Tile.ENTRY;
+    const walkableTile = t === Tile.FLOOR || t === Tile.MOSS || t === Tile.WEBBING || t === Tile.WATER ||
+      t === Tile.GLOWMOSS || t === Tile.PLATE || t === Tile.DOOR_OPEN || t === Tile.KEY_DROP ||
+      t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE;
+    this.enqueue(walkableTile && !interactable ? Action.MOVE_N + dir : Action.INTERACT_N + dir);
   }
 
   private inspect(tx: number, ty: number): void {
-    const i = ty * this.state.w + tx;
-    if (this.state.seen[i]! !== 1) {
-      this.hud.toast(`Fl. ${ROMAN[this.state.floor]} · ${gridRef(tx, ty)} — unseen dark`, "info");
+    const s = this.state;
+    if (s === null) return;
+    const i = ty * s.w + tx;
+    const floorRoman = ROMAN[s.floor] ?? String(s.floor);
+    if (s.seen[i]! !== 1) {
+      this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)} — unseen dark`, "info");
       return;
     }
-    const names: Record<number, string> = {
-      [Tile.WALL]: "vault wall",
-      [Tile.FLOOR]: "stone floor",
-      [Tile.MOSS]: "soft moss",
-      [Tile.WEBBING]: "dry webbing",
-      [Tile.DOOR_CLOSED]: "a closed door",
-      [Tile.DOOR_STUCK]: "a stuck door",
-      [Tile.DOOR_OPEN]: "an open door",
-      [Tile.ENTRY]: "the way out",
-      [Tile.STAIRS_DOWN]: "stairs down",
-      [Tile.WAYSTONE]: "a waystone",
-      [Tile.BRAZIER_UNLIT]: "a cold brazier",
-      [Tile.BRAZIER_LIT]: "a lit brazier",
-      [Tile.WAX_DRIP]: "wax drippings",
-      [Tile.WAX_STUB]: "a candle stub",
-      [Tile.WAX_CAKE]: "a wax cake",
-    };
-    const what = names[this.state.tiles[i]!] ?? "…";
-    this.hud.toast(`Fl. ${ROMAN[this.state.floor]} · ${gridRef(tx, ty)} — ${what}`, "info");
+    // signs speak when inspected
+    if (s.signs[i]! !== 0) {
+      const sign = this.ports.getSigns(s.floor).find((r) => r.tileIndex === i);
+      if (sign !== undefined) {
+        const nouns = earnedNouns(this.rules.learned.map((r) => r.key));
+        const noun = nouns[sign.noun] ?? "…";
+        const template = SIGN_TEMPLATES[sign.template] ?? "___";
+        this.hud.toast(`A sign: "${template.replace("___", noun)}"`, "discovery");
+        return;
+      }
+    }
+    const what = TILE_NAMES[s.tiles[i]!] ?? "…";
+    this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)} — ${what}`, "info");
   }
 
-  private enqueue(op: number): void {
-    if (this.overlayOpen || this.state.status !== Status.ALIVE) return;
-    if (this.queue.length < 4) this.queue.push(op);
+  private useSlot(slot: number): void {
+    const s = this.state;
+    if (s === null || !this.running) return;
+    const item = s.inv[slot]!;
+    if (item === Item.NONE) return;
+    if (item === Item.FLINT) {
+      this.enqueueRelight();
+      return;
+    }
+    if (item === Item.CHALK) {
+      this.enqueue(Action.CHALK_MARK);
+      return;
+    }
+    if (item === Item.KEY_IRON || item === Item.KEY_MASTER) {
+      this.hud.toast("Keys turn in doors — walk into a locked one.", "info");
+      return;
+    }
+    this.enqueue(Action.USE, ((slot & 7) << 2) | (this.facing & 3));
+  }
+
+  private openSigns(): void {
+    const s = this.state;
+    const host = this.host();
+    if (s === null || host === null || this.overlayOpen) return;
+    if (s.signsLeft === 0) {
+      this.hud.toast("You have no sign-planks left this run.", "info");
+      return;
+    }
+    const nouns = earnedNouns(this.rules.learned.map((r) => r.key));
+    this.overlayOpen = true;
+    openSignComposer(
+      host,
+      nouns,
+      (template, noun) => {
+        this.overlayOpen = false;
+        const templateIdx = SIGN_TEMPLATES.indexOf(template);
+        const nounIdx = Math.max(0, nouns.indexOf(noun));
+        this.enqueue(Action.SIGN, (((templateIdx < 0 ? 0 : templateIdx) & 7) << 5) | (nounIdx & 31));
+      },
+      () => {
+        this.overlayOpen = false;
+      },
+    );
+  }
+
+  private enqueue(op: number, arg = 0): void {
+    if (this.overlayOpen || !this.running || this.state === null) return;
+    if (this.state.status !== Status.ALIVE) return;
+    if (this.queue.length < 4) this.queue.push({ op, arg });
   }
 
   private enqueueSnuff(): void {
-    if (this.state.candle === Candle.SNUFFED) return;
-    if (this.queue.length > 0) return;
+    const s = this.state;
+    if (s === null || s.candle === Candle.SNUFFED || this.queue.length > 0) return;
     for (let i = 0; i < SNUFF_TICKS; i++) this.enqueue(Action.SNUFF);
   }
 
   private enqueueRelight(): void {
-    if (this.state.candle !== Candle.SNUFFED) return;
-    if (this.queue.length > 0) return;
+    const s = this.state;
+    if (s === null || s.candle !== Candle.SNUFFED || this.queue.length > 0) return;
     for (let i = 0; i < RELIGHT_TICKS; i++) this.enqueue(Action.RELIGHT);
   }
 
-  // ── Frame loop (cosmetics only — the world moves per action) ────────────
+  // ── Frame loop ───────────────────────────────────────────────────────────
   override update(time: number): void {
     this.hud.updateFrame(time);
-    flickerHalo(this.halo, effectiveRadius(this.state));
     pulseGlows(this.glowPool, time);
-    // grain drifts slowly instead of re-rolling every frame (04 §5: ambient
-    // flicker lives in world light, never as screen-wide shimmer)
     if (time - this.lastGrainShift > 120) {
       this.lastGrainShift = time;
       this.grain.setTilePosition(Math.random() * 128, Math.random() * 128);
     }
+    if (!this.running || this.state === null) return;
 
-    // idle breathing / moth flutter (flipX owns mirroring; scale stays +)
+    flickerHalo(this.halo, effectiveRadius(this.state));
+
     this.entityViews.forEach((view, id) => {
       if (!view.visible) return;
       const kind = this.entityKinds.get(id)!;
@@ -447,13 +664,29 @@ export class DescentScene extends Phaser.Scene {
         const frame = ((time / 130) | 0) % 2 === 0 ? "iso-ent-3" : "iso-ent-3b";
         if (view.texture.key !== frame) view.setTexture(frame);
         view.setScale(1, 1 + 0.04 * Math.sin(time / 90 + id));
-      } else {
-        const speed = kind === EntityKind.BEAST ? 640 : 300;
+      } else if (kind !== EntityKind.CORPSE && kind !== EntityKind.MIMIC) {
+        const speed = kind === EntityKind.BEAST || kind === EntityKind.KEEPER ? 640 : 300;
         const amp = kind === EntityKind.BEAST ? 0.02 : 0.035;
         view.setScale(1, 1 + amp * Math.sin(time / speed + id * 1.7));
       }
     });
     this.playerView.setScale(1, 1 + 0.02 * Math.sin(time / 420));
+
+    // echo ghost playback
+    if (this.activeEcho !== null && time >= this.activeEcho.nextAt) {
+      const echo = this.activeEcho;
+      const frame = echo.frames[echo.index];
+      if (frame === undefined) {
+        echo.img.destroy();
+        this.activeEcho = null;
+      } else {
+        const c = gridToScreen(frame.x, frame.y);
+        echo.img.setPosition(c.sx, c.sy + HALF_H - 2);
+        echo.img.depth = depthOf(frame.x, frame.y, Layer.FX);
+        echo.index++;
+        echo.nextAt = time + 240;
+      }
+    }
 
     if (this.pressTile !== null && !this.pressConsumed && time - this.pressAt >= LONG_PRESS_MS) {
       this.pressConsumed = true;
@@ -462,7 +695,8 @@ export class DescentScene extends Phaser.Scene {
 
     if (this.queue.length > 0 && !this.overlayOpen && time - this.lastStep > 70) {
       this.lastStep = time;
-      this.step(this.queue.shift()!);
+      const step = this.queue.shift()!;
+      this.step(step);
     }
   }
 
@@ -474,109 +708,340 @@ export class DescentScene extends Phaser.Scene {
     return n;
   }
 
-  private step(op: number): void {
+  // ── Turn processing ──────────────────────────────────────────────────────
+  private step(stepIn: Step): void {
+    const s0 = this.state;
+    if (s0 === null) return;
     const before = this.meaningfulLearned();
-    const result = tickResolving(this.state, op, this.rules, (key) => this.ports.resolveRule(key));
+    const result = tickResolving(s0, stepIn, this.rules, (key) => this.ports.resolveRule(key));
     this.state = result.state;
     this.visibleMask = result.visible;
+    const s = this.state;
 
     if (this.meaningfulLearned() > before) {
       this.hud.toast("◆ The Vault yields a truth — bank it at a Waystone", "discovery");
+      this.audio.play("discovery");
     }
+
+    // echo keyframes: the run's final 24 s (01 §13)
+    this.echoRing.push({ x: s.px, y: s.py, candle: s.candle });
+    if (this.echoRing.length > ECHO_KEYFRAMES) this.echoRing.shift();
 
     for (const e of result.events) this.handleEvent(e);
 
-    if (this.state.status === Status.DESCENDING) {
-      const nf = this.ports.getFloor(this.state.floor + 1);
-      this.state = descendState(this.state, nf.floorData, nf.rngInit);
+    if (s.status === Status.DESCENDING) {
+      const nf = this.ports.getFloor(s.floor + 1);
+      this.state = descendState(s, nf.floorData, nf.rngInit);
+      this.floorEchoes = nf.echoes;
+      this.echoPlayed.clear();
       this.visibleMask = visibleFor(this.state);
       this.queue = [];
       this.buildFloor();
+      this.audio.play("descend");
       this.cameras.main.flash(MOTION.ceremonial, 11, 10, 16);
-      this.hud.toast(`Floor ${this.state.floor}. The dark is thicker here.`, "warning");
-      this.redraw(true);
-    } else {
-      this.redraw(false);
+      const biome = biomeFor(this.state.floor);
+      this.hud.toast(
+        this.state.floor === biome.firstFloor
+          ? `${biome.name}. Fl. ${ROMAN[this.state.floor]}.`
+          : `Fl. ${ROMAN[this.state.floor]}. The dark is thicker here.`,
+        "warning",
+      );
     }
+
+    this.redraw(false);
     this.playBump();
+    this.playTells();
+    this.maybeStartEcho();
+
+    // ambience follows the light
+    const r = effectiveRadius(this.state);
+    this.audio.setDarkness(this.state.candle === Candle.SNUFFED ? 1 : Math.max(0, (4 - r) / 4));
+    this.audio.setHeartbeat(r <= 1 && this.state.status === Status.ALIVE);
 
     if (this.state.status === Status.DEAD) this.openEpitaph();
     else if (this.state.status === Status.EXITED) this.openExit();
+    else if (this.state.status === Status.VICTORY) this.openVictory();
   }
 
   private handleEvent(e: OutcomeEvent): void {
+    const s = this.state;
+    if (s === null) return;
+    const cue = (c: Cue): void => this.audio.play(c);
     switch (e.type) {
+      case Ev.MOVED: {
+        const t = s.tiles[e.b * s.w + e.a] ?? Tile.FLOOR;
+        cue(t === Tile.MOSS || t === Tile.GLOWMOSS ? "step-moss" : t === Tile.WEBBING || t === Tile.WATER ? "step-soft" : "step-stone");
+        break;
+      }
+      case Ev.BLOCKED:
+        this.pendingBump = { x: e.a, y: e.b };
+        cue("bump");
+        break;
       case Ev.WAYSTONE_TOUCHED:
-        this.openWaystone();
+        this.openBank();
+        break;
+      case Ev.BANKED:
+        this.hud.toast(`${e.a} truth${e.a === 1 ? "" : "s"} committed to the Codex.`, "discovery");
+        cue("bank");
         break;
       case Ev.STAIRS_TOUCHED:
         this.hud.toast("Stairs down. Enter (or tap yourself) to descend.", "info");
         break;
       case Ev.BRAZIER_LIT:
         this.hud.toast("The brazier holds. A gift to everyone after you.", "discovery");
+        this.ports.brazierLit(s.floor, e.b * s.w + e.a);
+        cue("brazier");
+        break;
+      case Ev.DOOR_OPENED:
+      case Ev.DOOR_SIGIL_OPEN:
+        cue("door");
+        break;
+      case Ev.DOOR_FORCED:
+        cue("door-force");
+        break;
+      case Ev.DOOR_FED:
+        this.hud.toast("The door swallows fifty wax, and opens.", "warning");
+        cue("door");
+        break;
+      case Ev.DOOR_LOCKED:
+        this.hud.toast(TILE_NAMES[s.tiles[e.b * s.w + e.a] ?? 0] === "an iron door" ? "Locked. It wants a key." : "It does not open for hands.", "info");
+        break;
+      case Ev.RITUAL_TICK:
+        if (e.a > 0) this.hud.toast(`The sigil drinks the dark… (${e.a}/3)`, "discovery");
         break;
       case Ev.GRACE_STARTED:
         this.hud.toast("The candle is spent. Find flame, or the way out.", "death");
         this.cameras.main.shake(MOTION.micro, 0.004);
+        cue("death");
         break;
       case Ev.PLAYER_HURT:
         this.cameras.main.shake(MOTION.micro, 0.003 + e.b * 0.0002);
+        this.damageFlash();
+        cue("bite");
         break;
       case Ev.FIRE_HURT:
         this.cameras.main.shake(MOTION.micro, 0.005);
+        this.damageFlash();
+        cue("fire");
+        break;
+      case Ev.SHOCK:
+        this.cameras.main.shake(MOTION.micro, 0.006);
+        this.damageFlash();
+        cue("shock");
+        break;
+      case Ev.GAS_RELEASED:
+        this.hud.toast("It bursts into a cloud of spores.", "warning");
+        break;
+      case Ev.GAS_BOOM:
+        this.cameras.main.shake(180, 0.008);
+        cue("boom");
         break;
       case Ev.MONSTER_MELTED:
         this.hud.toast("It melts away into the tallow.", "discovery");
         break;
       case Ev.WORM_TELEGRAPH:
         this.cameras.main.shake(80, 0.002);
+        cue("rumble");
         break;
-      case Ev.BLOCKED:
-        this.pendingBump = { x: e.a, y: e.b }; // applied after redraw's glide
+      case Ev.WORM_LUNGE:
+        cue("lunge");
+        break;
+      case Ev.MIMIC_GROWL:
+        this.hud.toast("The chest… growls.", "warning");
+        cue("growl");
+        break;
+      case Ev.MIMIC_REVEAL:
+        this.hud.toast("Fangs. It was never a chest.", "death");
+        cue("growl");
+        break;
+      case Ev.CHEST_LOOT:
+        this.hud.toast(`Inside: ${subjectItem(e.a)}.`, "discovery");
+        cue("pickup");
+        break;
+      case Ev.SLIME_SPLIT:
+        this.hud.toast("It splits where you struck it.", "warning");
+        break;
+      case Ev.BELL_RUNG:
+        this.hud.toast("A bell tolls above the corpse — the floor knows.", "death");
+        cue("bell");
+        break;
+      case Ev.SCREAM:
+        this.hud.toast("A scream with no choir behind it. Everything heard.", "death");
+        cue("scream");
+        break;
+      case Ev.ALERT:
+        break;
+      case Ev.STOLEN:
+        this.hud.toast(`A rustling makes off with your ${subjectItem(e.a)}!`, "death");
+        break;
+      case Ev.DROPPED_LOOT:
+        this.hud.toast(`It drops the ${subjectItem(e.a)}.`, "discovery");
+        break;
+      case Ev.PICKPOCKET:
+        this.hud.toast("His master key comes away in silence.", "discovery");
+        cue("discovery");
+        break;
+      case Ev.KEY_TAKEN:
+        cue("pickup");
+        break;
+      case Ev.WAX_GAINED:
+        cue("pickup");
+        break;
+      case Ev.ALTAR_PULSE:
+        this.hud.toast("The altar drinks 100 wax — the floor unfolds in your mind.", "discovery");
+        cue("discovery");
+        break;
+      case Ev.POOL_ECHO:
+        this.playDeepestEcho();
+        break;
+      case Ev.FONT_TOUCHED:
+        cue("chime" as Cue);
+        break;
+      case Ev.SIGN_PLACED:
+        this.ports.signPlaced(s.floor, s.py * s.w + s.px, e.a, e.b);
+        this.hud.toast("The sign is planted. −5 wax.", "info");
+        break;
+      case Ev.CHALK_MARKED:
+        this.ports.chalkChanged(s.floor, s.chalk);
+        break;
+      case Ev.ITEM_USED:
+        if (e.a === Item.GLOWVIAL) {
+          this.ports.glowmossPlanted(s.floor, s.py * s.w + s.px);
+          this.hud.toast("The glowmoss takes root. It will outlive you.", "discovery");
+        }
+        if (e.a === Item.BELL) cue("bell");
+        if (e.a === Item.DOUSE) cue("snuff");
+        break;
+      case Ev.CORPSE_RECOVERED: {
+        const res = this.ports.corpseRecovered(e.b);
+        if (res.unbanked.length > 0) {
+          this.recovered.push(...res.unbanked);
+          this.hud.toast(
+            `You close their eyes and take up ${res.unbanked.length} unbanked truth${res.unbanked.length === 1 ? "" : "s"}. Split credit endures.`,
+            "discovery",
+          );
+        } else {
+          this.hud.toast("A fallen delver. Someone was here before you.", "info");
+        }
+        if (res.gift !== null) {
+          this.hud.toast(`They left a gift: ${subjectItem(res.gift.item)}.`, "discovery");
+        }
+        cue("discovery");
+        break;
+      }
+      case Ev.SEAL_OPENED:
+        cue("descend");
+        break;
+      case Ev.CANDLE_STATE:
+        if (e.a === Candle.SNUFFED) cue("snuff");
+        else if (e.a === Candle.CUPPED) cue("cup");
+        else cue("relight");
         break;
       default:
         break;
     }
   }
 
-  /** Visible thud against a wall — silent blocked moves read as a hang. */
+  private damageFlash(): void {
+    this.vignette.setTint(COLOR.seal);
+    this.time.delayedCall(140, () => this.vignette.clearTint());
+  }
+
   private playBump(): void {
     const b = this.pendingBump;
     this.pendingBump = null;
-    if (b === null) return;
+    if (b === null || this.state === null) return;
     const target = gridToScreen(b.x, b.y);
     const here = gridToScreen(this.state.px, this.state.py);
-    const dx = (target.sx - here.sx) * 0.14;
-    const dy = (target.sy - here.sy) * 0.14;
     this.tweens.add({
       targets: this.playerView,
-      x: `+=${dx}`,
-      y: `+=${dy}`,
+      x: `+=${(target.sx - here.sx) * 0.14}`,
+      y: `+=${(target.sy - here.sy) * 0.14}`,
       duration: 55,
       yoyo: true,
       ease: "Sine.easeOut",
     });
   }
 
+  /** Audio tells: the nearest threat whispers its nature (01 §8). */
+  private playTells(): void {
+    const s = this.state;
+    if (s === null || s.tick - this.lastTellAt < 5) return;
+    const range = s.heirloom === 3 ? 10 : 5; // Listening Horn doubles it
+    let best: { d: number; cue: Cue } | null = null;
+    for (const e2 of s.entities) {
+      const d = Math.abs(e2.x - s.px) + Math.abs(e2.y - s.py);
+      if (d > range) continue;
+      const cue: Cue | null =
+        e2.kind === EntityKind.RAT ? "squeak"
+        : e2.kind === EntityKind.WICKWORM && e2.state !== WormState.SURFACED ? "rumble"
+        : e2.kind === EntityKind.MOTH ? "flutter"
+        : e2.kind === EntityKind.BEAST ? "click3"
+        : e2.kind === EntityKind.SHADE ? "hiss"
+        : e2.kind === EntityKind.MIMIC && e2.state === MimicState.GROWLED ? "growl"
+        : null;
+      if (cue !== null && (best === null || d < best.d)) best = { d, cue };
+    }
+    if (best !== null) {
+      this.lastTellAt = s.tick;
+      this.audio.play(best.cue);
+    }
+  }
+
+  private maybeStartEcho(): void {
+    const s = this.state;
+    if (s === null || this.activeEcho !== null) return;
+    const radius = Math.max(1, s.mods.echoRadius); // Echofast widens it
+    for (let i = 0; i < this.floorEchoes.length; i++) {
+      if (this.echoPlayed.has(i)) continue;
+      const first = this.floorEchoes[i]!.frames[0];
+      if (first === undefined) continue;
+      const d = Math.abs(first.x - s.px) + Math.abs(first.y - s.py);
+      if (d <= radius) {
+        this.echoPlayed.add(i);
+        this.startEcho(this.floorEchoes[i]!);
+        break;
+      }
+    }
+  }
+
+  private startEcho(echo: EchoRecord): void {
+    const img = this.add.image(0, 0, "iso-player");
+    img.setOrigin(0.5, 1);
+    img.setTint(COLOR.verdigris);
+    img.setAlpha(0.45);
+    img.depth = DEPTH_GHOST;
+    this.activeEcho = { frames: echo.frames, index: 0, img, nextAt: 0 };
+    this.hud.toast("A shape retraces its last steps…", "discovery");
+  }
+
+  private playDeepestEcho(): void {
+    const s = this.state;
+    if (s === null) return;
+    let deepest: EchoRecord | null = null;
+    for (const e of this.floorEchoes) {
+      if (deepest === null || e.frames.length > deepest.frames.length) deepest = e;
+    }
+    if (deepest !== null && this.activeEcho === null) this.startEcho(deepest);
+    else if (deepest === null) this.hud.toast("The pool shows only your own tired face.", "info");
+  }
+
   // ── Rendering ────────────────────────────────────────────────────────────
   private glide(img: Phaser.GameObjects.Image, x: number, y: number, depth: number, instant: boolean): void {
     this.tweens.killTweensOf(img);
     img.depth = depth;
-    if (instant) {
-      img.setPosition(x, y);
-    } else {
-      this.tweens.add({ targets: img, x, y, duration: GLIDE_MS, ease: "Sine.easeOut" });
-    }
+    if (instant) img.setPosition(x, y);
+    else this.tweens.add({ targets: img, x, y, duration: GLIDE_MS, ease: "Sine.easeOut" });
   }
 
   private redraw(instant: boolean): void {
     const s = this.state;
+    if (s === null) return;
     this.syncTiles();
 
     const effR = effectiveRadius(s);
     const light = computeLightMap(s, this.visibleMask, effR);
 
-    // ground: candlelight tints, memory ghost; unseen tiles do not exist
     const layer = this.groundLayer;
     if (layer !== null) {
       for (let y = 0; y < s.h; y++) {
@@ -591,7 +1056,7 @@ export class DescentScene extends Phaser.Scene {
             tile.tint = MEMORY_TINT;
             tile.setAlpha(1);
           } else {
-            tile.setAlpha(0); // the dark is absolute — no silhouette grid
+            tile.setAlpha(0);
           }
         }
       }
@@ -601,7 +1066,6 @@ export class DescentScene extends Phaser.Scene {
     this.halo.setTint(COLOR.flame);
     syncSourceGlows(this, this.glowPool, s, this.visibleMask, DEPTH_HALO - 1);
 
-    // player + shadow
     const pc = gridToScreen(s.px, s.py);
     const pi = s.py * s.w + s.px;
     this.glide(this.playerView, pc.sx, pc.sy + HALF_H - 2, depthOf(s.px, s.py, Layer.ENTITY), instant);
@@ -612,7 +1076,7 @@ export class DescentScene extends Phaser.Scene {
     );
     this.playerShadow.setAlpha(this.visibleMask[pi]! === 1 ? 0.8 : 0.3);
 
-    // flat overlays: salt / chalk / fire
+    // flat overlays: salt / chalk / fire / gas / signs
     const wantOverlay = (kind: string, i: number, tint: number, alpha: number): void => {
       const key = `${kind}:${i}`;
       let img = this.overlays.get(key);
@@ -635,9 +1099,10 @@ export class DescentScene extends Phaser.Scene {
       if (s.salt[i]! !== 0) wantOverlay("salt", i, COLOR.parchment, 0.45 * dim);
       if (s.chalk[i]! !== 0) wantOverlay("chalk", i, COLOR.parchment, 0.32 * dim);
       if (s.fire[i]! > 0) wantOverlay("fire", i, COLOR.ember, 0.75 * dim);
+      if (s.gas[i]! > 0) wantOverlay("gas", i, COLOR.verdigrisDim, 0.5 * dim);
+      if (s.signs[i]! !== 0) wantOverlay("sign", i, COLOR.parchmentAged, 0.6 * dim);
     }
 
-    // props: lit tint / memory ghost / hidden — plus wall occlusion fade
     this.props.forEach((prop, i) => {
       const x = i % s.w;
       const y = (i / s.w) | 0;
@@ -646,9 +1111,7 @@ export class DescentScene extends Phaser.Scene {
       prop.sprite.setVisible(seen);
       if (!seen) return;
       prop.sprite.setTint(vis ? tintForLight(Math.min(light[i]! + 0.08, 1)) : MEMORY_TINT);
-      const isWallish =
-        prop.tile === Tile.WALL || prop.tile === Tile.DOOR_CLOSED || prop.tile === Tile.DOOR_STUCK;
-      const shouldOcclude = isWallish && occludes(s.px, s.py, x, y);
+      const shouldOcclude = isWallishTile(prop.tile) && occludes(s.px, s.py, x, y);
       const targetAlpha = shouldOcclude ? OCCLUDED_ALPHA : 1;
       if (shouldOcclude !== prop.occluded) {
         prop.occluded = shouldOcclude;
@@ -658,27 +1121,29 @@ export class DescentScene extends Phaser.Scene {
       }
     });
 
-    // entities: glide, flip, breathe (in update), candle-lit tint + shadow
     const alive = new Set<number>();
     for (const ent of s.entities) {
       alive.add(ent.id);
       let view = this.entityViews.get(ent.id);
       let shadowView = this.entityShadows.get(ent.id);
       if (view === undefined) {
-        view = this.add.image(0, 0, entityTextureFor(ent.kind));
+        view = this.add.image(0, 0, entityTextureFor(ent.kind, ent.state));
         view.setOrigin(0.5, 1);
         shadowView = this.add.image(0, 0, "iso-shadow");
-        if (ent.kind === EntityKind.BEAST) shadowView.setScale(1.6, 1.6);
-        else if (ent.kind === EntityKind.MOTH) shadowView.setScale(0.5, 0.5);
+        if (ent.kind === EntityKind.BEAST || ent.kind === EntityKind.KEEPER) shadowView.setScale(1.6, 1.6);
+        else if (ent.kind === EntityKind.MOTH || ent.kind === EntityKind.GASLIGHT) shadowView.setScale(0.5, 0.5);
         this.entityViews.set(ent.id, view);
         this.entityShadows.set(ent.id, shadowView);
         this.entityKinds.set(ent.id, ent.kind);
         this.entityLastX.set(ent.id, ent.x);
       }
+      if (ent.kind === EntityKind.MIMIC) {
+        const want = entityTextureFor(ent.kind, ent.state);
+        if (view.texture.key !== want) view.setTexture(want);
+      }
       const c = gridToScreen(ent.x, ent.y);
-      const i = ent.y * s.w + ent.x;
-      const isMoth = ent.kind === EntityKind.MOTH;
-      this.glide(view, c.sx, c.sy + HALF_H - (isMoth ? 14 : 2), depthOf(ent.x, ent.y, Layer.ENTITY), instant);
+      const flies = ent.kind === EntityKind.MOTH || ent.kind === EntityKind.GASLIGHT;
+      this.glide(view, c.sx, c.sy + HALF_H - (flies ? 14 : 2), depthOf(ent.x, ent.y, Layer.ENTITY), instant);
       if (shadowView !== undefined) {
         this.glide(shadowView, c.sx, c.sy + 4, depthOf(ent.x, ent.y, Layer.CORPSE), instant);
       }
@@ -686,16 +1151,20 @@ export class DescentScene extends Phaser.Scene {
       if (ent.x !== lastX) view.setFlipX(ent.x < lastX);
       this.entityLastX.set(ent.id, ent.x);
 
+      const i = ent.y * s.w + ent.x;
       const tileVisible = this.visibleMask[i]! === 1;
       const burrowed = ent.kind === EntityKind.WICKWORM && ent.state === WormState.BURROWED;
       const telegraph = ent.kind === EntityKind.WICKWORM && ent.state === WormState.TELEGRAPH;
       view.setVisible(tileVisible && !burrowed);
-      // a burrowed worm still shows as a low mound of disturbed earth —
-      // an invisible tile-blocker read as a bug in playtest
       shadowView?.setVisible(tileVisible);
       shadowView?.setAlpha(burrowed ? 0.55 : 0.8);
       view.setTint(tintForLight(Math.min(light[i]! + 0.18, 1)));
       view.setAlpha(telegraph ? 0.6 : 1);
+      // heirloom whispers
+      if (s.heirloom === 2 && ent.kind === EntityKind.MIMIC && ent.state === MimicState.DISGUISED) {
+        const d = Math.abs(ent.x - s.px) + Math.abs(ent.y - s.py);
+        if (d === 1) this.hud.toast("Your ring warms.", "discovery");
+      }
     }
     this.entityViews.forEach((view, id) => {
       if (!alive.has(id)) {
@@ -708,51 +1177,127 @@ export class DescentScene extends Phaser.Scene {
       }
     });
 
-    this.hud.update(s, effR, DEV_DAY);
+    this.hud.update(s, effR, 0);
   }
 
   // ── Sheets ───────────────────────────────────────────────────────────────
-  private host(): HTMLElement | null {
-    return this.game.canvas.parentElement;
-  }
-
   private runSummary(): { ticks: number; discoveries: number; floor: number; day: number } {
-    let discoveries = 0;
-    for (const r of this.rules.learned.slice(this.baselineDiscoveries)) {
-      if (r.effect !== Effect.NONE) discoveries++;
-    }
-    return { ticks: this.state.tick, discoveries, floor: this.state.floor, day: DEV_DAY };
+    const s = this.state!;
+    return {
+      ticks: s.tick,
+      discoveries: this.unbankedThisRun().length,
+      floor: s.floor,
+      day: this.ports.getGuildhall().day,
+    };
   }
 
-  private openWaystone(): void {
+  private openBank(): void {
     const host = this.host();
-    if (host === null || this.overlayOpen) return;
+    const s = this.state;
+    if (host === null || s === null || this.overlayOpen) return;
     this.overlayOpen = true;
-    openWaystoneSheet(host, this.rules.learned.slice(this.baselineDiscoveries), () => {
-      this.overlayOpen = false;
-    });
+    const bankable = this.unbankedThisRun();
+    openWaystoneSheet(
+      host,
+      bankable,
+      `${this.bankedKeys.size} already banked this run.`,
+      (picked) => {
+        this.overlayOpen = false;
+        if (picked.length > 0) {
+          for (const p of picked) this.bankedKeys.add(p.key);
+          this.ports.bankClaims(picked);
+          this.enqueue(Action.BANK, picked.length & 3);
+        }
+      },
+      () => {
+        this.overlayOpen = false;
+      },
+    );
   }
 
   private openEpitaph(): void {
     const host = this.host();
-    if (host === null) return;
+    const s = this.state;
+    if (host === null || s === null) return;
     closeAllSheets(host);
     this.overlayOpen = true;
-    openEpitaphSheet(host, this.state, this.runSummary(), () => this.restartRun());
+    this.running = false;
+    this.audio.setHeartbeat(false);
+    this.audio.play("death");
+    const house = this.ports.getHouse();
+    openEpitaphSheet(host, s, this.runSummary(), house, 0, (result, rest) => {
+      if (result.houseName !== null) this.ports.setHouse(result.houseName);
+      this.ports.reportDeath({
+        day: this.ports.getGuildhall().day,
+        floor: s.floor,
+        x: s.px,
+        y: s.py,
+        cause: s.deathCause,
+        lastWords: result.lastWords,
+        gift: result.gift,
+        unbanked: this.unbankedThisRun(),
+        echoFrames: this.echoRing.slice(),
+      });
+      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.afterCeremony(rest);
+    });
   }
 
   private openExit(): void {
     const host = this.host();
-    if (host === null) return;
+    const s = this.state;
+    if (host === null || s === null) return;
     closeAllSheets(host);
     this.overlayOpen = true;
-    openExitSheet(host, this.state, this.runSummary(), () => this.restartRun());
+    this.running = false;
+    openExitSheet(host, s, this.runSummary(), (rest) => {
+      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.ports.reportExit();
+      this.afterCeremony(rest);
+    });
   }
 
-  private restartRun(): void {
+  private openVictory(): void {
     const host = this.host();
-    if (host !== null) closeAllSheets(host);
-    this.overlayOpen = false;
+    if (host === null || this.state === null) return;
+    closeAllSheets(host);
+    this.overlayOpen = true;
+    this.running = false;
+    openVictorySheet(host, this.runSummary(), () => {
+      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.afterCeremony(true);
+    });
+  }
+
+  private afterCeremony(restAtDusk: boolean): void {
+    const host = this.host();
+    if (this.ports.heirloomDue() && host !== null) {
+      openHeirloomSheet(host, (id) => {
+        this.ports.pickHeirloom(id);
+        if (restAtDusk) this.ports.nextDay();
+        this.registry.set(AUTOSTART_KEY, !restAtDusk);
+        this.scene.restart();
+      });
+      return;
+    }
+    if (restAtDusk) this.ports.nextDay();
+    this.registry.set(AUTOSTART_KEY, !restAtDusk);
     this.scene.restart();
   }
+}
+
+function subjectItem(item: number): string {
+  const names: Record<number, string> = {
+    [Item.FLINT]: "flint & striker",
+    [Item.SALT]: "a salt pouch",
+    [Item.CHALK]: "chalk",
+    [Item.MIRROR]: "a mirror shard",
+    [Item.BELL]: "a bell",
+    [Item.GLOWVIAL]: "a glowmoss vial",
+    [Item.DOUSE]: "a dousing cap",
+    [Item.KEY_IRON]: "an iron key",
+    [Item.KEY_MASTER]: "the master key",
+    [Item.WSHARD]: "a waystone shard",
+  };
+  return names[item] ?? "something";
 }

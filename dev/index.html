@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>The Undervault — dev slice</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="../design/tokens/tokens.css" />
+    <!-- tokens.css is imported by main.ts through the vite module graph -->
     <style>
+      /* fallback shell colors until tokens load */
       /* DEV-ONLY harness chrome; production entry is game.html at M2 */
       html,
       body {

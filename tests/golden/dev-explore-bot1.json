@@ -1,76 +1,52 @@
 {
-  "goldenV": 1,
+  "goldenV": 2,
   "name": "dev-explore-bot1",
-  "simVersion": 1,
+  "simVersion": 2,
   "daySeed": 20260708,
   "botSeed": 1,
-  "actionCount": 500,
-  "actionsB64": "AfQBCCCCCENEEECCCBBFABIJEEDDKKDDDQNDDHDDFDDDIQDAADAGADADCAALCCDAAQHDBDBBHLFBBBBBAFEDDJDCCQQCCJLCNACCCFCJCJBEQQEEJEEOEPLEBQBBBNEEELLAEAEEEOEGLCBBBEEFEAJEEEAELMEBFIJBBLBAALPEBDAJDJADIDDBBBBBLBBBAIPEJNQAAJHDLEEFEQCLMICLOHCCCAIFPCCCCEHQJDDLEEALEGCQCJCFCFICCCCDDLDGAEECACIMEEEEDMDFDCNLLCCQCLCCCMCCAQCCDDDDJADMDDBFDBBJBBABLBBAABBBBCACCCLACFEJJELEAEEAFJEJBBQDDADDADDDDBALBBBBLEBCCCCACCACQQGQLCNCLLMLACDAOEEQQAEEEEBIBALAPBQBBFBAABLDHLQEDAJIJICOCCEAQDDMDPDDPDJDJCLCCACJADJGALDFDFFADJBBACFCBAABLFBDILDQDJDQADBBBBLG",
+  "actionCount": 297,
+  "actionsB64": "AikBCCCCCENEEECCCBBFABPSiCCIIUIGGlEMMcMMUMMMhIoAoAAwwYYQABQQQZCSgwQwQRyhQQQQQQBRAwyQwgkoBAgmjAgBChEhEgiIJAEJEEOEPKEBSsCCgCeCCUUACAIIIgGMWECCCIIKIKIIIAIWglIEUgkEAEEAAs8QEMAkNK5ogYIIIIJYIIIBB4hKAgABI4ZYggoiRhEBCRC0BABBBADxUBCxBBBB0rkiFiCAFiDBJWSmEaWKQEEEEGGWGMAIIEAEQYIIIIGYGYGEaWWEElMsIIJAwIsgIIMMMMkAMwMMEUMEAtKgIoA=",
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "996e60ae"
+      "h32": "b0eebed3"
     },
     {
       "tick": 64,
-      "h32": "cee3f5cc"
+      "h32": "f94ca3f5"
     },
     {
       "tick": 96,
-      "h32": "c8bb2df8"
+      "h32": "b879c1ad"
     },
     {
       "tick": 128,
-      "h32": "d6a572cd"
+      "h32": "029f5247"
     },
     {
       "tick": 160,
-      "h32": "971653d6"
+      "h32": "9455ea9f"
     },
     {
       "tick": 192,
-      "h32": "8d49e51b"
+      "h32": "ea58c6f8"
     },
     {
       "tick": 224,
-      "h32": "41f74f9c"
+      "h32": "f08645db"
     },
     {
       "tick": 256,
-      "h32": "0af3e4fa"
+      "h32": "5e5416cf"
     },
     {
       "tick": 288,
-      "h32": "05268b16"
-    },
-    {
-      "tick": 320,
-      "h32": "33f0c627"
-    },
-    {
-      "tick": 352,
-      "h32": "17d57bfb"
-    },
-    {
-      "tick": 384,
-      "h32": "e5c38121"
-    },
-    {
-      "tick": 416,
-      "h32": "d35a5a4d"
-    },
-    {
-      "tick": 448,
-      "h32": "ef745cd8"
-    },
-    {
-      "tick": 480,
-      "h32": "efe2b5d0"
+      "h32": "24986833"
     }
   ],
-  "finalTick": 500,
-  "finalH32": "17f0d06b",
-  "finalStatus": 0,
-  "finalWax": 459,
+  "finalTick": 297,
+  "finalH32": "e77c6854",
+  "finalStatus": 2,
+  "finalWax": 55,
   "finalFloor": 1
 }

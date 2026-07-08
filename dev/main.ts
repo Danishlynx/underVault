@@ -1,6 +1,8 @@
 // DEV-ONLY: deleted at M2 (replaced by src/client/game.ts bootstrapping from
 // the Devvit expanded entrypoint with real network ports).
 
+import "../design/tokens/tokens.css"; // via the module graph — a <link> to a
+// path above the vite root 404s silently and strips every DOM sheet's theme
 import { createUndervaultGame } from "../src/client/game.js";
 import { createDevPorts } from "./rules-adapter.js";
 

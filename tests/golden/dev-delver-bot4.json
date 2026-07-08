@@ -1,27 +1,35 @@
 {
-  "goldenV": 1,
+  "goldenV": 2,
   "name": "dev-delver-bot4",
-  "simVersion": 1,
+  "simVersion": 2,
   "daySeed": 20260708,
   "botSeed": 14,
-  "actionCount": 101,
-  "actionsB64": "AWUADCCKCCCCCCGCFBBBCQBCBBBBBBBBEEEEEEEEBBBERCCDKDHDCCDCDDGCGCGCGCCCBFBBCBBFEBBFBBBERDDDEIIGIIIACICIIIIIIA==",
+  "actionCount": 161,
+  "actionsB64": "AqEADCCKCCCCCCGCFFBBCSeCCCCCCCCCCIQIIIIIIICCCIiEEUEGOGGEEGGEGEEEEEMEEKKCCECCYKCIKCCKCCCCCCEiMGGEAEEEEEECCCSEECECICCCCCUIIIkUQQgcQgQggggQggggggQgggggogggggggggggggggggg=",
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "c172b724"
+      "h32": "d02b6b37"
     },
     {
       "tick": 64,
-      "h32": "639ce067"
+      "h32": "b4e9c226"
     },
     {
       "tick": 96,
-      "h32": "7b0e39cd"
+      "h32": "89c234fc"
+    },
+    {
+      "tick": 128,
+      "h32": "46ba2d6e"
+    },
+    {
+      "tick": 160,
+      "h32": "c2b3ea59"
     }
   ],
-  "finalTick": 101,
-  "finalH32": "8c09fb83",
+  "finalTick": 161,
+  "finalH32": "d2333615",
   "finalStatus": 1,
   "finalWax": 0,
   "finalFloor": 3

@@ -1,71 +1,59 @@
 {
-  "goldenV": 1,
+  "goldenV": 2,
   "name": "vigil-death",
-  "simVersion": 1,
+  "simVersion": 2,
   "daySeed": 20260708,
   "botSeed": 1,
-  "actionCount": 472,
-  "actionsB64": "AdgBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "actionCount": 375,
+  "actionsB64": "AncBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "63b9873d"
+      "h32": "2426858d"
     },
     {
       "tick": 64,
-      "h32": "3b5b9c6c"
+      "h32": "b63d305f"
     },
     {
       "tick": 96,
-      "h32": "0e590e7d"
+      "h32": "39075962"
     },
     {
       "tick": 128,
-      "h32": "c409f01a"
+      "h32": "7ae92506"
     },
     {
       "tick": 160,
-      "h32": "d3972160"
+      "h32": "5ea8ba5e"
     },
     {
       "tick": 192,
-      "h32": "38c94f8a"
+      "h32": "c2eaec6b"
     },
     {
       "tick": 224,
-      "h32": "0d00b99a"
+      "h32": "94164027"
     },
     {
       "tick": 256,
-      "h32": "dc87ccda"
+      "h32": "a33a8c40"
     },
     {
       "tick": 288,
-      "h32": "3973702e"
+      "h32": "bcdbc447"
     },
     {
       "tick": 320,
-      "h32": "81d5046d"
+      "h32": "312fbb5d"
     },
     {
       "tick": 352,
-      "h32": "b35511d0"
-    },
-    {
-      "tick": 384,
-      "h32": "acd3a29e"
-    },
-    {
-      "tick": 416,
-      "h32": "a36bfb55"
-    },
-    {
-      "tick": 448,
-      "h32": "c9b499a3"
+      "h32": "197406ad"
     }
   ],
-  "finalTick": 472,
-  "finalH32": "63d0e2c5",
+  "finalTick": 375,
+  "finalH32": "9771892a",
   "finalStatus": 1,
   "finalWax": 0,
   "finalFloor": 1

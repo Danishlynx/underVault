@@ -1,0 +1,20 @@
+{
+  "comment": "★ SECRET omen definitions (01 §7). One per day, never announced — only the tellHint leaks to the Guildhall rumor strip. mods mutate sim numbers; gen mutates layout/spawns; conditionalSubjects mark claims banked under this sky as CONDITIONAL.",
+  "omens": [
+    { "id": "clearskies", "tellHint": "", "mods": {}, "gen": {}, "conditionalSubjects": [] },
+    { "id": "verminmoon", "tellHint": "Squeaking beneath the first hall, before the first room.", "mods": {}, "gen": { "spawnMul": { "1": 3 } }, "conditionalSubjects": ["rat"] },
+    { "id": "stillair", "tellHint": "The air does not move today. Things hear farther.", "mods": { "beastEar": 2 }, "gen": {}, "conditionalSubjects": ["beast"] },
+    { "id": "weepingwalls", "tellHint": "The walls weep. The floors glisten.", "mods": {}, "gen": { "extraWater": 6 }, "conditionalSubjects": ["drowned"] },
+    { "id": "hungrydark", "tellHint": "Snuff a match at the door — the dark eats it faster.", "mods": { "graceTicks": 12 }, "gen": {}, "conditionalSubjects": [] },
+    { "id": "waxfall", "tellHint": "Wax drips from nowhere. The first floor is littered with it.", "mods": {}, "gen": { "drippingsMul": 2 }, "conditionalSubjects": [] },
+    { "id": "mothtide", "tellHint": "Halos of wings around every flame.", "mods": {}, "gen": { "spawnMul": { "3": 2 } }, "conditionalSubjects": ["moth"] },
+    { "id": "ironbloom", "tellHint": "Twice-locked doors dream of keys.", "mods": {}, "gen": { "extraKeys": 2 }, "conditionalSubjects": [] },
+    { "id": "echofast", "tellHint": "The dead are eager to speak today.", "mods": { "echoRadius": 3 }, "gen": {}, "conditionalSubjects": [] },
+    { "id": "sweltering", "tellHint": "The candle sweats. Watch the counter run.", "mods": { "burnBasic": 2 }, "gen": {}, "conditionalSubjects": [] },
+    { "id": "kindlenight", "tellHint": "A warm glow from the stairwells, as if someone came before.", "mods": {}, "gen": { "preLitBraziers": true }, "conditionalSubjects": ["keeper"] },
+    { "id": "longshadow", "tellHint": "The shadows stretch longer than they ought, from the very first step.", "mods": { "radiusPenalty": 1 }, "gen": {}, "conditionalSubjects": [] },
+    { "id": "quietfoot", "tellHint": "Your steps make no sound. Nothing turns to listen.", "mods": { "quietFeet": 1 }, "gen": {}, "conditionalSubjects": ["beast"] },
+    { "id": "saltless", "tellHint": "The salt niches stand empty.", "mods": {}, "gen": {}, "noSalt": true, "conditionalSubjects": ["slime"] },
+    { "id": "feastday", "tellHint": "The first chest you knock on… growls back.", "mods": {}, "gen": { "spawnMul": { "6": 2 } }, "conditionalSubjects": ["mimic"] }
+  ]
+}

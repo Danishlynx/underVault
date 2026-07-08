@@ -12,11 +12,11 @@
 
 import type Phaser from "phaser";
 import { COLOR_CSS } from "../../../design/tokens/tokens.js";
-import { Tile } from "../../shared/sim/types.js";
+import { Tile, TILE_KIND_COUNT, EntityKind } from "../../shared/sim/types.js";
 import { TILE_W, TILE_H, WALL_H } from "./iso.js";
 
-const TILE_KINDS = 16;
-export const FLOOR_VARIANTS = 3; // strip indices 16, 17 reuse FLOOR look
+const TILE_KINDS = TILE_KIND_COUNT; // 30 slots, index = TileId
+export const FLOOR_VARIANTS = 3; // extra floor looks appended after the slots
 
 // ── Token-derived color math ───────────────────────────────────────────────
 // shade()/mix() outputs must be composable (shade(mix(...)) is common), so
@@ -214,6 +214,63 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
               ctx.lineWidth = 1.4;
               ctx.stroke();
             }
+            break;
+          }
+          case Tile.WATER: {
+            diamondPath(ctx, cx, cy, TILE_W - 4, TILE_H - 2);
+            const wg = ctx.createLinearGradient(cx - 24, cy - 10, cx + 24, cy + 10);
+            wg.addColorStop(0, mix(C.void, C.verdigrisDim, 0.55));
+            wg.addColorStop(1, mix(C.void, C.verdigrisDim, 0.3));
+            ctx.fillStyle = wg;
+            ctx.fill();
+            ctx.strokeStyle = mix(C.verdigris, C.bone, 0.3, 0.5);
+            ctx.lineWidth = 1;
+            for (let r = 0; r < 3; r++) {
+              const yy = cy - 5 + r * 5;
+              ctx.beginPath();
+              ctx.moveTo(cx - 16 + r * 4, yy);
+              ctx.bezierCurveTo(cx - 6, yy - 2, cx + 6, yy + 2, cx + 16 - r * 4, yy);
+              ctx.stroke();
+            }
+            break;
+          }
+          case Tile.GLOWMOSS: {
+            for (let g2 = 0; g2 < 7; g2++) {
+              const gx = cx - 16 + crand() * 32;
+              const gy = cy - 7 + crand() * 14;
+              const rr = 1.5 + crand() * 2.5;
+              const rad = ctx.createRadialGradient(gx, gy, 0, gx, gy, rr * 3);
+              rad.addColorStop(0, shade(C.verdigris, 1.35, 0.95));
+              rad.addColorStop(1, shade(C.verdigris, 1, 0));
+              ctx.fillStyle = rad;
+              ctx.fillRect(gx - rr * 3, gy - rr * 3, rr * 6, rr * 6);
+            }
+            break;
+          }
+          case Tile.PLATE: {
+            diamondPath(ctx, cx, cy, TILE_W - 22, TILE_H - 12);
+            ctx.fillStyle = shade(C.surface2, 1.25);
+            ctx.fill();
+            ctx.strokeStyle = shade(C.boneDim, 1.1);
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            diamondPath(ctx, cx, cy, TILE_W - 34, TILE_H - 19);
+            ctx.strokeStyle = shade(C.void, 1.5);
+            ctx.stroke();
+            break;
+          }
+          case Tile.KEY_DROP: {
+            ctx.strokeStyle = C.goldInk;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx - 5, cy - 1, 3.4, 0, Math.PI * 2);
+            ctx.moveTo(cx - 1, cy - 1);
+            ctx.lineTo(cx + 9, cy - 1);
+            ctx.moveTo(cx + 5, cy - 1);
+            ctx.lineTo(cx + 5, cy + 3);
+            ctx.moveTo(cx + 9, cy - 1);
+            ctx.lineTo(cx + 9, cy + 3);
+            ctx.stroke();
             break;
           }
           default:
@@ -709,6 +766,378 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     mote.refresh();
   }
 
+  // ── New-world billboards: special doors, chest, shrines, seal, cipher ────
+  const stoneDoor = (key: string, decorate: (ctx: CanvasRenderingContext2D, baseY: number) => void): void => {
+    const c = T.createCanvas(key, TILE_W, WALL_H);
+    if (c === null) return;
+    const ctx = c.getContext();
+    const baseY = WALL_H - TILE_H / 2;
+    const g = ctx.createLinearGradient(0, baseY - 60, 0, baseY);
+    g.addColorStop(0, shade(C.surface2, 1.25));
+    g.addColorStop(1, shade(C.surface2, 0.55));
+    ctx.fillStyle = g;
+    ctx.fillRect(8, baseY - 60, TILE_W - 16, 60);
+    ctx.strokeStyle = shade(C.void, 1.3);
+    ctx.strokeRect(8, baseY - 60, TILE_W - 16, 60);
+    decorate(ctx, baseY);
+    c.refresh();
+  };
+  stoneDoor("iso-door-iron", (ctx, baseY) => {
+    ctx.fillStyle = shade(C.void, 2.2);
+    ctx.fillRect(14, baseY - 54, TILE_W - 28, 48);
+    ctx.strokeStyle = C.goldInk;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(TILE_W / 2, baseY - 30, 5, 0, Math.PI * 2);
+    ctx.moveTo(TILE_W / 2, baseY - 25);
+    ctx.lineTo(TILE_W / 2, baseY - 16);
+    ctx.stroke();
+  });
+  stoneDoor("iso-door-hunger", (ctx, baseY) => {
+    ctx.fillStyle = shade(C.void, 1.8);
+    ctx.beginPath(); // a maw
+    ctx.moveTo(16, baseY - 44);
+    ctx.bezierCurveTo(TILE_W / 2, baseY - 58, TILE_W - 16, baseY - 44, TILE_W - 16, baseY - 26);
+    ctx.bezierCurveTo(TILE_W / 2, baseY - 8, 16, baseY - 8, 16, baseY - 26);
+    ctx.fill();
+    ctx.fillStyle = C.parchmentAged;
+    for (let t2 = 0; t2 < 5; t2++) {
+      ctx.beginPath();
+      ctx.moveTo(20 + t2 * 6, baseY - 40);
+      ctx.lineTo(23 + t2 * 6, baseY - 30);
+      ctx.lineTo(26 + t2 * 6, baseY - 40);
+      ctx.fill();
+    }
+  });
+  stoneDoor("iso-door-choir", (ctx, baseY) => {
+    ctx.strokeStyle = C.verdigris;
+    ctx.lineWidth = 1.6;
+    for (let p = 0; p < 4; p++) {
+      ctx.beginPath();
+      ctx.moveTo(18 + p * 8, baseY - 50);
+      ctx.lineTo(18 + p * 8, baseY - 12 - p * 4);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(TILE_W / 2, baseY - 8, 4, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  stoneDoor("iso-door-sigil", (ctx, baseY) => {
+    ctx.strokeStyle = C.verdigrisDim;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(TILE_W / 2, baseY - 30, 14, 0, Math.PI * 2);
+    ctx.moveTo(TILE_W / 2 - 14, baseY - 30);
+    ctx.lineTo(TILE_W / 2 + 14, baseY - 30);
+    ctx.moveTo(TILE_W / 2, baseY - 44);
+    ctx.lineTo(TILE_W / 2, baseY - 16);
+    ctx.stroke();
+    ctx.fillStyle = shade(C.void, 1.5);
+    ctx.beginPath();
+    ctx.arc(TILE_W / 2, baseY - 30, 6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  stoneDoor("iso-inscription", (ctx, baseY) => {
+    ctx.strokeStyle = C.goldInk;
+    ctx.lineWidth = 1.4;
+    // cipher glyph gibberish (the mapping is the season's secret)
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 4; col++) {
+        const gx = 14 + col * 10;
+        const gy = baseY - 48 + row * 14;
+        ctx.beginPath();
+        const v = (Math.imul(row + 1, col + 3) + row) % 4;
+        if (v === 0) {
+          ctx.moveTo(gx, gy);
+          ctx.lineTo(gx + 6, gy + 8);
+          ctx.moveTo(gx + 6, gy);
+          ctx.lineTo(gx, gy + 8);
+        } else if (v === 1) {
+          ctx.arc(gx + 3, gy + 4, 3.4, 0, Math.PI * 1.5);
+        } else if (v === 2) {
+          ctx.moveTo(gx, gy + 8);
+          ctx.lineTo(gx + 3, gy);
+          ctx.lineTo(gx + 6, gy + 8);
+        } else {
+          ctx.moveTo(gx, gy + 4);
+          ctx.lineTo(gx + 6, gy + 4);
+          ctx.moveTo(gx + 3, gy);
+          ctx.lineTo(gx + 3, gy + 8);
+        }
+        ctx.stroke();
+      }
+    }
+  });
+  stoneDoor("iso-seal", (ctx, baseY) => {
+    ctx.strokeStyle = C.goldInk;
+    ctx.lineWidth = 2;
+    for (let ring = 0; ring < 3; ring++) {
+      ctx.beginPath();
+      ctx.arc(TILE_W / 2, baseY - 30, 18 - ring * 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = C.seal;
+    ctx.beginPath();
+    ctx.arc(TILE_W / 2, baseY - 30, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const chest = T.createCanvas("iso-chest", 44, 40);
+  if (chest !== null) {
+    const ctx = chest.getContext();
+    const g = ctx.createLinearGradient(0, 8, 0, 36);
+    g.addColorStop(0, shade(C.parchmentAged, 0.9));
+    g.addColorStop(1, shade(C.parchmentAged, 0.55));
+    ctx.fillStyle = g;
+    ctx.fillRect(6, 14, 32, 20);
+    ctx.beginPath(); // domed lid
+    ctx.moveTo(6, 14);
+    ctx.bezierCurveTo(10, 4, 34, 4, 38, 14);
+    ctx.fill();
+    ctx.strokeStyle = shade(C.ink, 1.2);
+    ctx.strokeRect(6, 14, 32, 20);
+    ctx.fillStyle = shade(C.void, 1.8);
+    ctx.fillRect(6, 20, 32, 3);
+    ctx.fillStyle = C.goldInk;
+    ctx.fillRect(20, 18, 4, 7);
+    chest.refresh();
+  }
+
+  const shrine = (key: string, draw: (ctx: CanvasRenderingContext2D) => void): void => {
+    const c = T.createCanvas(key, 44, 60);
+    if (c === null) return;
+    const ctx = c.getContext();
+    ctx.fillStyle = shade(C.void, 2.0);
+    ctx.beginPath();
+    ctx.ellipse(22, 56, 16, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    draw(ctx);
+    c.refresh();
+  };
+  shrine("iso-altar", (ctx) => {
+    const g = ctx.createLinearGradient(0, 20, 0, 54);
+    g.addColorStop(0, shade(C.surface2, 1.35));
+    g.addColorStop(1, shade(C.surface2, 0.6));
+    ctx.fillStyle = g;
+    ctx.fillRect(8, 30, 28, 24);
+    ctx.fillRect(4, 24, 36, 8);
+    ctx.fillStyle = C.parchment; // pooled offerings
+    ctx.beginPath();
+    ctx.ellipse(22, 24, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = C.flameHi;
+    ctx.beginPath();
+    ctx.ellipse(22, 18, 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  shrine("iso-pool", (ctx) => {
+    ctx.fillStyle = shade(C.surface2, 1.1);
+    ctx.beginPath();
+    ctx.ellipse(22, 46, 18, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const wg = ctx.createRadialGradient(22, 46, 2, 22, 46, 14);
+    wg.addColorStop(0, mix(C.verdigris, C.bone, 0.5, 0.9));
+    wg.addColorStop(1, mix(C.void, C.verdigrisDim, 0.5, 0.9));
+    ctx.fillStyle = wg;
+    ctx.beginPath();
+    ctx.ellipse(22, 46, 14, 6.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  shrine("iso-font", (ctx) => {
+    const g = ctx.createLinearGradient(0, 10, 0, 54);
+    g.addColorStop(0, shade(C.boneDim, 1.2));
+    g.addColorStop(1, shade(C.boneDim, 0.5));
+    ctx.fillStyle = g;
+    ctx.fillRect(17, 26, 10, 28);
+    ctx.beginPath();
+    ctx.ellipse(22, 24, 15, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(C.void, 1.6);
+    ctx.beginPath();
+    ctx.ellipse(22, 23, 11, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // ── New creatures (upright billboards, right-facing asymmetry) ───────────
+  const blob = (key: string, w2: number, h2: number, body: string, hi: string, draw?: (ctx: CanvasRenderingContext2D) => void): void => {
+    const c = T.createCanvas(key, w2, h2);
+    if (c === null) return;
+    const ctx = c.getContext();
+    const g = ctx.createRadialGradient(w2 * 0.42, h2 * 0.4, 2, w2 / 2, h2 * 0.62, w2 * 0.5);
+    g.addColorStop(0, hi);
+    g.addColorStop(1, body);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(w2 / 2, h2 * 0.62, w2 * 0.4, h2 * 0.34, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (draw !== undefined) draw(ctx);
+    c.refresh();
+  };
+  blob(`iso-ent-${EntityKind.SLIME}`, 32, 28, shade(C.verdigrisDim, 0.9), shade(C.verdigris, 1.1), (ctx) => {
+    ctx.fillStyle = shade(C.verdigris, 1.4, 0.8); // gleaming cap
+    ctx.beginPath();
+    ctx.ellipse(16, 10, 10, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  blob(`iso-ent-${EntityKind.SPOREWIGHT}`, 34, 36, mix(C.verdigrisDim, C.ember, 0.3), mix(C.verdigris, C.parchment, 0.4), (ctx) => {
+    for (let p = 0; p < 6; p++) {
+      ctx.fillStyle = shade(C.verdigris, 1.2, 0.5);
+      ctx.beginPath();
+      ctx.arc(8 + p * 4, 10 + ((p * 7) % 9), 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  blob(`iso-ent-${EntityKind.DROWNED}`, 30, 46, mix(C.void, C.verdigrisDim, 0.6), mix(C.verdigris, C.bone, 0.4), (ctx) => {
+    ctx.fillStyle = mix(C.void, C.verdigrisDim, 0.75);
+    ctx.beginPath(); // hunched head
+    ctx.ellipse(18, 14, 6, 7, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = C.verdigris;
+    ctx.beginPath();
+    ctx.arc(20, 13, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  blob(`iso-ent-${EntityKind.CHOIRLESS}`, 30, 50, mix(C.bone, C.void, 0.45), mix(C.parchment, C.bone, 0.5), (ctx) => {
+    ctx.fillStyle = shade(C.void, 1.8);
+    ctx.beginPath(); // the open mouth, forever
+    ctx.ellipse(17, 16, 4, 6.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  blob(`iso-ent-${EntityKind.RUSTLING}`, 24, 18, shade(C.boneDim, 0.75), shade(C.bone, 0.95), (ctx) => {
+    ctx.strokeStyle = shade(C.boneDim, 0.6);
+    ctx.lineWidth = 1.2;
+    for (let leg = 0; leg < 3; leg++) {
+      ctx.beginPath();
+      ctx.moveTo(6 + leg * 6, 14);
+      ctx.lineTo(4 + leg * 6, 18);
+      ctx.stroke();
+    }
+    ctx.fillStyle = C.goldInk;
+    ctx.beginPath();
+    ctx.arc(19, 8, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const shadeTex = T.createCanvas(`iso-ent-${EntityKind.SHADE}`, 34, 52);
+  if (shadeTex !== null) {
+    const ctx = shadeTex.getContext();
+    const g = ctx.createLinearGradient(0, 0, 0, 52);
+    g.addColorStop(0, shade(C.void, 2.6, 0.95));
+    g.addColorStop(1, shade(C.void, 1.2, 0.4));
+    ctx.fillStyle = g;
+    ctx.beginPath(); // guttering silhouette
+    ctx.moveTo(17, 2);
+    ctx.bezierCurveTo(28, 12, 26, 30, 28, 50);
+    ctx.bezierCurveTo(18, 46, 14, 48, 6, 50);
+    ctx.bezierCurveTo(10, 28, 8, 12, 17, 2);
+    ctx.fill();
+    ctx.fillStyle = C.ember; // cinder eyes
+    ctx.beginPath();
+    ctx.arc(14, 16, 1.6, 0, Math.PI * 2);
+    ctx.arc(21, 15, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    shadeTex.refresh();
+  }
+
+  const gaslight = T.createCanvas(`iso-ent-${EntityKind.GASLIGHT}`, 26, 36);
+  if (gaslight !== null) {
+    const ctx = gaslight.getContext();
+    const flame = (w3: number, h3: number, color: string, a: number): void => {
+      ctx.fillStyle = color;
+      ctx.globalAlpha = a;
+      ctx.beginPath();
+      ctx.moveTo(13, 30 - h3);
+      ctx.bezierCurveTo(13 + w3, 30 - h3 * 0.4, 13 + w3 * 0.6, 30, 13, 30);
+      ctx.bezierCurveTo(13 - w3 * 0.6, 30, 13 - w3, 30 - h3 * 0.4, 13, 30 - h3);
+      ctx.fill();
+    };
+    flame(9, 24, mix(C.verdigris, C.flame, 0.35), 0.85);
+    flame(5.5, 16, mix(C.verdigris, C.flameHi, 0.4), 0.95);
+    ctx.globalAlpha = 1;
+    gaslight.refresh();
+  }
+
+  const keeper = T.createCanvas(`iso-ent-${EntityKind.KEEPER}`, 40, 74);
+  if (keeper !== null) {
+    const ctx = keeper.getContext();
+    const g = ctx.createLinearGradient(8, 6, 32, 70);
+    g.addColorStop(0, shade(C.inkSoft, 1.3));
+    g.addColorStop(1, shade(C.void, 1.4));
+    ctx.fillStyle = g;
+    ctx.beginPath(); // tall robed warden
+    ctx.moveTo(20, 4);
+    ctx.bezierCurveTo(30, 8, 31, 24, 30, 40);
+    ctx.lineTo(32, 68);
+    ctx.bezierCurveTo(22, 72, 14, 72, 8, 68);
+    ctx.lineTo(10, 24);
+    ctx.bezierCurveTo(10, 10, 14, 6, 20, 4);
+    ctx.fill();
+    // the lantern, held out east
+    ctx.strokeStyle = shade(C.inkSoft, 1.5);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(28, 30);
+    ctx.lineTo(36, 26);
+    ctx.stroke();
+    const lg = ctx.createRadialGradient(37, 32, 1, 37, 32, 9);
+    lg.addColorStop(0, shade(C.flameHi, 1.05));
+    lg.addColorStop(0.5, shade(C.flame, 1, 0.6));
+    lg.addColorStop(1, shade(C.flame, 1, 0));
+    ctx.fillStyle = lg;
+    ctx.fillRect(28, 23, 18, 18);
+    ctx.strokeStyle = shade(C.void, 2.2);
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(34, 28, 7, 9);
+    keeper.refresh();
+  }
+
+  const corpse = T.createCanvas(`iso-ent-${EntityKind.CORPSE}`, 40, 26);
+  if (corpse !== null) {
+    const ctx = corpse.getContext();
+    const g = ctx.createLinearGradient(0, 6, 0, 24);
+    g.addColorStop(0, shade(C.boneDim, 1.05));
+    g.addColorStop(1, shade(C.void, 1.6));
+    ctx.fillStyle = g;
+    ctx.beginPath(); // a slumped delver, cloak pooled
+    ctx.moveTo(6, 22);
+    ctx.bezierCurveTo(10, 10, 22, 8, 28, 12);
+    ctx.bezierCurveTo(34, 15, 36, 20, 34, 23);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shade(C.parchmentAged, 0.7); // the spent candle beside them
+    ctx.fillRect(31, 16, 3, 6);
+    corpse.refresh();
+  }
+
+  const mimicFangs = T.createCanvas("iso-mimic-revealed", 44, 42);
+  if (mimicFangs !== null) {
+    const ctx = mimicFangs.getContext();
+    const g = ctx.createLinearGradient(0, 10, 0, 38);
+    g.addColorStop(0, shade(C.parchmentAged, 0.85));
+    g.addColorStop(1, shade(C.parchmentAged, 0.5));
+    ctx.fillStyle = g;
+    ctx.fillRect(6, 16, 32, 20);
+    ctx.fillStyle = shade(C.void, 1.6); // the open maw
+    ctx.beginPath();
+    ctx.moveTo(6, 16);
+    ctx.bezierCurveTo(12, 2, 32, 2, 38, 16);
+    ctx.fill();
+    ctx.fillStyle = C.parchment;
+    for (let f = 0; f < 6; f++) {
+      ctx.beginPath();
+      ctx.moveTo(8 + f * 5, 15);
+      ctx.lineTo(10.5 + f * 5, 9);
+      ctx.lineTo(13 + f * 5, 15);
+      ctx.fill();
+    }
+    ctx.fillStyle = C.seal;
+    ctx.beginPath();
+    ctx.arc(15, 7, 1.6, 0, Math.PI * 2);
+    ctx.arc(29, 7, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    mimicFangs.refresh();
+  }
+
   // ── HUD item icons (24 px grid, woodcut-simple per 04 §2.4) ──────────────
   const iconFlint = T.createCanvas("icon-flint", 28, 28);
   if (iconFlint !== null) {
@@ -819,6 +1248,10 @@ export function groundIndexFor(t: number, x: number, y: number): number {
     case Tile.ENTRY:
     case Tile.STAIRS_DOWN:
     case Tile.WALL:
+    case Tile.WATER:
+    case Tile.GLOWMOSS:
+    case Tile.PLATE:
+    case Tile.KEY_DROP:
       return t;
     default: {
       const v = (Math.imul(x, 31) + Math.imul(y, 17)) % FLOOR_VARIANTS;
@@ -832,18 +1265,38 @@ export function propTextureFor(t: number): string {
   switch (t) {
     case Tile.WALL:
       return "iso-wall";
+    case Tile.INSCRIPTION:
+      return "iso-inscription";
     case Tile.DOOR_CLOSED:
       return "iso-door-closed";
     case Tile.DOOR_STUCK:
       return "iso-door-stuck";
     case Tile.DOOR_OPEN:
       return "iso-door-open";
+    case Tile.DOOR_IRON:
+      return "iso-door-iron";
+    case Tile.DOOR_HUNGER:
+      return "iso-door-hunger";
+    case Tile.DOOR_CHOIR:
+      return "iso-door-choir";
+    case Tile.DOOR_SIGIL:
+      return "iso-door-sigil";
+    case Tile.SEAL:
+      return "iso-seal";
     case Tile.BRAZIER_UNLIT:
       return "iso-brazier";
     case Tile.BRAZIER_LIT:
       return "iso-brazier-lit";
     case Tile.WAYSTONE:
       return "iso-waystone";
+    case Tile.CHEST:
+      return "iso-chest";
+    case Tile.ALTAR:
+      return "iso-altar";
+    case Tile.POOL:
+      return "iso-pool";
+    case Tile.FONT:
+      return "iso-font";
     case Tile.WAX_DRIP:
       return "iso-wax-drip";
     case Tile.WAX_STUB:
@@ -855,6 +1308,19 @@ export function propTextureFor(t: number): string {
   }
 }
 
-export function entityTextureFor(kind: number): string {
+/** Entity billboard textures; mimics wear the chest's face until revealed. */
+export function entityTextureFor(kind: number, state = 0): string {
+  if (kind === EntityKind.MIMIC) {
+    return state === 2 ? "iso-mimic-revealed" : "iso-chest";
+  }
   return `iso-ent-${kind}`;
+}
+
+/** True when this tile type is opaque-tall and can occlude the player. */
+export function isWallishTile(t: number): boolean {
+  return (
+    t === Tile.WALL || t === Tile.INSCRIPTION || t === Tile.DOOR_CLOSED ||
+    t === Tile.DOOR_STUCK || t === Tile.DOOR_IRON || t === Tile.DOOR_HUNGER ||
+    t === Tile.DOOR_CHOIR || t === Tile.DOOR_SIGIL || t === Tile.SEAL
+  );
 }

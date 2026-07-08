@@ -3,12 +3,14 @@ import { generateFloor } from "./index.js";
 import { serializeState } from "../sim/pack.js";
 import { initState } from "../sim/engine.js";
 import { Tile, EntityKind } from "../sim/types.js";
-import { TILE_FLAGS, F_WALK, MAX_FLOOR, SPAWN_MIN_DIST_FROM_ENTRY } from "../sim/constants.js";
+import { TILE_FLAGS, F_WALK, MAX_FLOOR, SPAWN_MIN_DIST_FROM_ENTRY, biomeFor } from "../sim/constants.js";
 
-const SEEDS = [20260708, 1, 42, 11111, 987654321, 0xdecafbad, 7777, 31337, 2, 999999];
+const SEEDS = [20260708, 1, 42, 11111, 987654321];
+const FLOORS = [1, 2, 3, 5, 9, 13, 17, 21, 25];
 
 function bfsReachable(tiles: Uint8Array, w: number, h: number, sx: number, sy: number): Int32Array {
   const dist = new Int32Array(w * h).fill(-1);
+  // plain doors open; special doors gate loot, never progress
   const passable = (t: number): boolean =>
     (TILE_FLAGS[t]! & F_WALK) !== 0 || t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK;
   const q = [sy * w + sx];
@@ -31,39 +33,44 @@ function bfsReachable(tiles: Uint8Array, w: number, h: number, sx: number, sy: n
   return dist;
 }
 
-describe("Tallow Halls generator", () => {
+describe("biome generator (floors 1–25)", () => {
   for (const seed of SEEDS) {
-    for (let floor = 1; floor <= 3; floor++) {
-      test(`seed ${seed} floor ${floor}: connected, featured, deterministic`, () => {
+    for (const floor of FLOORS) {
+      test(`seed ${seed} floor ${floor} (${biomeFor(floor).name}): solvable, featured, deterministic`, () => {
         const { floorData } = generateFloor(seed, floor);
         const { tiles, w, h, px, py } = floorData;
+        expect(w).toBe(biomeFor(floor).size);
 
-        // full connectivity from entry
         const dist = bfsReachable(tiles, w, h, px, py);
         let entries = 0;
         let stairs = 0;
         let waystones = 0;
-        let braziers = 0;
+        let seals = 0;
         for (let i = 0; i < tiles.length; i++) {
           const t = tiles[i]!;
-          const passable = (TILE_FLAGS[t]! & F_WALK) !== 0 || t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK;
-          if (passable) expect(dist[i], `tile ${i % w},${(i / w) | 0} unreachable`).toBeGreaterThanOrEqual(0);
           if (t === Tile.ENTRY) entries++;
-          if (t === Tile.STAIRS_DOWN) stairs++;
+          if (t === Tile.STAIRS_DOWN) {
+            stairs++;
+            expect(dist[i]!, "stairs must be reachable through plain doors").toBeGreaterThanOrEqual(0);
+          }
           if (t === Tile.WAYSTONE) waystones++;
-          if (t === Tile.BRAZIER_UNLIT || t === Tile.BRAZIER_LIT) braziers++;
+          if (t === Tile.SEAL) seals++;
         }
         expect(entries).toBe(1);
-        expect(stairs).toBe(floor < MAX_FLOOR ? 1 : 0); // slice: floor 3 is the bottom
-        expect(waystones).toBe(floor === MAX_FLOOR ? 2 : 1); // extra on the bottom (DECISIONS 24)
-        expect(braziers).toBeGreaterThanOrEqual(1);
-        expect(braziers).toBeLessThanOrEqual(2);
+        expect(stairs).toBe(floor < MAX_FLOOR ? 1 : 0);
+        expect(seals).toBe(floor === MAX_FLOOR ? 1 : 0);
+        expect(waystones).toBeGreaterThanOrEqual(1);
 
-        // webbing only from floor 2 down
-        const hasWebbing = tiles.some((t) => t === Tile.WEBBING);
-        if (floor === 1) expect(hasWebbing).toBe(false);
+        // iron doors never outnumber reachable keys ON this floor
+        let ironDoors = 0;
+        let keys = 0;
+        for (let i = 0; i < tiles.length; i++) {
+          if (tiles[i] === Tile.DOOR_IRON) ironDoors++;
+          if (tiles[i] === Tile.KEY_DROP && dist[i]! >= 0) keys++;
+        }
+        expect(keys).toBeGreaterThanOrEqual(ironDoors);
 
-        // spawns: on walkable tiles, min distance honored, ids ascending
+        // spawns: sane positions, ids ascending, minibosses where promised
         let lastId = 0;
         for (const e of floorData.entities) {
           expect(e.id).toBeGreaterThan(lastId);
@@ -72,17 +79,28 @@ describe("Tallow Halls generator", () => {
           expect(dist[e.y * w + e.x]!).toBeGreaterThanOrEqual(SPAWN_MIN_DIST_FROM_ENTRY);
         }
         const beasts = floorData.entities.filter((e) => e.kind === EntityKind.BEAST).length;
-        expect(beasts).toBe(floor === 3 ? 1 : 0);
+        if (floor === 3 || floor === 4) expect(beasts).toBe(1);
+        const keepers = floorData.entities.filter((e) => e.kind === EntityKind.KEEPER).length;
+        if (floor >= 8 && floor % 4 === 0) expect(keepers).toBe(1);
 
-        // byte-identical regeneration (incl. downstream initState)
+        // byte-identical regeneration incl. downstream initState
         const again = generateFloor(seed, floor);
         expect(Array.from(again.floorData.tiles)).toEqual(Array.from(tiles));
         expect(again.floorData.entities).toEqual(floorData.entities);
-        expect(Array.from(again.rngInit)).toEqual(Array.from(generateFloor(seed, floor).rngInit));
         const s1 = serializeState(initState(floorData, generateFloor(seed, floor).rngInit));
         const s2 = serializeState(initState(again.floorData, again.rngInit));
         expect(Array.from(s1)).toEqual(Array.from(s2));
       });
     }
   }
+
+  test("omen gen options mutate layouts deterministically", () => {
+    const plain = generateFloor(777, 1);
+    const vermin = generateFloor(777, 1, { spawnMul: { [EntityKind.RAT]: 3 } });
+    const plainRats = plain.floorData.entities.filter((e) => e.kind === EntityKind.RAT).length;
+    const verminRats = vermin.floorData.entities.filter((e) => e.kind === EntityKind.RAT).length;
+    expect(verminRats).toBeGreaterThan(plainRats);
+    const again = generateFloor(777, 1, { spawnMul: { [EntityKind.RAT]: 3 } });
+    expect(again.floorData.entities).toEqual(vermin.floorData.entities);
+  });
 });

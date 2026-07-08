@@ -1,23 +1,23 @@
 {
-  "goldenV": 1,
+  "goldenV": 2,
   "name": "alt-seed-delver-1",
-  "simVersion": 1,
+  "simVersion": 2,
   "daySeed": 11111,
   "botSeed": 21,
-  "actionCount": 90,
-  "actionsB64": "AVoABKBAGCCCCCCHCCCCDDDHDDDDCDDDERBBEEEIEFEDDDCDKDEEAEHDDACDDCCGGCCCCCCCDRCCCDHDDHCHHHHHHDHHHHA=",
+  "actionCount": 82,
+  "actionsB64": "AlIABKBGCCCCCCCCHCCDDDHDDDDDDCDEREEEEEIEEDFDDDDCEKEEHFDDCHDDCCCCCBCCCCRCCDDDHDDDDCDGCCA=",
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "1aa2d483"
+      "h32": "ad664dda"
     },
     {
       "tick": 64,
-      "h32": "b1df8a27"
+      "h32": "96aa4e42"
     }
   ],
-  "finalTick": 90,
-  "finalH32": "5f5169bf",
+  "finalTick": 82,
+  "finalH32": "6beac244",
   "finalStatus": 1,
   "finalWax": 0,
   "finalFloor": 3

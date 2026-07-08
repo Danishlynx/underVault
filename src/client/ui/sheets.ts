@@ -1,73 +1,88 @@
 /**
- * The slice's DOM sheets: Waystone banking (stub — 04 §4.4), Epitaph
- * ceremony (04 §4.5, condensed), and the retreat/exit sheet. Copy from the
- * 04 §7 deck. Claim engine is M4 scope; the COMMIT seal stays sealed.
+ * DOM ceremony sheets v2: Waystone banking (pick ≤3 — 01 §10), the Epitaph
+ * (04 §4.5: cause · last words · gift · lineage), heirloom pick (gen 3),
+ * exit and victory sheets. Copy from the 04 §7 deck.
  */
 
 import { el, openSheet } from "./dom.js";
-import type { LearnedRule } from "../net/ports.js";
-import { DeathCause, Effect, type SimState } from "../../shared/sim/types.js";
+import type { CorpseGift, LearnedRule } from "../net/ports.js";
+import { describeRuleKey } from "./vocab.js";
+import { DeathCause, Effect, Heirloom, Item, type SimState } from "../../shared/sim/types.js";
+import { ITEM_NAME, BANK_MAX } from "../../shared/sim/constants.js";
 
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
-
-const SUBJECT_NAME: Record<string, string> = {
-  rat: "a Tallow Rat",
-  wickworm: "a Wickworm",
-  moth: "a Vesper Moth",
-  beast: "the Chandler Beast",
-};
-const VERB_NAME: Record<string, string> = {
-  bump: "struck",
-  fire: "touched by fire",
-  "in-aura": "bathed in brazier-light",
-  "dies-over": "slain over webbing",
-};
-const EFFECT_NAME: Record<number, string> = {
-  [Effect.NONE]: "nothing happened",
-  [Effect.DIE]: "it died",
-  [Effect.IGNITE_DIE]: "it burst into flame and died",
-  [Effect.IMMUNE]: "it did not care",
-  [Effect.MELT]: "it melted away",
-  [Effect.IGNITE_TILE]: "the ground caught fire",
-};
-
-export function describeRule(r: LearnedRule): string {
-  const parts = r.key.split("|");
-  const subject = SUBJECT_NAME[parts[0] ?? ""] ?? parts[0] ?? "something";
-  const verb = VERB_NAME[parts[1] ?? ""] ?? parts[1] ?? "touched";
-  const cond = parts[3] === "cupped" ? ", flame cupped" : parts[3] === "snuffed" ? ", in darkness" : "";
-  return `${subject} — ${verb}${cond} → ${EFFECT_NAME[r.effect] ?? "…"}`;
-}
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+  "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
+  "XXI", "XXII", "XXIII", "XXIV", "XXV"];
 
 const CAUSE_LINE: Record<number, string> = {
   [DeathCause.TAKEN_BY_THE_DARK]: "TAKEN BY THE DARK",
   [DeathCause.OWN_FLAME]: "UNDONE BY THEIR OWN FLAME",
   [DeathCause.MELTED_BEFORE_BEAST]: "MELTED BEFORE THE CHANDLER BEAST",
+  [DeathCause.DROWNED]: "DROWNED AMONG THE STACKS",
 };
 
+export interface RunSummary {
+  ticks: number;
+  discoveries: number;
+  floor: number;
+  day: number;
+}
+
+// ── Waystone banking (04 §4.4) ─────────────────────────────────────────────
 export function openWaystoneSheet(
   host: HTMLElement,
-  learned: readonly LearnedRule[],
+  bankable: readonly LearnedRule[],
+  banksLeftHint: string,
+  onCommit: (picked: LearnedRule[]) => void,
   onClose: () => void,
 ): () => void {
   const close = openSheet(host, (sheet) => {
     sheet.appendChild(el("h1", "", "WAYSTONE — the Vault listens"));
-    const meaningful = learned.filter((r) => r.effect !== Effect.NONE);
+    const meaningful = bankable.filter((r) => r.effect !== Effect.NONE);
+    const picked = new Set<string>();
+    let seal: HTMLButtonElement | null = null;
+
     if (meaningful.length === 0) {
       sheet.appendChild(el("p", "uv-dim", "You have nothing new to tell it. Yet."));
     } else {
+      sheet.appendChild(el("p", "uv-dim", `Choose up to ${BANK_MAX} truths to commit. ${banksLeftHint}`));
       const list = el("ul", "uv-list");
       for (const r of meaningful) {
-        list.appendChild(el("li", "", describeRule(r)));
+        const li = el("li", "", "");
+        const label = el("label", "", "");
+        const box = el("input", "") as HTMLInputElement;
+        box.type = "checkbox";
+        box.style.marginRight = "8px";
+        box.addEventListener("change", () => {
+          if (box.checked) {
+            if (picked.size >= BANK_MAX) {
+              box.checked = false;
+              return;
+            }
+            picked.add(r.key);
+          } else {
+            picked.delete(r.key);
+          }
+          if (seal !== null) seal.disabled = picked.size === 0;
+        });
+        label.appendChild(box);
+        label.appendChild(document.createTextNode(describeRuleKey(r.key, r.effect).text));
+        li.appendChild(label);
+        list.appendChild(li);
       }
       sheet.appendChild(list);
     }
+
     sheet.appendChild(el("hr", "uv-rule"));
-    const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
+    seal = el("button", "uv-seal-btn") as HTMLButtonElement;
     seal.disabled = true;
-    seal.title = "The Codex opens at M4";
+    seal.addEventListener("click", () => {
+      const chosen = meaningful.filter((r) => picked.has(r.key));
+      close();
+      onCommit(chosen);
+    });
     sheet.appendChild(seal);
-    sheet.appendChild(el("span", "uv-seal-label uv-dim", "COMMIT TO THE CODEX"));
+    sheet.appendChild(el("span", "uv-seal-label", "COMMIT TO THE CODEX"));
     const press = el("button", "uv-ink-btn", "Bank nothing, press on") as HTMLButtonElement;
     press.addEventListener("click", () => {
       close();
@@ -78,18 +93,20 @@ export function openWaystoneSheet(
   return close;
 }
 
-export interface RunSummary {
-  ticks: number;
-  discoveries: number;
-  floor: number;
-  day: number;
+// ── Epitaph (04 §4.5) ──────────────────────────────────────────────────────
+export interface EpitaphResult {
+  lastWords: string;
+  gift: CorpseGift | null;
+  houseName: string | null;
 }
 
 export function openEpitaphSheet(
   host: HTMLElement,
   state: SimState,
   summary: RunSummary,
-  onRestart: () => void,
+  house: string | null,
+  generation: number,
+  onDone: (result: EpitaphResult, restAtDusk: boolean) => void,
 ): () => void {
   const close = openSheet(host, (sheet) => {
     const cause = CAUSE_LINE[state.deathCause] ?? "TAKEN BY THE DARK";
@@ -101,31 +118,87 @@ export function openEpitaphSheet(
       el(
         "p",
         "uv-dim",
-        `The candle lasted ${summary.ticks} steps. ${summary.discoveries} truth${summary.discoveries === 1 ? "" : "s"} died unbanked with you.`,
+        `The candle lasted ${summary.ticks} steps. ${summary.discoveries} unbanked truth${summary.discoveries === 1 ? "" : "s"} lie with the body.`,
       ),
     );
-    const input = el("input", "uv-input") as HTMLInputElement;
-    input.maxLength = 100;
-    input.placeholder = "Last words, delver?";
-    sheet.appendChild(input);
+
+    const words = el("input", "uv-input") as HTMLInputElement;
+    words.maxLength = 100;
+    words.placeholder = "Last words, delver?";
+    sheet.appendChild(words);
+
+    // the gift: one carried thing left for whoever finds you (01 §13)
+    let gift: CorpseGift | null = null;
+    const carried: { item: number; charges: number }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const item = state.inv[i]!;
+      if (item !== Item.NONE && item !== Item.FLINT && state.invCharges[i]! > 0) {
+        carried.push({ item, charges: state.invCharges[i]! });
+      }
+    }
+    if (carried.length > 0) {
+      sheet.appendChild(el("p", "uv-dim", "Leave a gift on the body:"));
+      const row = el("div", "", "");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.style.flexWrap = "wrap";
+      const buttons: HTMLButtonElement[] = [];
+      for (const c of carried) {
+        const b = el("button", "uv-ink-btn", ITEM_NAME[c.item] ?? "?") as HTMLButtonElement;
+        b.style.display = "inline";
+        b.addEventListener("click", () => {
+          gift = { item: c.item, charges: c.charges };
+          for (const other of buttons) other.style.fontWeight = "normal";
+          b.style.fontWeight = "bold";
+        });
+        row.appendChild(b);
+        buttons.push(b);
+      }
+      sheet.appendChild(row);
+    }
+
+    let houseInput: HTMLInputElement | null = null;
     sheet.appendChild(el("hr", "uv-rule"));
-    const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
-    seal.addEventListener("click", () => {
+    if (house === null) {
+      sheet.appendChild(el("p", "", "The Guild asks: what house shall remember you?"));
+      houseInput = el("input", "uv-input") as HTMLInputElement;
+      houseInput.maxLength = 20;
+      houseInput.placeholder = "House name (chosen once, forever)";
+      sheet.appendChild(houseInput);
+    } else {
+      sheet.appendChild(
+        el("p", "uv-gold", `The line endures — ${house} ${ROMAN[generation + 1] ?? generation + 1} will wake at dusk.`),
+      );
+    }
+
+    const finish = (rest: boolean): void => {
       close();
-      onRestart();
-    });
+      onDone(
+        {
+          lastWords: words.value.trim(),
+          gift,
+          houseName: houseInput !== null && houseInput.value.trim() !== "" ? houseInput.value.trim() : null,
+        },
+        rest,
+      );
+    };
+    const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
+    seal.addEventListener("click", () => finish(true));
     sheet.appendChild(seal);
-    sheet.appendChild(el("span", "uv-seal-label", "DELVE AGAIN"));
-    sheet.appendChild(el("p", "uv-dim", "The Vault reshuffles at dusk. (dev: the same day repeats — fixed seed)"));
+    sheet.appendChild(el("span", "uv-seal-label", "REST UNTIL DUSK"));
+    const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
+    again.addEventListener("click", () => finish(false));
+    sheet.appendChild(again);
   });
   return close;
 }
 
+// ── Exit / Victory ─────────────────────────────────────────────────────────
 export function openExitSheet(
   host: HTMLElement,
   state: SimState,
   summary: RunSummary,
-  onRestart: () => void,
+  onDone: (restAtDusk: boolean) => void,
 ): () => void {
   const close = openSheet(host, (sheet) => {
     sheet.appendChild(el("div", "uv-cause", `INTO THE LIGHT · FL. ${ROMAN[summary.floor] ?? summary.floor} · DAY ${summary.day}`));
@@ -134,17 +207,74 @@ export function openExitSheet(
       el(
         "p",
         "",
-        `You climb back to the Guildhall with ${state.wax} wax to spare and ${summary.discoveries} truth${summary.discoveries === 1 ? "" : "s"} worth telling.`,
+        `You climb back to the Guildhall with ${state.wax} wax to spare, ${state.banked} truth${state.banked === 1 ? "" : "s"} banked and ${summary.discoveries} untold.`,
       ),
     );
-    sheet.appendChild(el("p", "uv-dim", "Banking claims opens with the Codex (M4)."));
     const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
     seal.addEventListener("click", () => {
       close();
-      onRestart();
+      onDone(true);
     });
     sheet.appendChild(seal);
-    sheet.appendChild(el("span", "uv-seal-label", "DELVE AGAIN"));
+    sheet.appendChild(el("span", "uv-seal-label", "REST UNTIL DUSK"));
+    const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
+    again.addEventListener("click", () => {
+      close();
+      onDone(false);
+    });
+    sheet.appendChild(again);
+  });
+  return close;
+}
+
+export function openVictorySheet(host: HTMLElement, summary: RunSummary, onDone: () => void): () => void {
+  const close = openSheet(host, (sheet) => {
+    sheet.appendChild(el("div", "uv-cause", "THE BOTTOM"));
+    sheet.appendChild(el("hr", "uv-rule"));
+    sheet.appendChild(
+      el(
+        "p",
+        "uv-gold",
+        `Floor XXV. Day ${summary.day}. The Seal knew your name — ${summary.discoveries} truths carried, and the Vault goes no deeper.`,
+      ),
+    );
+    sheet.appendChild(el("p", "uv-dim", "Season 2 will remember who came first."));
+    const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
+    seal.addEventListener("click", () => {
+      close();
+      onDone();
+    });
+    sheet.appendChild(seal);
+    sheet.appendChild(el("span", "uv-seal-label", "RETURN TO THE LIGHT"));
+  });
+  return close;
+}
+
+// ── Heirloom pick (generations 3/6/9 — 01 §13) ─────────────────────────────
+export function openHeirloomSheet(host: HTMLElement, onPick: (id: number) => void): () => void {
+  const OPTIONS: { id: number; name: string; blurb: string }[] = [
+    { id: Heirloom.SMOKED_GLASS, name: "Smoked Glass", blurb: "see one tile while snuffed" },
+    { id: Heirloom.FEVER_RING, name: "Fever Ring", blurb: "warms beside things that lie" },
+    { id: Heirloom.LISTENING_HORN, name: "Listening Horn", blurb: "the tells carry farther" },
+    { id: Heirloom.WIDDERSHINS, name: "Widdershins Compass", blurb: "spins near cipher walls" },
+    { id: Heirloom.LOCKET, name: "Hummer's Locket", blurb: "hums near hidden places" },
+  ];
+  const close = openSheet(host, (sheet) => {
+    sheet.appendChild(el("h1", "", "THE LINE ENDURES"));
+    sheet.appendChild(el("p", "uv-dim", "Three generations gone. The Guild grants one heirloom — choose."));
+    const list = el("ul", "uv-list");
+    for (const o of OPTIONS) {
+      const li = el("li", "", "");
+      const b = el("button", "uv-ink-btn", `${o.name} — ${o.blurb}`) as HTMLButtonElement;
+      b.style.display = "inline";
+      b.addEventListener("click", () => {
+        close();
+        onPick(o.id);
+      });
+      li.appendChild(b);
+      list.appendChild(li);
+    }
+    sheet.appendChild(list);
   });
   return close;
 }

@@ -1,0 +1,20 @@
+{
+  "goldenV": 2,
+  "name": "alt-seed-explore-1",
+  "simVersion": 2,
+  "daySeed": 987654321,
+  "botSeed": 3,
+  "actionCount": 56,
+  "actionsB64": "AjgAGMQHKCGKAABBBBJBBABEDDDESuYUEEAEkgkIoIIIIAIJAIIIokIIIIgAwcA=",
+  "checkpoints": [
+    {
+      "tick": 32,
+      "h32": "8b846b84"
+    }
+  ],
+  "finalTick": 56,
+  "finalH32": "5b04e349",
+  "finalStatus": 2,
+  "finalWax": 447,
+  "finalFloor": 1
+}

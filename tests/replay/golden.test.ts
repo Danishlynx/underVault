@@ -28,6 +28,7 @@ interface Golden {
   finalWax: number;
   finalFloor: number;
 }
+// goldenV 2 = Step-based logs (logV 2, argumented opcodes)
 
 const dir = path.join(process.cwd(), "tests", "golden");
 const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")) : [];

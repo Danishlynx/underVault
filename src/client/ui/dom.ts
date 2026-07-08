@@ -7,6 +7,12 @@
 
 let styled = false;
 
+/** Idempotent shared-style injection (sheets call it via openSheet; the
+ *  Guildhall calls it directly since it renders before any sheet). */
+export function ensureUvStyles(): void {
+  injectStyles();
+}
+
 function injectStyles(): void {
   if (styled) return;
   styled = true;

@@ -1,16 +1,13 @@
 /**
- * Floor generation entry point: (daySeed, floor) → FloorData + RNG block.
- * This is the ONLY place (besides the server / dev adapter) that ever sees
- * the day seed — it must never end up inside SimState (02 §4).
- *
- * rngInit: the returned 20-word block carries the POST-generation gen/spawn
- * stream states (stream continuity — no correlated reseeds) plus fresh
- * per-floor ai/loot/fx streams.
+ * Floor generation entry point: (daySeed, floor, opts) → FloorData + RNG
+ * block. This — plus the server/dev adapter — is the ONLY place that ever
+ * sees the day seed (02 §4). GenOptions carry omen-driven mutations
+ * (spawn multipliers, pre-lit braziers…) WITHOUT telling the sim why.
  */
 
 import { Stream, seedStream, RNG_WORDS } from "../sim/rng.js";
 import type { FloorData } from "../sim/types.js";
-import { generateTallow } from "./tallow.js";
+import { generateBiomeFloor, type GenOptions } from "./tallow.js";
 
 export interface GenResult {
   floorData: FloorData;
@@ -19,7 +16,7 @@ export interface GenResult {
 
 const MAX_ATTEMPTS = 8;
 
-export function generateFloor(daySeed: number, floor: number): GenResult {
+export function generateFloor(daySeed: number, floor: number, opts?: GenOptions): GenResult {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const rng = new Uint32Array(RNG_WORDS);
     const salt = ((floor << 4) | attempt) >>> 0;
@@ -31,14 +28,13 @@ export function generateFloor(daySeed: number, floor: number): GenResult {
       rng[o + 2] = c;
       rng[o + 3] = d;
     }
-    const floorData = generateTallow(rng, floor);
+    const floorData = generateBiomeFloor(rng, floor, opts);
     if (floorData !== null) {
       return { floorData, rngInit: rng };
     }
   }
-  // Deterministic failure after bounded retries is a build bug, not a
-  // runtime path — the golden corpus pins working (seed, floor) pairs.
   throw new Error(`generateFloor: no valid layout for floor ${floor} after ${MAX_ATTEMPTS} attempts`);
 }
 
 export { Stream };
+export type { GenOptions };

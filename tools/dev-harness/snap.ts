@@ -53,6 +53,21 @@ async function main(): Promise<void> {
   await page.goto(URL, { waitUntil: "networkidle2", timeout: 30000 });
   await new Promise((r) => setTimeout(r, WAIT));
 
+  if (process.argv.includes("--strike")) {
+    // press-and-hold the Guildhall seal 700ms (hold-to-confirm strike)
+    const seal = await page.$(".uv-hall .uv-seal-btn, .uv-hall button");
+    const box = seal !== null ? await seal.boundingBox() : null;
+    if (box !== null) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await new Promise((r) => setTimeout(r, 700));
+      await page.mouse.up();
+      await new Promise((r) => setTimeout(r, 2200));
+    } else {
+      console.log("[snap] no seal button found to strike");
+    }
+  }
+
   for (const k of KEYS) {
     await page.keyboard.press((k === " " ? "Space" : k) as KeyInput);
     await new Promise((r) => setTimeout(r, 160));

@@ -1,56 +1,68 @@
 {
-  "goldenV": 1,
+  "goldenV": 2,
   "name": "dev-explore-bot2",
-  "simVersion": 1,
+  "simVersion": 2,
   "daySeed": 20260708,
   "botSeed": 2,
-  "actionCount": 323,
-  "actionsB64": "AUMBCACKCCFNCCCAEEKKIEECCCCJCDADDDDBBBBPNMBBLNIBBBFLBBBQLCCCDQCQCJJCLGJHAJALCBAGBJBDQBBABABBBBDCEEHBBBBAAQBEEEEEEAEEAGEEOBBBBABLBJBBQJBEEEDJBAQBBQBQJBBBNEEELOBBBFGBBLHFGBBBBABFLBBJDLDDDNDDDCCCADDJQLLBBABBBCCCCQCGCECQCCNCICCCDANDDAEEDLQDDDALABECLPCCCBCCBAJEELELEEBBBBCCCLCAJCNCCCCACCEDDDQJAJJDADDEECLJCJAALAJCHCCDMQDHDDABNBBJLBHA",
+  "actionCount": 421,
+  "actionsB64": "AqUBCACKCCFNCCCAEEKKIEECCAICCDADDDDBBBAOLQBBAMQBEAEBMLBBBSKEEGQEklKZAxI4BIBYQIBoJIIaSggAgAggggwhBBwQQAgAEhCCCCCCDiEhhoBnAggggAlgkggpNCACCDJBFBBSckoFIJogghZwIIIowIJZwowIIIIAIpYIJIZYYYZoYCAYQQQAYZKBZYIIAIIIQARYSQRghAkAgjQjwgggwECAQBBAy0kiiAFgAiACFoCBABAhBAgEgAglgEAggggghBBFgAAEhIEABBBClhCBhhpWJJDADDEECLJCJAALAJCHCCDMSsOGGACgCOIIOkYQIEw8EEEEU0EEEgkE0EAgEYIMMQAMIIcsIYAIIsIBKA6AR4wQQQYYAo6AIoIIggBYgQQIoKRQTQQASSyQRwBgSwAQQQSCQjAjywiwhkASwRw=",
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "7efb3352"
+      "h32": "a2935dc2"
     },
     {
       "tick": 64,
-      "h32": "110866bb"
+      "h32": "44b19fea"
     },
     {
       "tick": 96,
-      "h32": "7a3205fc"
+      "h32": "36761169"
     },
     {
       "tick": 128,
-      "h32": "53f68b35"
+      "h32": "5e5171e4"
     },
     {
       "tick": 160,
-      "h32": "2e26fdf1"
+      "h32": "f2db18eb"
     },
     {
       "tick": 192,
-      "h32": "564719f0"
+      "h32": "68010e35"
     },
     {
       "tick": 224,
-      "h32": "1867d1e0"
+      "h32": "45dbf53f"
     },
     {
       "tick": 256,
-      "h32": "a993170f"
+      "h32": "5636e0a9"
     },
     {
       "tick": 288,
-      "h32": "e24f5c98"
+      "h32": "e202a475"
     },
     {
       "tick": 320,
-      "h32": "9a897a18"
+      "h32": "4ef02c77"
+    },
+    {
+      "tick": 352,
+      "h32": "e25c40c1"
+    },
+    {
+      "tick": 384,
+      "h32": "8c7c77fe"
+    },
+    {
+      "tick": 416,
+      "h32": "13d98740"
     }
   ],
-  "finalTick": 323,
-  "finalH32": "208b1a17",
+  "finalTick": 421,
+  "finalH32": "0a882bbd",
   "finalStatus": 2,
-  "finalWax": 476,
+  "finalWax": 500,
   "finalFloor": 1
 }

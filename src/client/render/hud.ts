@@ -25,6 +25,9 @@ export interface HudCallbacks {
   onSnuffComplete(): void;
   onRelight(): void;
   onRestart(): void;
+  onUseSlot(slot: number): void;
+  /** toggle audio; returns the new muted state for display */
+  onToggleMute(): boolean;
 }
 
 export class Hud {
@@ -91,7 +94,12 @@ export class Hud {
     this.muteText = this.fixed(
       s.add.text(0, 0, "MUTE", { fontFamily: SANS, fontSize: "12px", color: "#7e786c" }).setOrigin(0.5, 0),
     );
-    this.muteText.setAlpha(0.5); // audio lands at W6; control visible per invariant 6
+    this.muteText.setInteractive({ useHandCursor: true }); // always visible (invariant 6)
+    this.muteText.on("pointerdown", () => {
+      const muted = this.cb.onToggleMute();
+      this.muteText.setText(muted ? "MUTED" : "MUTE");
+      this.muteText.setAlpha(muted ? 1 : 0.6);
+    });
     this.menuText = this.fixed(
       s.add.text(0, 0, "≡", { fontFamily: SANS, fontSize: "28px", color: "#b7ae9c" }).setOrigin(0.5, 0),
     );
@@ -134,6 +142,10 @@ export class Hud {
       const cell = this.fixed(s.add.container(0, 0));
       const bg = s.add.rectangle(0, 0, HUD.slotCell, HUD.slotCell, COLOR.surface2, 1).setOrigin(0, 0);
       bg.setStrokeStyle(1, COLOR.borderVoid, 1);
+      bg.setScrollFactor(0);
+      bg.setInteractive({ useHandCursor: true });
+      const slotIndex = i;
+      bg.on("pointerdown", () => this.cb.onUseSlot(slotIndex));
       const underline = s.add.rectangle(4, HUD.slotCell - 3, HUD.slotCell - 8, 1, COLOR.flame, 0).setOrigin(0, 0);
       const icon = s.add.image(HUD.slotCell >> 1, (HUD.slotCell >> 1) - 2, "icon-flint").setVisible(false);
       const charges = s.add

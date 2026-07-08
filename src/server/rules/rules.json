@@ -1,16 +1,51 @@
 {
-  "comment": "★ SECRET rules table v1 (slice scope). Never imported from client/ or shared/ — tools/no-secret-leak enforces. Shape per CLAUDE.md appendix; condition-specific rules precede wildcard rules for the same triple.",
+  "comment": "★ SECRET rules table v2 — full bestiary + shrines. Never imported from client/ or shared/ (tools/no-secret-leak). Condition-specific rules precede wildcards for the same triple. Effects vocabulary is public (shared/sim Effect); THIS mapping is the game's buried treasure.",
   "rules": [
     { "id": "r-rat-bump", "subject": "rat", "interaction": "bump", "object": "self", "effect": "die", "layer": 0 },
     { "id": "r-moth-bump", "subject": "moth", "interaction": "bump", "object": "self", "effect": "die", "layer": 0 },
     { "id": "r-worm-bump-lit", "subject": "wickworm", "interaction": "bump", "object": "self", "effect": "ignite-die", "condition": { "candle": "lit" }, "layer": 1 },
-    { "id": "r-worm-bump-dark", "subject": "wickworm", "interaction": "bump", "object": "self", "effect": "immune", "layer": 1 },
+    { "id": "r-worm-bump", "subject": "wickworm", "interaction": "bump", "object": "self", "effect": "immune", "layer": 1 },
     { "id": "r-beast-bump", "subject": "beast", "interaction": "bump", "object": "self", "effect": "immune", "layer": 1 },
-    { "id": "r-moth-dies-webbing", "subject": "moth", "interaction": "dies-over", "object": "webbing", "effect": "ignite-tile", "layer": 2 },
+    { "id": "r-slime-bump", "subject": "slime", "interaction": "bump", "object": "self", "effect": "split", "layer": 1 },
+    { "id": "r-mimic-bump", "subject": "mimic", "interaction": "bump", "object": "self", "effect": "hurt", "layer": 1 },
+    { "id": "r-sporewight-bump", "subject": "sporewight", "interaction": "bump", "object": "self", "effect": "die", "layer": 0 },
+    { "id": "r-drowned-bump", "subject": "drowned", "interaction": "bump", "object": "self", "effect": "hurt", "layer": 1 },
+    { "id": "r-bellhung-bump", "subject": "bellhung", "interaction": "bump", "object": "self", "effect": "hurt", "layer": 2 },
+    { "id": "r-shade-bump-snuffed", "subject": "shade", "interaction": "bump", "object": "self", "effect": "hurt", "condition": { "candle": "snuffed" }, "layer": 2 },
+    { "id": "r-shade-bump", "subject": "shade", "interaction": "bump", "object": "self", "effect": "immune", "layer": 2 },
+    { "id": "r-gaslight-bump", "subject": "gaslight", "interaction": "bump", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-choirless-bump", "subject": "choirless", "interaction": "bump", "object": "self", "effect": "hurt", "layer": 1 },
+    { "id": "r-rustling-bump", "subject": "rustling", "interaction": "bump", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-keeper-bump", "subject": "keeper", "interaction": "bump", "object": "self", "effect": "immune", "layer": 2 },
+    { "id": "r-corpse-bump", "subject": "corpse", "interaction": "bump", "object": "self", "effect": "recover", "layer": 0 },
+
+    { "id": "r-sporewight-dies", "subject": "sporewight", "interaction": "dies", "object": "self", "effect": "gas-burst", "layer": 1 },
+
+    { "id": "r-moth-web", "subject": "moth", "interaction": "dies-over", "object": "webbing", "effect": "ignite-tile", "layer": 2 },
+
     { "id": "r-rat-fire", "subject": "rat", "interaction": "fire", "object": "self", "effect": "die", "layer": 0 },
     { "id": "r-worm-fire", "subject": "wickworm", "interaction": "fire", "object": "self", "effect": "die", "layer": 0 },
     { "id": "r-moth-fire", "subject": "moth", "interaction": "fire", "object": "self", "effect": "die", "layer": 0 },
+    { "id": "r-slime-fire", "subject": "slime", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-mimic-fire", "subject": "mimic", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-sporewight-fire", "subject": "sporewight", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-drowned-fire", "subject": "drowned", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-shade-fire", "subject": "shade", "interaction": "fire", "object": "self", "effect": "immune", "layer": 2 },
+    { "id": "r-gaslight-fire", "subject": "gaslight", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-choirless-fire", "subject": "choirless", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-rustling-fire", "subject": "rustling", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-bellhung-fire", "subject": "bellhung", "interaction": "fire", "object": "self", "effect": "die", "layer": 1 },
+    { "id": "r-keeper-fire", "subject": "keeper", "interaction": "fire", "object": "self", "effect": "immune", "layer": 2 },
     { "id": "r-beast-fire", "subject": "beast", "interaction": "fire", "object": "self", "effect": "melt", "layer": 2 },
-    { "id": "r-beast-aura", "subject": "beast", "interaction": "in-aura", "object": "brazier", "effect": "melt", "layer": 1 }
+
+    { "id": "r-beast-aura", "subject": "beast", "interaction": "in-aura", "object": "brazier", "effect": "melt", "layer": 1 },
+
+    { "id": "r-rustling-reaches", "subject": "rustling", "interaction": "reaches", "object": "self", "effect": "steal", "layer": 1 },
+
+    { "id": "r-keeper-pickpocket-snuffed", "subject": "keeper", "interaction": "pickpocket", "object": "self", "effect": "pickpocket-ok", "condition": { "candle": "snuffed" }, "layer": 2 },
+    { "id": "r-keeper-pickpocket", "subject": "keeper", "interaction": "pickpocket", "object": "self", "effect": "immune", "layer": 2 },
+
+    { "id": "r-font-snuffed", "subject": "font", "interaction": "touch", "object": "self", "effect": "bless", "condition": { "candle": "snuffed" }, "layer": 3 },
+    { "id": "r-font", "subject": "font", "interaction": "touch", "object": "self", "effect": "none", "layer": 3 }
   ]
 }

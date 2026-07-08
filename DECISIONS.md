@@ -160,6 +160,42 @@ candidates; flip them in the named data file, not in code.
     entity billboards with a deliberate right-facing asymmetry so E/W
     `setFlipX` reads. Same texture keys the W4 atlases will replace.
 
+## LOCAL COMPLETE EDITION (operator: "make the whole game", 2026-07-08)
+
+49. **Scope**: everything judgeable single-player is now in — floors 1–25
+    across all six biomes + the Bottom (Seal opens at ≥5 banked claims —
+    dev stand-in for the multi-player ritual, ⚖); full 14-monster bestiary
+    with their 01 §8 hidden rules in rules.json; items (salt/chalk/flint/
+    mirror/bell/glowvial/douse/keys/waystone-shard; rope cut — no shafts);
+    door taxonomy (wood/stuck/iron/hunger/choir/sigil; communion + gate are
+    community features, deferred); shrines (altar/pool/font — Hollow Shrine
+    needs free-text, deferred); 15 secret omens rolling per day (day 1
+    always clear skies ⚖); claim banking ≤3 at waystones via the BANK
+    action (in the replayable log; the sim tracks only the count);
+    session codex with re-bank confirmations inking at 5 (solo stand-in ⚖);
+    corpses (3-day TTL) + echo ghosts (48 keyframes) crossing runs; chalk
+    persisting across days; braziers/glowmoss gifting forward; signs (2/run,
+    template+earned-noun); lineage (house naming, generations, heirloom pick
+    at gen 3); synthesized audio (30 cues, whisper bus, heartbeat, unlocked
+    ONLY in the match-strike hold — invariant 6 now fully honored).
+50. **STATE_V 2 / logV 2**: serializer adds omen mods, alert, ritual, signs,
+    gas, banked; codec gains ARG_BITS argument payloads (USE slot·dir,
+    SIGN template·noun, BANK count). Corpus regenerated; delver bots now
+    die on floors 3–4 to the Beast; 92 unit tests green.
+51. **Corpse gifts are memorial-only** in the slice (recovery yields the
+    claims + a toast naming the gift; granting items outside the action log
+    would desync replay — server does it properly at M2). ⚖
+52. **Tokens 404 bug**: design/tokens/tokens.css sat above the vite root, so
+    the <link> silently 404'd and every DOM sheet rendered unthemed since
+    the first slice. Now imported through the vite module graph in
+    dev/main.ts. (The mystery 404 in early console logs was this, not the
+    favicon.)
+53. Omens are labeled CONDITIONAL on claims whose subject the day's omen
+    touches (conditionalSubjects in omens.json) — "under a certain sky". ⚖
+54. Slime glow-trails while snuffed, mural rooms, focus cone, Hollow
+    Shrine, Ironbloom's two-key doors, and Doubledeep stairs are noted as
+    cut/deferred (breadth valves; 03 §5 allows trimming W5 breadth).
+
 ## Fidelity pass (operator: "highest possible settings", 2026-07-08)
 
 41. **Per-tile lighting replaces binary fog** (`lights.ts`): every visible

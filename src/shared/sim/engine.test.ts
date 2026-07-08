@@ -172,7 +172,7 @@ describe("the Dark Grace", () => {
     expect(s.status).toBe(Status.DEAD);
     const t = s.tick;
     const h = hashState(s);
-    const r = tick(s, Action.WAIT, NONE.table);
+    const r = tick(s, { op: Action.WAIT, arg: 0 }, NONE.table);
     expect(isRuleRequest(r)).toBe(false);
     if (!isRuleRequest(r)) {
       expect(r.state.tick).toBe(t);
@@ -229,7 +229,7 @@ describe("candle channels", () => {
 
   test("invalid action demotes to wait: tick+1, wax−1, REJECTED", () => {
     const s0 = makeState(fd);
-    const r = tick(s0, Action.RELIGHT, NONE.table); // relight while lit = invalid
+    const r = tick(s0, { op: Action.RELIGHT, arg: 0 }, NONE.table); // relight while lit = invalid
     expect(isRuleRequest(r)).toBe(false);
     if (!isRuleRequest(r)) {
       expect(r.state.tick).toBe(1);
@@ -244,12 +244,12 @@ describe("secret rules resolution", () => {
 
   test("unknown bump aborts with the rule key; tickResolving converges", () => {
     const s = makeState(fdRat);
-    const r = tick(s, Action.MOVE_E, NONE.table);
+    const r = tick(s, { op: Action.MOVE_E, arg: 0 }, NONE.table);
     expect(isRuleRequest(r)).toBe(true);
     if (isRuleRequest(r)) expect(r.needRule).toBe("rat|bump|self|lit");
 
     const rules = stubRules({ "rat|bump|self|lit": Effect.DIE });
-    const done = tickResolving(s, Action.MOVE_E, rules.table, rules.resolve);
+    const done = tickResolving(s, { op: Action.MOVE_E, arg: 0 }, rules.table, rules.resolve);
     expect(done.state.entities.length).toBe(0);
     expect(done.events.some((e) => e.type === Ev.MONSTER_DIED)).toBe(true);
     expect(done.state.px).toBe(1); // bump is not a move
@@ -261,7 +261,7 @@ describe("secret rules resolution", () => {
     ]);
     const s = makeState(fd);
     const rules = stubRules({ "wickworm|bump|self|lit": Effect.IGNITE_DIE });
-    const done = tickResolving(s, Action.MOVE_E, rules.table, rules.resolve);
+    const done = tickResolving(s, { op: Action.MOVE_E, arg: 0 }, rules.table, rules.resolve);
     expect(done.state.entities.length).toBe(0);
     expect(done.state.fire[1 * 6 + 2]).toBeGreaterThan(0);
   });
@@ -275,7 +275,7 @@ describe("secret rules resolution", () => {
       "moth|bump|self|lit": Effect.DIE,
       "moth|dies-over|webbing|-": Effect.IGNITE_TILE,
     });
-    const done = tickResolving(s, Action.MOVE_E, rules.table, rules.resolve);
+    const done = tickResolving(s, { op: Action.MOVE_E, arg: 0 }, rules.table, rules.resolve);
     expect(done.state.entities.length).toBe(0);
     expect(done.state.fire[1 * 6 + 2]).toBeGreaterThan(0);
   });
@@ -286,7 +286,7 @@ describe("secret rules resolution", () => {
     ]);
     const s = makeState(fd);
     const rules = stubRules({ "beast|in-aura|brazier|-": Effect.MELT });
-    const done = tickResolving(s, Action.WAIT, rules.table, rules.resolve);
+    const done = tickResolving(s, { op: Action.WAIT, arg: 0 }, rules.table, rules.resolve);
     expect(done.state.entities.length).toBe(0);
     expect(done.events.some((e) => e.type === Ev.MONSTER_MELTED)).toBe(true);
   });
@@ -303,12 +303,12 @@ describe("monster behavior (client-visible dispositions)", () => {
     const rules = stubRules();
     const beast = (): { x: number; y: number } => ({ x: s.entities[0]!.x, y: s.entities[0]!.y });
     const b0 = beast();
-    s = tickResolving(s, Action.MOVE_E, rules.table, rules.resolve).state; // stone: noise 2
+    s = tickResolving(s, { op: Action.MOVE_E, arg: 0 }, rules.table, rules.resolve).state; // stone: noise 2
     const b1 = beast();
     // the beast itself must have moved toward the noise (2 steps on stone)
     expect(Math.abs(b1.x - b0.x) + Math.abs(b1.y - b0.y)).toBe(2);
     expect(b1.x + b1.y).toBeLessThan(b0.x + b0.y); // toward the top-left noise
-    s = tickResolving(s, Action.WAIT, rules.table, rules.resolve).state; // silence
+    s = tickResolving(s, { op: Action.WAIT, arg: 0 }, rules.table, rules.resolve).state; // silence
     const b2 = beast();
     expect(b2.x).toBe(b1.x); // stand still and it is blind to you
     expect(b2.y).toBe(b1.y);
@@ -319,7 +319,7 @@ describe("monster behavior (client-visible dispositions)", () => {
       ]),
     );
     const c0 = { x: 8, y: 3 };
-    s2 = tickResolving(s2, Action.MOVE_E, rules.table, rules.resolve).state; // onto moss
+    s2 = tickResolving(s2, { op: Action.MOVE_E, arg: 0 }, rules.table, rules.resolve).state; // onto moss
     const c1 = { x: s2.entities[0]!.x, y: s2.entities[0]!.y };
     expect(Math.abs(c1.x - c0.x) + Math.abs(c1.y - c0.y)).toBe(1);
   });
@@ -333,7 +333,7 @@ describe("monster behavior (client-visible dispositions)", () => {
     expect(lightRadiusBase(s.wax, s.candle)).toBe(4);
     expect(effectiveRadius(s)).toBe(2); // −2 for two orbiters
     const rules = stubRules();
-    const after = tickResolving(s, Action.CUP, rules.table, rules.resolve).state;
+    const after = tickResolving(s, { op: Action.CUP, arg: 0 }, rules.table, rules.resolve).state;
     // cupped: moths scatter this very tick
     expect(after.entities.every((e) => e.state === MothState.SCATTER)).toBe(true);
   });
@@ -343,9 +343,9 @@ describe("monster behavior (client-visible dispositions)", () => {
     let s = makeState(fd);
     s.wax = 0; // dark → rats swarm (grace starts on the first tick)
     const rules = stubRules();
-    s = tickResolving(s, Action.SALT_E, rules.table, rules.resolve).state;
+    s = tickResolving(s, { op: Action.SALT_E, arg: 0 }, rules.table, rules.resolve).state;
     expect(s.salt[1 * 5 + 2]).toBe(1); // thrown 1 east
-    s = tickResolving(s, Action.WAIT, rules.table, rules.resolve).state;
+    s = tickResolving(s, { op: Action.WAIT, arg: 0 }, rules.table, rules.resolve).state;
     // the only approach crosses the salt — the rat is stuck at (3,1)
     expect(s.entities[0]!.x).toBe(3);
     expect(s.entities[0]!.y).toBe(1);
@@ -359,7 +359,7 @@ describe("descend + fx quarantine + replay stability", () => {
   test("descend carries the delver, swaps the floor", () => {
     let s = makeState(f1);
     s = runActions(s, [Action.MOVE_E]); // onto stairs
-    const r = tickResolving(s, Action.DESCEND, NONE.table, NONE.resolve);
+    const r = tickResolving(s, { op: Action.DESCEND, arg: 0 }, NONE.table, NONE.resolve);
     expect(r.state.status).toBe(Status.DESCENDING);
     expect(r.events.some((e) => e.type === Ev.DESCENDED)).toBe(true);
     const wax = r.state.wax;

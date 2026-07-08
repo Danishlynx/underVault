@@ -11,7 +11,7 @@
  * they have line of sight to. Own tile always visible.
  */
 
-import { TILE_FLAGS, F_OPAQUE, BRAZIER_RADIUS, FIRE_LIGHT_RADIUS } from "./constants.js";
+import { TILE_FLAGS, F_OPAQUE, BRAZIER_RADIUS, FIRE_LIGHT_RADIUS, GLOWMOSS_RADIUS } from "./constants.js";
 import { Tile, type SimState } from "./types.js";
 
 // Quadrant transforms: 0=N 1=E 2=S 3=W; (depth, col) → (x, y)
@@ -129,6 +129,9 @@ export function computeVisible(s: SimState, candleRadius: number): Uint8Array {
       hasSource = true;
     } else if (s.fire[i]! > 0) {
       shadowcast(s.tiles, s.w, s.h, i % s.w, (i / s.w) | 0, FIRE_LIGHT_RADIUS, glow);
+      hasSource = true;
+    } else if (s.tiles[i] === Tile.GLOWMOSS) {
+      shadowcast(s.tiles, s.w, s.h, i % s.w, (i / s.w) | 0, GLOWMOSS_RADIUS, glow);
       hasSource = true;
     }
   }
