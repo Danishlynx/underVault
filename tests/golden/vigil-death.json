@@ -1,0 +1,72 @@
+{
+  "goldenV": 1,
+  "name": "vigil-death",
+  "simVersion": 1,
+  "daySeed": 20260708,
+  "botSeed": 1,
+  "actionCount": 472,
+  "actionsB64": "AdgBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "checkpoints": [
+    {
+      "tick": 32,
+      "h32": "27c62f13"
+    },
+    {
+      "tick": 64,
+      "h32": "159dbb2a"
+    },
+    {
+      "tick": 96,
+      "h32": "b4750a45"
+    },
+    {
+      "tick": 128,
+      "h32": "318c3977"
+    },
+    {
+      "tick": 160,
+      "h32": "1754976c"
+    },
+    {
+      "tick": 192,
+      "h32": "63804657"
+    },
+    {
+      "tick": 224,
+      "h32": "4b5f7570"
+    },
+    {
+      "tick": 256,
+      "h32": "21443c62"
+    },
+    {
+      "tick": 288,
+      "h32": "41181b23"
+    },
+    {
+      "tick": 320,
+      "h32": "e20d6da0"
+    },
+    {
+      "tick": 352,
+      "h32": "0dce566c"
+    },
+    {
+      "tick": 384,
+      "h32": "006e58ef"
+    },
+    {
+      "tick": 416,
+      "h32": "16a92882"
+    },
+    {
+      "tick": 448,
+      "h32": "6472b311"
+    }
+  ],
+  "finalTick": 472,
+  "finalH32": "a6ef6e11",
+  "finalStatus": 1,
+  "finalWax": 0,
+  "finalFloor": 1
+}

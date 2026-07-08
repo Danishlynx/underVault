@@ -1,0 +1,76 @@
+{
+  "goldenV": 1,
+  "name": "dev-explore-bot1",
+  "simVersion": 1,
+  "daySeed": 20260708,
+  "botSeed": 1,
+  "actionCount": 500,
+  "actionsB64": "AfQBCCCCCENEEECCCBBFABIJEEDDKKDDDQNDDHDDFDDDIQDAADAGADADCAALCCDAAQHDBDBBHLFBBBBBAFEDDJDCCQQCCJLCNACCCFCJCJBEQQEEJEEOEPLEBQBBBNEEELLAEAEEEOEGLCBBBEEFEAJEEEAELMEBFIJBBLBAALPEBDAJDJADIDDBBBBBLBBBAIPEJNQAAJHDLEEFEQCLMICLOHCCCAIFPCCCCEHQJDDLEEALEGCQCJCFCFICCCCDDLDGAEECACIMEEEEDMDFDCNLLCCQCLCCCMCCAQCCDDDDJADMDDBFDBBJBBABLBBAABBBBCACCCLACFEJJELEAEEAFJEJBBQDDADDADDDDBALBBBBLEBCCCCACCACQQGQLCNCLLMLACDAOEEQQAEEEEBIBALAPBQBBFBAABLDHLQEDAJIJICOCCEAQDDMDPDDPDJDJCLCCACJADJGALDFDFFADJBBACFCBAABLFBDILDQDJDQADBBBBLG",
+  "checkpoints": [
+    {
+      "tick": 32,
+      "h32": "bfc1d95e"
+    },
+    {
+      "tick": 64,
+      "h32": "836d18fb"
+    },
+    {
+      "tick": 96,
+      "h32": "98eec7b5"
+    },
+    {
+      "tick": 128,
+      "h32": "2cc5dccd"
+    },
+    {
+      "tick": 160,
+      "h32": "47c6159b"
+    },
+    {
+      "tick": 192,
+      "h32": "3c5d4425"
+    },
+    {
+      "tick": 224,
+      "h32": "9a952a0d"
+    },
+    {
+      "tick": 256,
+      "h32": "e1d88867"
+    },
+    {
+      "tick": 288,
+      "h32": "c2e8f2b9"
+    },
+    {
+      "tick": 320,
+      "h32": "8190a4e7"
+    },
+    {
+      "tick": 352,
+      "h32": "e8c19bbf"
+    },
+    {
+      "tick": 384,
+      "h32": "fc23d415"
+    },
+    {
+      "tick": 416,
+      "h32": "e818cfdc"
+    },
+    {
+      "tick": 448,
+      "h32": "3bee17f2"
+    },
+    {
+      "tick": 480,
+      "h32": "207669bd"
+    }
+  ],
+  "finalTick": 500,
+  "finalH32": "2fe5eb96",
+  "finalStatus": 0,
+  "finalWax": 459,
+  "finalFloor": 1
+}

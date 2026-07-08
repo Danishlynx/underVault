@@ -1,0 +1,56 @@
+{
+  "goldenV": 1,
+  "name": "dev-explore-bot2",
+  "simVersion": 1,
+  "daySeed": 20260708,
+  "botSeed": 2,
+  "actionCount": 323,
+  "actionsB64": "AUMBCACKCCFNCCCAEEKKIEECCCCJCDADDDDBBBBPNMBBLNIBBBFLBBBQLCCCDQCQCJJCLGJHAJALCBAGBJBDQBBABABBBBDCEEHBBBBAAQBEEEEEEAEEAGEEOBBBBABLBJBBQJBEEEDJBAQBBQBQJBBBNEEELOBBBFGBBLHFGBBBBABFLBBJDLDDDNDDDCCCADDJQLLBBABBBCCCCQCGCECQCCNCICCCDANDDAEEDLQDDDALABECLPCCCBCCBAJEELELEEBBBBCCCLCAJCNCCCCACCEDDDQJAJJDADDEECLJCJAALAJCHCCDMQDHDDABNBBJLBHA",
+  "checkpoints": [
+    {
+      "tick": 32,
+      "h32": "66c93cb6"
+    },
+    {
+      "tick": 64,
+      "h32": "fba3802c"
+    },
+    {
+      "tick": 96,
+      "h32": "113113b0"
+    },
+    {
+      "tick": 128,
+      "h32": "65d32045"
+    },
+    {
+      "tick": 160,
+      "h32": "6c534e9b"
+    },
+    {
+      "tick": 192,
+      "h32": "f7316625"
+    },
+    {
+      "tick": 224,
+      "h32": "f2cee935"
+    },
+    {
+      "tick": 256,
+      "h32": "bf0fee1f"
+    },
+    {
+      "tick": 288,
+      "h32": "9e956fcd"
+    },
+    {
+      "tick": 320,
+      "h32": "a65c66fe"
+    }
+  ],
+  "finalTick": 323,
+  "finalH32": "4ad5ee71",
+  "finalStatus": 2,
+  "finalWax": 476,
+  "finalFloor": 1
+}

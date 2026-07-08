@@ -1,0 +1,20 @@
+{
+  "goldenV": 1,
+  "name": "dev-explore-bot4",
+  "simVersion": 1,
+  "daySeed": 20260708,
+  "botSeed": 4,
+  "actionCount": 37,
+  "actionsB64": "ASUACEEPJBBBBHDFDDEEEEKPAOJCCCBEKCCAACCEFA==",
+  "checkpoints": [
+    {
+      "tick": 32,
+      "h32": "5053c454"
+    }
+  ],
+  "finalTick": 37,
+  "finalH32": "68026e0b",
+  "finalStatus": 2,
+  "finalWax": 465,
+  "finalFloor": 1
+}
