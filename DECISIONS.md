@@ -296,3 +296,17 @@ candidates; flip them in the named data file, not in code.
     Effect.NONE learns; Epitaph force-opens over a same-tick Waystone sheet;
     Waystone lists only the current run's discoveries; HUD flame icon hides
     when snuffed; HUD button hit areas pinned against camera scroll.
+
+63. Richness pass, responding to operator reference shots (Ocean Keeper,
+    Hades, iso dioramas): (a) per-biome color grade - `setBiomeGrade(accent)`
+    in lights.ts re-derives the cool end of the tint ramp and MEMORY_TINT
+    from a per-biome accent hue (ember / verdigris tones / seal / bone /
+    void-blue / gold), applied in Descent.buildFloor, so each biome has its
+    own two-hue story (warm candle vs cool place); (b) deterministic set
+    dressing - six render-only deco textures (barrel, crate, rubble, bone
+    pile, candle stubs, crystal shard) scattered on ~18% of FLOOR and MOSS
+    tiles via an integer hash of (x, y, floor) with sub-tile offsets, lit
+    and memory-ghosted by the same light model as props. Pure presentation:
+    hash lives in tilemap.ts (render), sim never sees decos, goldens
+    untouched. Wall texture variants deferred to the next Design round
+    (brief updated with a richness addendum).

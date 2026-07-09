@@ -12,6 +12,17 @@ marks. NO mineral speckle storms, mortar seams, cracks, chips, or drip
 stains — at game scale they read as dirt. Variation comes from large quiet
 tonal blotches, bevels, and the lighting, never from high-frequency noise.
 
+## Richness addendum (operator references: Ocean Keeper, Hades, iso dioramas)
+
+What those references have that flat dungeons lack: **set dressing** (no
+bare surfaces — barrels, rubble, bones), a **two-hue grade** (warm light vs
+cool place-specific ambient), and **architectural variety**. The engine now
+supports: `deco-*` texture keys (barrel/crate/rubble/bones/stubs/shard —
+redesign freely, add more and register them in DECO_KEYS), per-biome accent
+grading, and per-position texture picking. HIGH-VALUE next round: 2–3 wall
+texture VARIANTS (carved pillar face, chain-hung, moss-cascade) under keys
+`iso-wall-2`/`iso-wall-3`, and richer biome-specific dressing sets.
+
 ## What the game is
 
 A community knowledge-roguelike set in a candle-lit vault. One shared daily
