@@ -608,7 +608,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
   // and the low CUT wall — the diorama cutaway that lets you see into
   // rooms, its sawn top plane catching the most light (the references'
   // "cut model" read).
-  const buildWall = (key: string, totalH: number, dress: "plain" | "banner" | "chains" | "moss" | "cut"): void => {
+  const buildWall = (key: string, totalH: number, dress: "plain" | "banner" | "chains" | "moss" | "cut" | "broken"): void => {
     const wall = T.createCanvas(key, TILE_W, totalH);
     if (wall === null) return;
     const ctx = hiBegin(wall);
@@ -789,6 +789,12 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     // and the ink rim instead (D65)
     const lidBase = mix(C.surface2, C.bone, dress === "cut" ? 0.10 : 0.14);
     stoneDiamond(ctx, TILE_W / 2, lidCy, lidBase, C.bone, C.void);
+    if (dress === "broken") {
+      // crumbled crown: two bites out of the silhouette (D69 — the
+      // reference dioramas' walls are never perfect prisms)
+      ctx.clearRect(10, 4, 12, 9);
+      ctx.clearRect(40, 3, 13, 9);
+    }
     if (dress === "cut") {
       // crisp rim so the stump's top edge reads as a cut, not a tile
       ctx.strokeStyle = INK;
@@ -818,6 +824,47 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
   buildWall("iso-wall-3", WALL_H, "chains");
   buildWall("iso-wall-4", WALL_H, "moss");
   buildWall("iso-wall-cut", TILE_H + 14, "cut");
+  buildWall("iso-wall-broken", WALL_H - 10, "broken");
+
+  // ── Diorama under-skirt (D69): the carved-block edge that hangs below
+  // boundary ground, selling "a room cut from rock, floating in the dark"
+  // (the reference dioramas' plinth) ────────────────────────────────────────
+  const buildSkirt = (key: string, left: boolean): void => {
+    const skirt = T.createCanvas(key, TILE_W, 26);
+    if (skirt === null) return;
+    const ctx = hiBegin(skirt);
+    const rockBase = mix(C.surface2, C.void, 0.2);
+    const x0 = left ? 0 : TILE_W;
+    const xm = TILE_W / 2;
+    const tone = left ? 0.5 : 0.95;
+    const g = ctx.createLinearGradient(0, 0, 0, 26);
+    g.addColorStop(0, shade(rockBase, 1.1 * tone));
+    g.addColorStop(1, shade(rockBase, 0.3 * tone));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x0, 0);
+    ctx.lineTo(xm, TILE_H / 2);
+    // rough hewn bottom: two confident notches, no noise
+    ctx.lineTo(xm, TILE_H / 2 + 8);
+    ctx.lineTo(left ? xm - 12 : xm + 12, TILE_H / 2 + 5);
+    ctx.lineTo(left ? xm - 22 : xm + 22, 12);
+    ctx.lineTo(x0, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // one horizontal strata line
+    ctx.strokeStyle = shade(rockBase, 1.5 * tone, 0.5);
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x0, 3);
+    ctx.lineTo(xm, TILE_H / 2 + 3);
+    ctx.stroke();
+    hiEnd(skirt);
+  };
+  buildSkirt("iso-skirt-l", true); // under the tile's south-facing edge
+  buildSkirt("iso-skirt-r", false); // under the tile's east-facing edge
 
   // ── Doors: timber + iron in a dressed-stone arch ─────────────────────────
   const doorTex = (key: string, panel: boolean, stuck: boolean): void => {

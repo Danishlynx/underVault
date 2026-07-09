@@ -54,8 +54,10 @@ import {
   GROUND_SCALE,
 } from "../render/tilemap.js";
 import {
+  computeGlowTints,
   computeLightMap,
   flickerHalo,
+  lerpColor,
   MEMORY_TINT,
   positionHalo,
   pulseGlows,
@@ -176,6 +178,8 @@ export class DescentScene extends Phaser.Scene {
   private lastTiles: Uint8Array = new Uint8Array(0);
   private props = new Map<number, PropView>();
   private decos = new Map<number, Phaser.GameObjects.Image>();
+  // diorama under-skirts, keyed i (south face) / i + tiles.length (east)
+  private skirts = new Map<number, Phaser.GameObjects.Image>();
   private overlays = new Map<string, Phaser.GameObjects.Image>();
   private glowPool: GlowPool = { images: new Map() };
   private cursorG!: Phaser.GameObjects.Graphics;
@@ -509,6 +513,8 @@ export class DescentScene extends Phaser.Scene {
     this.props.clear();
     this.decos.forEach((d) => d.destroy());
     this.decos.clear();
+    this.skirts.forEach((d) => d.destroy());
+    this.skirts.clear();
     this.overlays.forEach((o) => o.destroy());
     this.overlays.clear();
     this.glowPool.images.forEach((g) => g.destroy());
@@ -579,6 +585,31 @@ export class DescentScene extends Phaser.Scene {
       this.decos.set(i, img);
     }
 
+    // diorama under-skirt (D69): where ground meets the dark, a hewn rock
+    // face hangs below the edge — the room reads as a block carved from
+    // stone, floating in the void, like the reference dioramas
+    const fullWallAt = (xx: number, yy: number): boolean =>
+      s.tiles[yy * s.w + xx] === Tile.WALL && this.wallTextureAt(xx, yy) !== "iso-wall-cut";
+    const groundless = (xx: number, yy: number): boolean =>
+      xx < 0 || yy < 0 || xx >= s.w || yy >= s.h ||
+      s.tiles[yy * s.w + xx] === Tile.VOID || fullWallAt(xx, yy);
+    const addSkirt = (i: number, x: number, y: number, key: string, offset: number): void => {
+      const c = gridToScreen(x, y);
+      const img = this.add.image(c.sx, c.sy, key);
+      img.setOrigin(0.5, 0);
+      img.setScale(TEX_SCALE);
+      img.depth = depthOf(x, y, Layer.CORPSE) - 1;
+      this.worldLayer.add(img);
+      this.skirts.set(i + offset, img);
+    };
+    for (let i = 0; i < s.tiles.length; i++) {
+      const x = i % s.w;
+      const y = (i / s.w) | 0;
+      if (s.tiles[i] === Tile.VOID || fullWallAt(x, y)) continue;
+      if (groundless(x, y + 1)) addSkirt(i, x, y, "iso-skirt-l", 0);
+      if (groundless(x + 1, y)) addSkirt(i, x, y, "iso-skirt-r", s.tiles.length);
+    }
+
     const b = worldBounds(s.w, s.h);
     this.cameras.main.setBounds(b.x, b.y, b.width, b.height);
     this.cameras.main.startFollow(this.playerView, true, 0.12, 0.12);
@@ -635,12 +666,13 @@ export class DescentScene extends Phaser.Scene {
       );
     };
     if (open(x - 1, y) || open(x, y - 1) || open(x - 1, y - 1)) return "iso-wall-cut";
+    const h = (Math.imul(x, 131) ^ Math.imul(y, 61) ^ Math.imul(s.floor + 1, 401)) >>> 0;
+    const r = h % 100;
     if (open(x + 1, y) || open(x, y + 1) || open(x + 1, y + 1)) {
-      const h = (Math.imul(x, 131) ^ Math.imul(y, 61) ^ Math.imul(s.floor + 1, 401)) >>> 0;
-      const r = h % 100;
-      return r < 58 ? "iso-wall" : r < 72 ? "iso-wall-2" : r < 86 ? "iso-wall-3" : "iso-wall-4";
+      // back walls: mostly sound masonry, some crumbled crowns, some dressed
+      return r < 36 ? "iso-wall" : r < 58 ? "iso-wall-broken" : r < 72 ? "iso-wall-2" : r < 86 ? "iso-wall-3" : "iso-wall-4";
     }
-    return "iso-wall";
+    return r < 72 ? "iso-wall" : "iso-wall-broken";
   }
 
   /**
@@ -1320,6 +1352,12 @@ export class DescentScene extends Phaser.Scene {
 
     const effR = effectiveRadius(s);
     const light = computeLightMap(s, this.visibleMask, effR);
+    // colored pools around visible archways/shrines (D69)
+    const glowTints = computeGlowTints(s, this.visibleMask);
+    const stain = (i: number, base: number): number => {
+      const g = glowTints.get(i);
+      return g === undefined ? base : lerpColor(base, g.color, g.t);
+    };
 
     const layer = this.groundLayer;
     if (layer !== null) {
@@ -1329,7 +1367,7 @@ export class DescentScene extends Phaser.Scene {
           if (tile === null) continue;
           const i = y * s.w + x;
           if (this.visibleMask[i]! === 1) {
-            tile.tint = tintForLight(light[i]!);
+            tile.tint = stain(i, tintForLight(light[i]!));
             tile.setAlpha(1);
           } else if (s.seen[i]! === 1) {
             tile.tint = MEMORY_TINT;
@@ -1387,7 +1425,14 @@ export class DescentScene extends Phaser.Scene {
       const seen = s.seen[i]! === 1;
       const vis = this.visibleMask[i]! === 1;
       img.setVisible(seen);
-      if (seen) img.setTint(vis ? tintForLight(light[i]!) : MEMORY_TINT);
+      if (seen) img.setTint(vis ? stain(i, tintForLight(light[i]!)) : MEMORY_TINT);
+    });
+    this.skirts.forEach((img, key) => {
+      const i = key % s.tiles.length; // east-face keys are offset (D69)
+      const seen = s.seen[i]! === 1;
+      const vis = this.visibleMask[i]! === 1;
+      img.setVisible(seen);
+      if (seen) img.setTint(vis ? stain(i, tintForLight(light[i]!)) : MEMORY_TINT);
     });
 
     this.props.forEach((prop, i) => {
@@ -1397,7 +1442,7 @@ export class DescentScene extends Phaser.Scene {
       const vis = this.visibleMask[i]! === 1;
       prop.sprite.setVisible(seen);
       if (!seen) return;
-      prop.sprite.setTint(vis ? tintForLight(Math.min(light[i]! + 0.08, 1)) : MEMORY_TINT);
+      prop.sprite.setTint(vis ? stain(i, tintForLight(Math.min(light[i]! + 0.08, 1))) : MEMORY_TINT);
       // cut walls are knee-high — they never hide the delver (D65).
       // Tall walls and doors ghost when their 96px body buries ANY ground
       // the FOV says you can see (a monster you can see must never render

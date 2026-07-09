@@ -15,7 +15,7 @@ import { BRAZIER_RADIUS, FIRE_LIGHT_RADIUS } from "../../shared/sim/constants.js
 import { gridToScreen, TILE_H, TILE_W } from "./iso.js";
 
 // ── Token-derived tint ramp ────────────────────────────────────────────────
-function lerpColor(a: number, b: number, t: number): number {
+export function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
   const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
   const r = Math.round(ar + (br - ar) * t);
@@ -43,6 +43,55 @@ export function setBiomeGrade(accent: number): void {
 export function tintForLight(light: number): number {
   const t = Math.pow(Math.min(Math.max(light, 0), 1), 0.8); // soft knee
   return lerpColor(coolDark, WARM_WHITE, t);
+}
+
+// ── Feature glow tints (D69) ───────────────────────────────────────────────
+// The reference dioramas pool COLORED light around every archway. Special
+// doors and shrines are already visible tile types (no secret leaks), so
+// each stains the nearby floor with its own palette-safe hue. Renderer
+// cosmetics only; sources tint nothing until their tile enters FOV.
+interface FeatureGlowDef {
+  color: number;
+  radius: number;
+  strength: number;
+}
+const FEATURE_GLOWS: Record<number, FeatureGlowDef> = {
+  [Tile.DOOR_HUNGER]: { color: COLOR.ember, radius: 3, strength: 0.5 },
+  [Tile.DOOR_CHOIR]: { color: COLOR.verdigris, radius: 3, strength: 0.45 },
+  [Tile.DOOR_SIGIL]: { color: COLOR.seal, radius: 3, strength: 0.5 },
+  [Tile.DOOR_IRON]: { color: COLOR.boneDim, radius: 2, strength: 0.4 },
+  [Tile.ALTAR]: { color: COLOR.goldInk, radius: 3, strength: 0.5 },
+  [Tile.POOL]: { color: COLOR.verdigrisDim, radius: 3, strength: 0.5 },
+  [Tile.FONT]: { color: COLOR.parchment, radius: 2, strength: 0.35 },
+  [Tile.SEAL]: { color: COLOR.goldInk, radius: 4, strength: 0.6 },
+  [Tile.WAYSTONE]: { color: COLOR.verdigris, radius: 3, strength: 0.45 },
+  [Tile.GLOWMOSS]: { color: COLOR.verdigris, radius: 2, strength: 0.5 },
+  [Tile.INSCRIPTION]: { color: COLOR.verdigrisDim, radius: 2, strength: 0.3 },
+};
+
+/** Per-tile hue stain from visible glowing features: index → lerp target. */
+export function computeGlowTints(s: SimState, visible: Uint8Array): Map<number, { color: number; t: number }> {
+  const out = new Map<number, { color: number; t: number }>();
+  for (let i = 0; i < s.tiles.length; i++) {
+    const def = FEATURE_GLOWS[s.tiles[i]!];
+    if (def === undefined || visible[i]! !== 1) continue;
+    const gx = i % s.w;
+    const gy = (i / s.w) | 0;
+    for (let dy = -def.radius; dy <= def.radius; dy++) {
+      for (let dx = -def.radius; dx <= def.radius; dx++) {
+        const x = gx + dx;
+        const y = gy + dy;
+        if (x < 0 || y < 0 || x >= s.w || y >= s.h) continue;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const t = def.strength * Math.max(0, 1 - d / (def.radius + 0.6));
+        if (t <= 0.02) continue;
+        const ti = y * s.w + x;
+        const prev = out.get(ti);
+        if (prev === undefined || prev.t < t) out.set(ti, { color: def.color, t });
+      }
+    }
+  }
+  return out;
 }
 
 // ── Light field ────────────────────────────────────────────────────────────
@@ -145,15 +194,30 @@ export function syncSourceGlows(
     img.setVisible(true);
   };
 
+  // colored feature halos (D69): every glowing archway/shrine gets a soft
+  // additive pool, like the reference dioramas — visible tiles only
+  const FEATURE_HALO: Record<number, [number, number]> = {
+    [Tile.BRAZIER_LIT]: [2.6, COLOR.flame],
+    [Tile.WAYSTONE]: [1.3, COLOR.verdigris],
+    [Tile.DOOR_HUNGER]: [1.7, COLOR.ember],
+    [Tile.DOOR_CHOIR]: [1.7, COLOR.verdigris],
+    [Tile.DOOR_SIGIL]: [1.7, COLOR.seal],
+    [Tile.ALTAR]: [1.9, COLOR.goldInk],
+    [Tile.POOL]: [1.8, COLOR.verdigrisDim],
+    [Tile.SEAL]: [2.4, COLOR.goldInk],
+    [Tile.GLOWMOSS]: [1.4, COLOR.verdigris],
+  };
   for (let i = 0; i < s.tiles.length; i++) {
+    if (visible[i]! !== 1) continue;
     const x = i % s.w;
     const y = (i / s.w) | 0;
-    if (s.tiles[i] === Tile.BRAZIER_LIT && visible[i]! === 1) {
-      place(`b:${i}`, x, y, 2.6, COLOR.flame);
-    } else if (s.fire[i]! > 0 && visible[i]! === 1) {
-      place(`f:${i}`, x, y, 1.8, COLOR.ember);
-    } else if (s.tiles[i] === Tile.WAYSTONE && visible[i]! === 1) {
-      place(`w:${i}`, x, y, 1.3, COLOR.verdigris);
+    const t = s.tiles[i]!;
+    if (t === Tile.BRAZIER_LIT) place(`b:${i}`, x, y, 2.6, COLOR.flame);
+    else if (s.fire[i]! > 0) place(`f:${i}`, x, y, 1.8, COLOR.ember);
+    else if (t === Tile.WAYSTONE) place(`w:${i}`, x, y, 1.3, COLOR.verdigris);
+    else if (FEATURE_HALO[t] !== undefined) {
+      const [tiles, tint] = FEATURE_HALO[t];
+      place(`d:${i}`, x, y, tiles, tint);
     }
   }
   pool.images.forEach((img, key) => {
@@ -167,8 +231,10 @@ export function pulseGlows(pool: GlowPool, time: number): void {
     if (!img.visible) return;
     const phase = (key.charCodeAt(2) * 131) % 1000;
     const isFire = key.startsWith("f:");
-    const speed = isFire ? 90 : 240;
-    const amp = isFire ? 0.22 : 0.1;
-    img.setAlpha(0.75 + amp * Math.sin((time + phase) / speed));
+    const isFeature = key.startsWith("d:"); // quieter than open flame (D69)
+    const speed = isFire ? 90 : isFeature ? 340 : 240;
+    const amp = isFire ? 0.22 : isFeature ? 0.07 : 0.1;
+    const base = isFeature ? 0.42 : 0.75;
+    img.setAlpha(base + amp * Math.sin((time + phase) / speed));
   });
 }

@@ -107,7 +107,8 @@ describe("biome generator (floors 1–25)", () => {
   // D64 regression sweep: braziers/chests/shrines placed after the door
   // check used to seal ~1.8% of floors — a per-pair sample this small never
   // tripped it. 1500 floors would have expected ~27 hits before the fix.
-  test("broad sweep: no floor is sealed by blocking features (60 seeds × 25 floors)", () => {
+  // 1500 generated floors — needs more than the 5s default under load
+  test("broad sweep: no floor is sealed by blocking features (60 seeds × 25 floors)", { timeout: 30_000 }, () => {
     const passable = (t: number): boolean =>
       (TILE_FLAGS[t]! & F_WALK) !== 0 || t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK;
     for (let seed = 5000; seed < 5060; seed++) {

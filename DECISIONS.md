@@ -430,3 +430,21 @@ candidates; flip them in the named data file, not in code.
     backbuffer ~1.5x - a mild global softness. Fixing it means a
     DPR-scaled backbuffer + HUD metric multiplication (Hud layout
     constants are in buffer px); logged for the M2 resolution revisit.
+
+69. Diorama richness pass (operator reference: stock iso dungeon diorama -
+    colored archway light, crumbled walls, carved plinth). Three render-
+    only additions, all palette-safe per the two-hue art direction:
+    (a) FEATURE GLOWS - visible special doors and shrines pool colored
+    light: Hunger ember, Choir verdigris, Sigil seal-red, Iron cold bone,
+    Altar/Seal gold, Pool verdigrisDim, Font parchment, Waystone/Glowmoss
+    verdigris, Inscription faint verdigris. computeGlowTints() stains
+    ground/prop/deco tints near visible sources (radius 2-4, strength
+    .3-.6, strongest-wins lerp), plus soft additive halos with a quiet
+    breathing pulse (base .42, amp .07). No secrets leak: these tile types
+    already render distinct textures; glows activate only inside FOV.
+    (b) UNDER-SKIRT - where ground meets void (S/E neighbor is VOID, OOB,
+    or full wall), a hewn rock face (iso-skirt-l/r) hangs below the edge;
+    with the D65 cut stubs above, rooms read as blocks carved from stone
+    floating in the dark. (c) BROKEN WALLS - iso-wall-broken (86px, two
+    silhouette bites from the crown) mixed into full-wall picks: back
+    walls 36% plain / 22% broken / 42% dressed; boundary walls 72/28.
