@@ -15,12 +15,15 @@ import {
   Effect,
   Ev,
   EntityKind,
+  Item,
   MothState,
   Status,
   Tile,
   WormState,
   isRuleRequest,
 } from "./types.js";
+import { keyDropSpot } from "./systems.js";
+import { NOISE_BELL, BELL_PEAL_TICKS } from "./constants.js";
 import { floorFromAscii, makeState, stubRules, runActions, ent } from "../../../tests/helpers.js";
 
 const NONE = stubRules();
@@ -404,5 +407,130 @@ describe("descend + fx quarantine + replay stability", () => {
     const rb = runActions(makeState(fd), script, rules2);
     expect(hashState(ra)).toBe(hashState(rb));
     expect(Array.from(ra.seen)).toEqual(Array.from(rb.seen));
+  });
+});
+
+// ── D64 glitch-hunt fixes ───────────────────────────────────────────────────
+
+describe("waystone banking (D64)", () => {
+  test("BANK works standing beside the stone, free of wax", () => {
+    const fd = floorFromAscii(["#####", "#@Y.#", "#####"]);
+    const r = tickResolving(makeState(fd), { op: Action.BANK, arg: 3 }, NONE.table, NONE.resolve);
+    expect(r.state.banked).toBe(3);
+    expect(r.state.wax).toBe(500);
+    expect(r.events.some((e) => e.type === Ev.BANKED)).toBe(true);
+  });
+
+  test("BANK far from any stone demotes without a shard", () => {
+    const fd = floorFromAscii(["#####", "#@..#", "#####"]);
+    const r = tickResolving(makeState(fd), { op: Action.BANK, arg: 2 }, NONE.table, NONE.resolve);
+    expect(r.state.banked).toBe(0);
+    expect(r.events.some((e) => e.type === Ev.REJECTED)).toBe(true);
+  });
+
+  test("a waystone shard charge pays for a remote BANK", () => {
+    const fd = floorFromAscii(["#####", "#@..#", "#####"]);
+    const s = makeState(fd);
+    s.inv[3] = Item.WSHARD;
+    s.invCharges[3] = 1;
+    const r = tickResolving(s, { op: Action.BANK, arg: 2 }, NONE.table, NONE.resolve);
+    expect(r.state.banked).toBe(2);
+    expect(r.state.inv[3]).toBe(Item.NONE); // charge burned on commit
+  });
+});
+
+describe("bell decoy (D64)", () => {
+  test("the peal outlives the throw and shrugs off footsteps", () => {
+    const fd = floorFromAscii(["########", "#....@.#", "########"]);
+    let s = makeState(fd);
+    s.inv[3] = Item.BELL;
+    s.invCharges[3] = 1;
+    s = runActions(s, [{ op: Action.USE, arg: (3 << 2) | 3 }]); // throw west
+    expect(s.noiseX).toBe(1); // landed 4 tiles down the corridor
+    expect(s.noiseLevel).toBe(NOISE_BELL + BELL_PEAL_TICKS - 1); // faded once
+    s = runActions(s, [Action.MOVE_E, Action.MOVE_W, Action.MOVE_E]);
+    expect(s.noiseX).toBe(1); // footsteps did not hijack the decoy
+    const walk: number[] = [];
+    for (let i = 0; i < BELL_PEAL_TICKS + 2; i++) walk.push(i % 2 === 0 ? Action.MOVE_W : Action.MOVE_E);
+    s = runActions(s, walk);
+    expect(s.noiseX).toBe(s.px); // long faded - footsteps own the noise again
+  });
+});
+
+describe("key drop placement (D64)", () => {
+  test("floor first, then floor neighbours, then moss; never the void", () => {
+    const fd = floorFromAscii(["######", "#@.m.#", "######"]);
+    const s = makeState(fd);
+    expect(keyDropSpot(s, 2, 1)).toBe(1 * 6 + 2); // floor under the corpse
+    expect(keyDropSpot(s, 3, 1)).toBe(1 * 6 + 4); // moss death -> floor beside
+
+    const mossOnly = floorFromAscii(["###", "#m#", "###"]);
+    const sm = makeState(mossOnly);
+    expect(keyDropSpot(sm, 1, 1)).toBe(1 * 3 + 1); // moss beats losing the key
+
+    const drowned = floorFromAscii(["###", "#.#", "###"]);
+    const sw = makeState(drowned);
+    sw.tiles[1 * 3 + 1] = Tile.WATER;
+    expect(keyDropSpot(sw, 1, 1)).toBe(-1); // nowhere to put it
+  });
+});
+
+describe("chest with full hands (D64)", () => {
+  test("chest keeps its hoard; opens once a slot frees", () => {
+    const fd = floorFromAscii(["####", "#@.#", "####"]);
+    const s = makeState(fd);
+    const ci = 1 * 4 + 2;
+    s.tiles[ci] = Tile.CHEST;
+    for (let i = 0; i < 6; i++) {
+      s.inv[i] = Item.KEY_IRON; // keys never stack: every roll must fail
+      s.invCharges[i] = 1;
+    }
+    const r1 = tickResolving(s, { op: Action.INTERACT_E, arg: 0 }, NONE.table, NONE.resolve);
+    expect(r1.state.tiles[ci]).toBe(Tile.CHEST); // hoard kept, nothing lost
+    expect(r1.events.some((e) => e.type === Ev.HANDS_FULL)).toBe(true);
+    expect(r1.events.some((e) => e.type === Ev.DROPPED_LOOT)).toBe(false);
+
+    const s2 = r1.state;
+    s2.inv[5] = Item.NONE;
+    s2.invCharges[5] = 0;
+    const r2 = tickResolving(s2, { op: Action.INTERACT_E, arg: 0 }, NONE.table, NONE.resolve);
+    expect(r2.state.tiles[ci]).toBe(Tile.FLOOR);
+    expect(r2.events.some((e) => e.type === Ev.CHEST_LOOT)).toBe(true);
+    expect(r2.state.inv[5]).not.toBe(Item.NONE);
+  });
+});
+
+describe("salt insulation (D64)", () => {
+  test("a salt line under your own feet breaks conduction", () => {
+    const fd = floorFromAscii(["#####", "#@..#", "#####"], [ent(1, EntityKind.DROWNED, 3, 1, 1, 1)]);
+    const wet = (st: ReturnType<typeof makeState>): void => {
+      st.tiles[1 * 5 + 1] = Tile.WATER;
+      st.tiles[1 * 5 + 2] = Tile.WATER;
+      st.tiles[1 * 5 + 3] = Tile.WATER;
+    };
+    const sA = makeState(fd);
+    wet(sA);
+    const rA = tickResolving(sA, { op: Action.WAIT, arg: 0 }, NONE.table, NONE.resolve);
+    expect(rA.events.some((e) => e.type === Ev.SHOCK)).toBe(true);
+
+    const sB = makeState(fd);
+    wet(sB);
+    sB.salt[1 * 5 + 1] = 1; // the line under the player
+    const rB = tickResolving(sB, { op: Action.WAIT, arg: 0 }, NONE.table, NONE.resolve);
+    expect(rB.events.some((e) => e.type === Ev.SHOCK)).toBe(false);
+  });
+});
+
+describe("moth orbit (D64)", () => {
+  test("a blocked moth flutters in place instead of teleporting through you", () => {
+    const fd = floorFromAscii(
+      ["#####", "#.@.#", "#####"],
+      [ent(1, EntityKind.MOTH, 1, 1, 1, MothState.ORBIT)],
+    );
+    let s = makeState(fd);
+    s = runActions(s, [Action.WAIT, Action.WAIT, Action.WAIT]);
+    const moth = s.entities.find((e) => e.kind === EntityKind.MOTH)!;
+    expect(moth.x).toBe(1); // old code jumped the ring to (3,1) through the player
+    expect(moth.y).toBe(1);
   });
 });

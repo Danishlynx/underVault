@@ -331,6 +331,48 @@ export function generateBiomeFloor(rng: Uint32Array, floor: number, opts?: GenOp
     const shrines = [Tile.ALTAR, Tile.POOL, Tile.FONT];
     placeWallAdjacent(shrines[rollInt(rng, Stream.GEN, shrines.length)]!, 1);
   }
+  // features BLOCK movement — a brazier/chest/shrine landing on a room's
+  // only mouth can seal the stairs. Re-verify and demote offenders to
+  // FLOOR (no RNG draws: unaffected layouts stay byte-identical). D64
+  {
+    const blockingFeature = (t: number): boolean =>
+      t === Tile.BRAZIER_UNLIT ||
+      t === Tile.BRAZIER_LIT ||
+      t === Tile.CHEST ||
+      t === Tile.ALTAR ||
+      t === Tile.POOL ||
+      t === Tile.FONT;
+    for (let guard = 0; guard < 12; guard++) {
+      const d4 = bfsFromEntry(passablePlain);
+      let sealed = false;
+      for (let i = 0; i < n; i++) {
+        if (passablePlain(tiles[i]!) && d4[i]! < 0) {
+          sealed = true;
+          break;
+        }
+      }
+      if (!sealed) break;
+      // demote a feature that straddles the cut: reachable ground on one
+      // side, sealed-off walkable ground on the other
+      let demoteAt = -1;
+      for (let j = 0; j < n && demoteAt < 0; j++) {
+        if (!blockingFeature(tiles[j]!)) continue;
+        const x = j % w;
+        const y = (j / w) | 0;
+        let touchesIn = false;
+        let touchesOut = false;
+        for (let k = 0; k < 4; k++) {
+          const ni = at(x + DX[k]!, y + DY[k]!);
+          if (ni < 0 || ni >= n) continue;
+          if (d4[ni]! >= 0) touchesIn = true;
+          else if (passablePlain(tiles[ni]!)) touchesOut = true;
+        }
+        if (touchesIn && touchesOut) demoteAt = j;
+      }
+      if (demoteAt < 0) return null; // sealed by something else — reroll
+      tiles[demoteAt] = Tile.FLOOR;
+    }
+  }
   if (floor >= 9) {
     // cipher inscriptions on walls beside walked ground (01 §6/§12)
     let placed = 0;

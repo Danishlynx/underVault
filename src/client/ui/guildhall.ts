@@ -188,6 +188,9 @@ export function openGuildhall(
   let holdTimer: number | undefined;
   const startHold = (): void => {
     if (holdTimer !== undefined) return;
+    // a sheet (Codex) above the hall swallows the strike — keyboard focus
+    // must not light the match behind an open book (D64)
+    if (host.querySelector(".uv-backdrop") !== null) return;
     seal.classList.add("uv-hall-holding");
     holdTimer = window.setTimeout(() => {
       holdTimer = undefined;
@@ -250,7 +253,11 @@ export function openGuildhall(
   const foot = el("footer", "uv-hall-foot");
   const codexBtn = el("button", "uv-ink-btn", "Codex") as HTMLButtonElement;
   codexBtn.type = "button";
-  codexBtn.addEventListener("click", onCodex);
+  codexBtn.addEventListener("click", () => {
+    codexBtn.blur(); // keyboard Enter must not stack a second book (D64)
+    if (host.querySelector(".uv-backdrop") !== null) return;
+    onCodex();
+  });
   foot.appendChild(codexBtn);
   const how = el("ul", "uv-list uv-hall-how");
   how.hidden = true;

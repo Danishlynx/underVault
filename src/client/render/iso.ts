@@ -88,7 +88,9 @@ export const OCCLUSION_FADE_MS = 120;
 /** Grid reference for the inspect plaque ("Fl. VII · K4"): column letter,
  *  1-based row (01 §6). */
 export function gridRef(x: number, y: number): string {
-  return `${String.fromCharCode(65 + x)}${y + 1}`;
+  // 28-wide deep floors run past Z — spreadsheet-style AA, AB… (D64)
+  const col = x < 26 ? String.fromCharCode(65 + x) : `A${String.fromCharCode(65 + (x - 26))}`;
+  return `${col}${y + 1}`;
 }
 
 /** World-extent helpers for camera bounds. MARGIN keeps the clamped camera

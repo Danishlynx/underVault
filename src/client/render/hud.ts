@@ -15,6 +15,20 @@ import { START_WAX } from "../../shared/sim/constants.js";
 import { TEX_SCALE } from "./tilemap.js";
 
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+/** Slot icon per carriable item — chalk is the fallback no more (D64). */
+const ITEM_ICON: Record<number, string> = {
+  [Item.FLINT]: "icon-flint",
+  [Item.SALT]: "icon-salt",
+  [Item.CHALK]: "icon-chalk",
+  [Item.MIRROR]: "icon-mirror",
+  [Item.BELL]: "icon-bell",
+  [Item.GLOWVIAL]: "icon-glowvial",
+  [Item.DOUSE]: "icon-douse",
+  [Item.KEY_IRON]: "icon-key",
+  [Item.KEY_MASTER]: "icon-keymaster",
+  [Item.WSHARD]: "icon-wshard",
+};
 const SANS = "system-ui, sans-serif"; // 04 §2.2 body fallback stack
 const SERIF = "Georgia, serif"; // display fallback until bitmap fonts (W4)
 
@@ -300,12 +314,15 @@ export class Hud {
         icon.setVisible(false);
         underline.setAlpha(0);
       } else {
-        icon.setTexture(item === Item.FLINT ? "icon-flint" : item === Item.SALT ? "icon-salt" : "icon-chalk");
+        icon.setTexture(ITEM_ICON[item] ?? "icon-chalk");
         icon.setVisible(true);
         icon.setAlpha(charges === 0 ? 0.28 : 1);
         underline.setAlpha(charges === 0 ? 0.15 : 0.8);
       }
-      this.slotCharges[i]!.setText(item === Item.SALT || item === Item.CHALK ? String(charges) : "");
+      // every multi-charge consumable shows its count (D64)
+      const countable = item !== Item.NONE && item !== Item.FLINT &&
+        item !== Item.KEY_IRON && item !== Item.KEY_MASTER;
+      this.slotCharges[i]!.setText(countable && charges > 0 ? String(charges) : "");
     }
 
     if (state.graceLeft > 0) {

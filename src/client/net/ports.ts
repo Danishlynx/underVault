@@ -97,13 +97,29 @@ export interface GamePorts {
 export class SessionRules {
   private readonly cache = new Map<string, number>();
   readonly learned: LearnedRule[] = [];
+  /**
+   * Known rules the sim consulted since the last drain — the "passive
+   * re-observation" feed for confirmObservations (a key learned in run 1
+   * never re-enters `learned`, so without this the codex could never reach
+   * the ink threshold). D64
+   */
+  private touched = new Set<string>();
 
   get(key: string): number | undefined {
-    return this.cache.get(key);
+    const eff = this.cache.get(key);
+    if (eff !== undefined) this.touched.add(key);
+    return eff;
   }
 
   set(key: string, effect: number): void {
     if (!this.cache.has(key)) this.learned.push({ key, effect });
     this.cache.set(key, effect);
+  }
+
+  /** Keys re-observed since the last call; clears the slate. */
+  drainTouched(): string[] {
+    const out = [...this.touched].sort();
+    this.touched.clear();
+    return out;
   }
 }

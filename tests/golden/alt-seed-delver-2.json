@@ -4,8 +4,8 @@
   "simVersion": 2,
   "daySeed": 987654321,
   "botSeed": 22,
-  "actionCount": 142,
-  "actionsB64": "Ao4ABBCGCCCDDDCHDDDHDDDDCQDGCEEEEEECEEEEBBRDDEEEEEEEEEBBABCCCBBBBEEBBBBBBBSWCMEMEEEEEEEEEEGGOGOOGGGIIiEEEGGMEEEEEEMCCCCCEECCCCCCCIOIIIQQQQQQQQQQCQQA",
+  "actionCount": 141,
+  "actionsB64": "Ao0ABBCGCCCDDDCHDDDHDDDDCQDGCEEEEEECEEEEBBRDDEEEEEEEEEBBABCCCBBBBEEBBBBBBBSWCMEMEEEEEEEEEEGGGOOGGGIIiEEEGGMEEEEEECMCCCCEECCCCCCCIIOIIQQQQQQQQQQQCQA=",
   "checkpoints": [
     {
       "tick": 32,
@@ -17,15 +17,15 @@
     },
     {
       "tick": 96,
-      "h32": "5fceae5f"
+      "h32": "023a992a"
     },
     {
       "tick": 128,
-      "h32": "e5190e66"
+      "h32": "4c234cae"
     }
   ],
-  "finalTick": 142,
-  "finalH32": "80a24a12",
+  "finalTick": 141,
+  "finalH32": "277733f3",
   "finalStatus": 1,
   "finalWax": 0,
   "finalFloor": 3

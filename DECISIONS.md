@@ -310,3 +310,43 @@ candidates; flip them in the named data file, not in code.
     hash lives in tilemap.ts (render), sim never sees decos, goldens
     untouched. Wall texture variants deferred to the next Design round
     (brief updated with a richness addendum).
+
+64. Glitch-hunt fixes (4-lens adversarial workflow; 3 findings verifier-
+    confirmed, the rest reproduced headlessly by the finders). Sim: BANK
+    accepts standing on OR 4-adjacent to a waystone (the sheet opens from
+    an adjacent interact, so banking never registered - the Seal/victory
+    was unreachable); the waystone-shard charge now burns at BANK time, so
+    a cancelled sheet refunds nothing wrongly; bell decoys plant at
+    NOISE_BELL + BELL_PEAL_TICKS(6) and fade one step per tick, immune to
+    quieter noise (previously self-destructed on the throw tick); Rustling
+    key drops scan self->4-neighbours->diagonals for FLOOR then MOSS
+    instead of silently destroying the key (DROPPED_LOOT only fires when a
+    drop exists); full-handed chest opens keep the hoard in the chest (new
+    Ev.HANDS_FULL) instead of annihilating the item behind a "it spills"
+    toast; salt under the player's own feet insulates against Drownedkin
+    shock; orbiting moths advance one ring slot per tick (no teleports
+    through the player). Gen: connectivity re-verified AFTER braziers/
+    chests/shrines place; a feature straddling the cut demotes to FLOOR
+    (was sealing ~1.8% of floors incl. dev day-1 floor-1; 0/7500 after;
+    regression sweep 60 seeds x 25 floors added). Adapter: corpses re-seat
+    on nearest open ground (any F_WALK tile, monster-occupied fallback)
+    instead of vanishing with their unbanked truths unless the tile was
+    exactly FLOOR; chalk/glowmoss/echoes are day-scoped (raw indices on a
+    reseeded layout painted marks onto walls; M2 re-anchors); re-banking a
+    known truth ticks confirms. Codex inking: SessionRules records known
+    rules the sim re-consults ("touched"); run-end confirms = learned +
+    touched, so INK_AT=5 is reachable (was capped at 2 forever). Client:
+    echoRing clears on descend (ghosts replayed previous-floor coords
+    through walls); Codex writes and bankedKeys commit on Ev.BANKED, not
+    optimistically (demoted BANK stranded claims off the corpse path);
+    BANK/SIGN sheet commits drop stale queued moves (full queue silently
+    ate composed signs); first-seen entities are placed, not glided from
+    world origin; descend snaps player+camera instantly; Fever Ring toast
+    edge-triggers; pointercancel/gameout clear press state (phantom
+    long-press across scene.restart); gridRef supports AA+ columns on
+    28-wide floors; 7 missing item icons drawn (mirror/bell/glowvial/
+    douse/iron key/master key/shard) with charge counts on all
+    consumables; Guildhall strike and Codex button ignore input while a
+    sheet covers the hall. Goldens re-minted (12; sim semantics changed).
+    Known deferred: master key stolen by a Rustling still drops as an
+    iron key (typed ground-drops need an M2 tile or entity field).

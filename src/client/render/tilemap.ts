@@ -2941,6 +2941,197 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     hiEnd(iconChalk);
   }
 
+  // every carriable item gets its own woodcut icon — 7 of 10 kinds used to
+  // fall back to the chalk stick (D64)
+  const iconMirror = T.createCanvas("icon-mirror", 28, 28);
+  if (iconMirror !== null) {
+    const ctx = hiBegin(iconMirror);
+    // a jagged shard, one cold glint
+    const g = ctx.createLinearGradient(6, 5, 20, 24);
+    g.addColorStop(0, shade(C.bone, 1.15));
+    g.addColorStop(0.5, shade(C.verdigrisDim, 1.2));
+    g.addColorStop(1, shade(C.surface2, 0.9));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(9, 4);
+    ctx.lineTo(21, 8);
+    ctx.lineTo(17, 24);
+    ctx.lineTo(7, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.strokeStyle = shade(C.bone, 1.5, 0.9);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(11, 7);
+    ctx.lineTo(15, 20);
+    ctx.stroke();
+    hiEnd(iconMirror);
+  }
+  const iconBell = T.createCanvas("icon-bell", 28, 28);
+  if (iconBell !== null) {
+    const ctx = hiBegin(iconBell);
+    const g = ctx.createLinearGradient(6, 5, 22, 20);
+    g.addColorStop(0, shade(C.goldInk, 1.15));
+    g.addColorStop(1, shade(C.goldInk, 0.6));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(14, 4);
+    ctx.bezierCurveTo(20, 4, 21, 12, 22, 18);
+    ctx.lineTo(6, 18);
+    ctx.bezierCurveTo(7, 12, 8, 4, 14, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // lip + clapper
+    ctx.strokeStyle = shade(C.goldInk, 0.5);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(6, 18);
+    ctx.lineTo(22, 18);
+    ctx.stroke();
+    ctx.fillStyle = shade(C.ink, 1.1);
+    ctx.beginPath();
+    ctx.arc(14, 21.5, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    hiEnd(iconBell);
+  }
+  const iconGlowvial = T.createCanvas("icon-glowvial", 28, 28);
+  if (iconGlowvial !== null) {
+    const ctx = hiBegin(iconGlowvial);
+    // corked vial, verdigris light inside
+    ctx.fillStyle = shade(C.surface2, 1.5, 0.85);
+    ctx.beginPath();
+    ctx.moveTo(11, 8);
+    ctx.lineTo(11, 12);
+    ctx.bezierCurveTo(7, 15, 7, 22, 14, 23.5);
+    ctx.bezierCurveTo(21, 22, 21, 15, 17, 12);
+    ctx.lineTo(17, 8);
+    ctx.closePath();
+    ctx.fill();
+    const g = ctx.createRadialGradient(14, 18, 1, 14, 18, 6);
+    g.addColorStop(0, shade(C.verdigris, 1.3));
+    g.addColorStop(1, shade(C.verdigrisDim, 0.8, 0.4));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(14, 18, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(11, 8);
+    ctx.lineTo(11, 12);
+    ctx.bezierCurveTo(7, 15, 7, 22, 14, 23.5);
+    ctx.bezierCurveTo(21, 22, 21, 15, 17, 12);
+    ctx.lineTo(17, 8);
+    ctx.closePath();
+    ctx.stroke();
+    // cork
+    ctx.fillStyle = shade(C.parchmentAged, 0.8);
+    ctx.fillRect(10.5, 5, 7, 3.5);
+    ctx.strokeRect(10.5, 5, 7, 3.5);
+    hiEnd(iconGlowvial);
+  }
+  const iconDouse = T.createCanvas("icon-douse", 28, 28);
+  if (iconDouse !== null) {
+    const ctx = hiBegin(iconDouse);
+    // a snuffer cap on its rod
+    const g = ctx.createLinearGradient(8, 6, 18, 16);
+    g.addColorStop(0, shade(C.boneDim, 1.1));
+    g.addColorStop(1, shade(C.boneDim, 0.5));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(13, 4);
+    ctx.bezierCurveTo(18, 5, 20, 10, 20, 14);
+    ctx.lineTo(6, 14);
+    ctx.bezierCurveTo(6, 10, 8, 5, 13, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(20, 14);
+    ctx.lineTo(25, 23);
+    ctx.stroke();
+    // a last wisp of smoke
+    ctx.strokeStyle = shade(C.boneDim, 1.4, 0.6);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(13, 17);
+    ctx.quadraticCurveTo(11, 20, 13, 23);
+    ctx.stroke();
+    hiEnd(iconDouse);
+  }
+  const drawKey = (key: string, tone: string): void => {
+    const cv = T.createCanvas(key, 28, 28);
+    if (cv === null) return;
+    const ctx = hiBegin(cv);
+    ctx.save();
+    ctx.translate(14, 14);
+    ctx.rotate(-0.7);
+    ctx.strokeStyle = shade(tone, 1);
+    ctx.lineWidth = 2.2;
+    // bow
+    ctx.beginPath();
+    ctx.arc(-6, 0, 3.6, 0, Math.PI * 2);
+    ctx.stroke();
+    // shaft + wards
+    ctx.beginPath();
+    ctx.moveTo(-2.4, 0);
+    ctx.lineTo(9, 0);
+    ctx.moveTo(6, 0);
+    ctx.lineTo(6, 4);
+    ctx.moveTo(9, 0);
+    ctx.lineTo(9, 3);
+    ctx.stroke();
+    ctx.restore();
+    // ink rim for read-at-size
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(9.4, 18.4, 4.6, 0, Math.PI * 2);
+    ctx.stroke();
+    hiEnd(cv);
+  };
+  drawKey("icon-key", C.boneDim);
+  drawKey("icon-keymaster", C.goldInk);
+  const iconWshard = T.createCanvas("icon-wshard", 28, 28);
+  if (iconWshard !== null) {
+    const ctx = hiBegin(iconWshard);
+    // a sliver of standing stone, rune still faintly lit
+    const g = ctx.createLinearGradient(8, 4, 18, 24);
+    g.addColorStop(0, shade(C.surface2, 1.6));
+    g.addColorStop(1, shade(C.surface2, 0.8));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(13, 3);
+    ctx.lineTo(19, 8);
+    ctx.lineTo(17, 25);
+    ctx.lineTo(10, 25);
+    ctx.lineTo(8, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.strokeStyle = shade(C.verdigris, 1.2);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(13, 9);
+    ctx.lineTo(14, 14);
+    ctx.moveTo(11.5, 12);
+    ctx.lineTo(16, 12);
+    ctx.moveTo(13, 16);
+    ctx.lineTo(14, 21);
+    ctx.stroke();
+    hiEnd(iconWshard);
+  }
+
   // ── Screen-space atmosphere ──────────────────────────────────────────────
   const vignette = T.createCanvas("uv-vignette", 480, 854);
   if (vignette !== null) {

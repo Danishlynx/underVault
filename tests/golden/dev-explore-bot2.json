@@ -4,65 +4,17 @@
   "simVersion": 2,
   "daySeed": 20260708,
   "botSeed": 2,
-  "actionCount": 421,
-  "actionsB64": "AqUBCACKCCFNCCCAEEKKIEECCAICCDADDDDBBBAOLQBBAMQBEAEBMLBBBSKEEGQEklKZAxI4BIBYQIBoJIIaSggAgAggggwhBBwQQAgAEhCCCCCCDiEhhoBnAggggAlgkggpNCACCDJBFBBSckoFIJogghZwIIIowIJZwowIIIIAIpYIJIZYYYZoYCAYQQQAYZKBZYIIAIIIQARYSQRghAkAgjQjwgggwECAQBBAy0kiiAFgAiACFoCBABAhBAgEgAglgEAggggghBBFgAAEhIEABBBClhCBhhpWJJDADDEECLJCJAALAJCHCCDMSsOGGACgCOIIOkYQIEw8EEEEU0EEEgkE0EAgEYIMMQAMIIcsIYAIIsIBKA6AR4wQQQYYAo6AIoIIggBYgQQIoKRQTQQASSyQRwBgSwAQQQSCQjAjywiwhkASwRw=",
+  "actionCount": 63,
+  "actionsB64": "Aj8ACACKCCFNCCCAEEKKIEECCAICCDADDDDBBBAOLQBBAMQBEAEBMLBBBSKEEGQEklKZAwA=",
   "checkpoints": [
     {
       "tick": 32,
-      "h32": "a2935dc2"
-    },
-    {
-      "tick": 64,
-      "h32": "44b19fea"
-    },
-    {
-      "tick": 96,
-      "h32": "36761169"
-    },
-    {
-      "tick": 128,
-      "h32": "5e5171e4"
-    },
-    {
-      "tick": 160,
-      "h32": "f2db18eb"
-    },
-    {
-      "tick": 192,
-      "h32": "68010e35"
-    },
-    {
-      "tick": 224,
-      "h32": "45dbf53f"
-    },
-    {
-      "tick": 256,
-      "h32": "5636e0a9"
-    },
-    {
-      "tick": 288,
-      "h32": "e202a475"
-    },
-    {
-      "tick": 320,
-      "h32": "4ef02c77"
-    },
-    {
-      "tick": 352,
-      "h32": "e25c40c1"
-    },
-    {
-      "tick": 384,
-      "h32": "8c7c77fe"
-    },
-    {
-      "tick": 416,
-      "h32": "13d98740"
+      "h32": "4ef89ef2"
     }
   ],
-  "finalTick": 421,
-  "finalH32": "0a882bbd",
+  "finalTick": 63,
+  "finalH32": "a50d752f",
   "finalStatus": 2,
-  "finalWax": 500,
+  "finalWax": 416,
   "finalFloor": 1
 }

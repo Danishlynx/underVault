@@ -211,6 +211,7 @@ export const Ev = {
   VICTORY: 55, // the Bottom
   ALERT: 56, // floor-wide aggro began
   BANKED: 57, // a = count of claims committed
+  HANDS_FULL: 58, // chest kept its hoard — a = item id it holds
 } as const;
 
 export interface OutcomeEvent {

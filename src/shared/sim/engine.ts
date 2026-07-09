@@ -43,6 +43,7 @@ import {
   DX,
   DY,
   NOISE_BELL,
+  BELL_PEAL_TICKS,
   NOISE_INTERACT,
   NOISE_SOFT,
   NOISE_STONE,
@@ -472,7 +473,9 @@ export function tick(state: SimState, step: Step, rules: RuleTable): TickResult 
           }
           s.noiseX = lx;
           s.noiseY = ly;
-          s.noiseLevel = NOISE_BELL;
+          // planted ABOVE NOISE_BELL: levels > NOISE_BELL mark the decoy,
+          // which fades one step per tick and shrugs off quieter sounds
+          s.noiseLevel = NOISE_BELL + BELL_PEAL_TICKS;
           consumeCharge(s, Item.BELL);
           ev(ctx, Ev.ITEM_USED, Item.BELL);
           // a Choir door adjacent to the peal swings open (01 §10)
@@ -528,7 +531,8 @@ export function tick(state: SimState, step: Step, rules: RuleTable): TickResult 
           break;
         }
         case Item.WSHARD: {
-          consumeCharge(s, Item.WSHARD);
+          // the charge burns when the commitment lands (Action.BANK), not
+          // when the shard is raised — cancelling the sheet costs nothing
           ev(ctx, Ev.ITEM_USED, Item.WSHARD);
           ev(ctx, Ev.WAYSTONE_TOUCHED, s.px, s.py); // the Vault listens remotely
           break;
@@ -541,10 +545,17 @@ export function tick(state: SimState, step: Step, rules: RuleTable): TickResult 
 
     case Action.BANK: {
       // waystone commitment: the sim only tracks the COUNT (the Seal reads
-      // it); which claims went into the Codex is the server/adapter's book
-      const onWaystone = s.tiles[idx(s, s.px, s.py)] === Tile.WAYSTONE;
+      // it); which claims went into the Codex is the server/adapter's book.
+      // Touching the stone happens from an adjacent tile, so BANK accepts
+      // on-or-beside; away from any stone a waystone-shard charge pays
+      let nearStone = s.tiles[idx(s, s.px, s.py)] === Tile.WAYSTONE;
+      for (let d = 0; d < 4 && !nearStone; d++) {
+        const nx = s.px + DX[d]!;
+        const ny = s.py + DY[d]!;
+        if (inBounds(s, nx, ny) && s.tiles[idx(s, nx, ny)] === Tile.WAYSTONE) nearStone = true;
+      }
       const count = step.arg & 3;
-      if (!onWaystone || count === 0) {
+      if (count === 0 || (!nearStone && !consumeCharge(s, Item.WSHARD))) {
         demote();
         break;
       }
@@ -572,16 +583,22 @@ export function tick(state: SimState, step: Step, rules: RuleTable): TickResult 
 
   // 4b. sound
   if (s.mods.quietFeet === 1 && action >= Action.MOVE_N && action <= Action.MOVE_W) noise = 0;
-  if (noise > 0) {
-    if (s.noiseLevel !== NOISE_BELL || noise >= NOISE_BELL) {
+  if (s.noiseLevel > NOISE_BELL) {
+    // an echoing decoy peal: holds its ground, fades one step a tick,
+    // and only a louder sound can claim the dark's attention
+    if (noise > s.noiseLevel) {
       s.noiseX = s.px;
       s.noiseY = s.py;
       s.noiseLevel = noise;
+    } else {
+      s.noiseLevel = s.noiseLevel - 1;
     }
-  } else if (s.noiseLevel !== NOISE_BELL) {
-    s.noiseLevel = 0;
+  } else if (noise > 0) {
+    s.noiseX = s.px;
+    s.noiseY = s.py;
+    s.noiseLevel = noise;
   } else {
-    s.noiseLevel = s.noiseLevel - 1; // a decoy peal fades
+    s.noiseLevel = 0;
   }
 
   // 5. burn

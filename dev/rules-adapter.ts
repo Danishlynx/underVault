@@ -8,7 +8,7 @@
 import { resolveRuleKey, omenForSeed, type OmenDay } from "../src/server/rules/resolve.js";
 import { generateFloor } from "../src/shared/gen/index.js";
 import { EntityKind, Tile, type FloorData } from "../src/shared/sim/types.js";
-import { HP } from "../src/shared/sim/constants.js";
+import { HP, TILE_FLAGS, F_WALK } from "../src/shared/sim/constants.js";
 import { describeRuleKey } from "../src/client/ui/vocab.js";
 import type {
   CodexEntryRec,
@@ -47,10 +47,14 @@ class Session {
   corpses: CorpseRec[] = [];
   echoes: EchoRecord[] = [];
   codex: CodexRow[] = [];
-  chalkByFloor = new Map<number, Uint8Array>();
+  // chalk/glowmoss/echoes are DAY-scoped: the vault reseeds nightly, so raw
+  // tile indices from yesterday land on unrelated tiles (walls, stairs) of
+  // today's map. Corpses alone cross days (72 h TTL, 01 §13) — they carry a
+  // position, not a bitmap, and get re-seated on the nearest open ground. D64
+  chalkByDayFloor = new Map<string, Uint8Array>();
   signsByDayFloor = new Map<string, { tileIndex: number; template: number; noun: number }[]>();
   brazierByDayFloor = new Map<string, number[]>();
-  glowmossByFloor = new Map<number, number[]>();
+  glowmossByDayFloor = new Map<string, number[]>();
   fallenToday = 0;
   runsToday = 0;
   house: string | null = null;
@@ -84,12 +88,12 @@ export function createDevPorts(): GamePorts {
       for (const i of lit) {
         if (fd.tiles[i] === Tile.BRAZIER_UNLIT) fd.tiles[i] = Tile.BRAZIER_LIT;
       }
-      // permanent gifts: planted glowmoss
-      for (const i of S.glowmossByFloor.get(floor) ?? []) {
+      // gifts planted earlier today: glowmoss (M2 re-anchors across days)
+      for (const i of S.glowmossByDayFloor.get(S.dayFloorKey(floor)) ?? []) {
         if (fd.tiles[i] === Tile.FLOOR || fd.tiles[i] === Tile.MOSS) fd.tiles[i] = Tile.GLOWMOSS;
       }
-      // your chalk persists into your future days (01 §9)
-      const chalk = S.chalkByFloor.get(floor);
+      // your chalk persists across today's runs (01 §9)
+      const chalk = S.chalkByDayFloor.get(S.dayFloorKey(floor));
       if (chalk !== undefined && chalk.length === n) fd.chalk = chalk.slice();
       // day-scoped signs
       const signs = new Uint8Array(n);
@@ -97,19 +101,35 @@ export function createDevPorts(): GamePorts {
         signs[rec.tileIndex] = 1;
       }
       fd.signs = signs;
-      // corpses within TTL walk among the entities (kind CORPSE)
+      // corpses within TTL walk among the entities (kind CORPSE); a death
+      // on moss/water/a doorway (or under a monster) re-seats the fallen on
+      // the nearest open ground — a corpse must never silently vanish, it
+      // carries the run's unbanked truths (01 §13). D64
+      const seatFor = (cx: number, cy: number): { x: number; y: number } | null => {
+        const SX = [0, 0, 1, 0, -1, 1, 1, -1, -1, 0, 2, 0, -2];
+        const SY = [0, -1, 0, 1, 0, -1, 1, 1, -1, -2, 0, 2, 0];
+        for (let k = 0; k < SX.length; k++) {
+          const x = cx + SX[k]!;
+          const y = cy + SY[k]!;
+          if (x < 0 || y < 0 || x >= fd.w || y >= fd.h) continue;
+          if ((TILE_FLAGS[fd.tiles[y * fd.w + x]!]! & F_WALK) === 0) continue;
+          if (fd.entities.some((e) => e.x === x && e.y === y)) continue;
+          if (x === fd.px && y === fd.py) continue;
+          return { x, y };
+        }
+        return null;
+      };
       for (let c = 0; c < S.corpses.length; c++) {
         const corpse = S.corpses[c]!;
         if (corpse.recovered || corpse.floor !== floor) continue;
         if (S.day - corpse.day >= CORPSE_DAYS) continue;
-        const occupied = fd.entities.some((e) => e.x === corpse.x && e.y === corpse.y);
-        const walkable = fd.tiles[corpse.y * fd.w + corpse.x] === Tile.FLOOR;
-        if (!occupied && walkable) {
+        const seat = seatFor(corpse.x, corpse.y);
+        if (seat !== null) {
           fd.entities.push({
             id: fd.nextEntityId++,
             kind: EntityKind.CORPSE,
-            x: corpse.x,
-            y: corpse.y,
+            x: seat.x,
+            y: seat.y,
             hp: HP[EntityKind.CORPSE]!,
             state: 0,
             data: c, // corpseRef
@@ -118,7 +138,8 @@ export function createDevPorts(): GamePorts {
       }
       fd.entities.sort((a, b) => a.id - b.id);
 
-      const echoes = S.echoes.filter((e) => e.floor === floor && S.day - e.day < CORPSE_DAYS);
+      // echoes replay only on the layout they were walked on (today's)
+      const echoes = S.echoes.filter((e) => e.floor === floor && e.day === S.day);
       return { floorData: fd, rngInit: g.rngInit, echoes };
     },
 
@@ -153,6 +174,9 @@ export function createDevPorts(): GamePorts {
       for (const claim of claims.slice(0, 3)) {
         const existing = S.codex.find((c) => c.ruleKey === claim.key);
         if (existing !== undefined) {
+          // re-banking a known truth confirms it (01 §10 → inks at 5)
+          existing.confirms++;
+          if (existing.confirms >= INK_AT && existing.status !== "inked") existing.status = "inked";
           out.push({ ...existing });
           continue;
         }
@@ -213,9 +237,10 @@ export function createDevPorts(): GamePorts {
     },
 
     glowmossPlanted(floor: number, tileIndex: number): void {
-      const arr = S.glowmossByFloor.get(floor) ?? [];
+      const key = S.dayFloorKey(floor);
+      const arr = S.glowmossByDayFloor.get(key) ?? [];
       if (!arr.includes(tileIndex)) arr.push(tileIndex);
-      S.glowmossByFloor.set(floor, arr);
+      S.glowmossByDayFloor.set(key, arr);
     },
 
     signPlaced(floor: number, tileIndex: number, template: number, noun: number): void {
@@ -230,7 +255,7 @@ export function createDevPorts(): GamePorts {
     },
 
     chalkChanged(floor: number, chalk: Uint8Array): void {
-      S.chalkByFloor.set(floor, chalk.slice());
+      S.chalkByDayFloor.set(S.dayFloorKey(floor), chalk.slice());
     },
 
     corpseRecovered(corpseRef: number): { unbanked: LearnedRule[]; gift: CorpseGift | null } {

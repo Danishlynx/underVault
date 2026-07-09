@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The Descent v2 — the whole day loop, locally: Guildhall → match-strike
  * (audio unlock) → run (full bestiary, items, doors, shrines, omens) →
  * bank ≤3 at waystones → death/exit/victory ceremonies → next day.
@@ -193,6 +193,8 @@ export class DescentScene extends Phaser.Scene {
 
   private runBaseline = 0; // rules.learned length at run start
   private bankedKeys = new Set<string>();
+  private pendingBank: LearnedRule[] | null = null; // committed only on Ev.BANKED
+  private feverOn = false; // Fever Ring proximity edge-trigger
   private recovered: LearnedRule[] = [];
   private echoRing: { x: number; y: number; candle: number }[] = [];
   private floorEchoes: EchoRecord[] = [];
@@ -224,6 +226,13 @@ export class DescentScene extends Phaser.Scene {
     this.running = false;
     this.state = null;
     this.queue = [];
+    // stale press state survives scene.restart — a phantom long-press
+    // would fire on the new run's first frames (D64)
+    this.pressTile = null;
+    this.pressConsumed = false;
+    this.pendingBump = null;
+    this.pendingBank = null;
+    this.feverOn = false;
     this.props.clear();
     this.overlays.clear();
     this.entityViews.clear();
@@ -386,7 +395,7 @@ export class DescentScene extends Phaser.Scene {
   /** Run over (death handled separately): rest ends the day. */
   private finishRun(restAtDusk: boolean): void {
     if (this.state !== null && this.running) {
-      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.confirmRun();
       this.ports.reportExit();
     }
     this.running = false;
@@ -400,6 +409,17 @@ export class DescentScene extends Phaser.Scene {
       .slice(this.runBaseline)
       .filter((r) => r.effect !== Effect.NONE)
       .concat(this.recovered);
+  }
+
+  /**
+   * Run-end confirmations: everything learned this run PLUS every known
+   * rule the sim re-consulted (passive re-observation) — without the
+   * latter, confirms cap at 2 and the Codex can never ink (D64).
+   */
+  private confirmRun(): void {
+    const keys = new Set<string>(this.learnedThisRun().map((r) => r.key));
+    for (const k of this.rules.drainTouched()) keys.add(k);
+    this.ports.confirmObservations([...keys]);
   }
 
   private unbankedThisRun(): LearnedRule[] {
@@ -586,6 +606,18 @@ export class DescentScene extends Phaser.Scene {
       this.tapTile(press.x, press.y);
     });
 
+    // interrupted touches (notification shade, browser gesture) never send
+    // pointerup — clear the press so no phantom long-press fires later (D64)
+    const cancelPress = (): void => {
+      this.pressTile = null;
+      this.pressConsumed = false;
+    };
+    this.input.on("gameout", cancelPress);
+    this.game.canvas.addEventListener("pointercancel", cancelPress);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.canvas.removeEventListener("pointercancel", cancelPress);
+    });
+
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
       this.cursorG.clear();
       if (this.overlayOpen || !this.running || this.state === null) return;
@@ -684,6 +716,9 @@ export class DescentScene extends Phaser.Scene {
       nouns,
       (template, noun) => {
         this.overlayOpen = false;
+        // drop moves queued before the composer opened: the sign must plant
+        // where it was composed, and a full queue must never eat it (D64)
+        this.queue = [];
         const templateIdx = SIGN_TEMPLATES.indexOf(template);
         const nounIdx = Math.max(0, nouns.indexOf(noun));
         this.enqueue(Action.SIGN, (((templateIdx < 0 ? 0 : templateIdx) & 7) << 5) | (nounIdx & 31));
@@ -803,7 +838,14 @@ export class DescentScene extends Phaser.Scene {
       this.echoPlayed.clear();
       this.visibleMask = visibleFor(this.state);
       this.queue = [];
+      // the ring must not leak previous-floor coordinates into a death
+      // echo recorded on this floor (D64)
+      this.echoRing = [];
       this.buildFloor();
+      // place everything instantly and snap the camera: no sprite-slide
+      // from old-floor coordinates across the new map (D64)
+      this.redraw(true);
+      this.cameras.main.centerOn(this.playerView.x, this.playerView.y);
       this.audio.play("descend");
       this.cameras.main.flash(MOTION.ceremonial, 11, 10, 16);
       const biome = biomeFor(this.state.floor);
@@ -848,8 +890,19 @@ export class DescentScene extends Phaser.Scene {
         this.openBank();
         break;
       case Ev.BANKED:
+        if (this.pendingBank !== null) {
+          for (const p of this.pendingBank) this.bankedKeys.add(p.key);
+          this.ports.bankClaims(this.pendingBank);
+          this.pendingBank = null;
+        }
         this.hud.toast(`${e.a} truth${e.a === 1 ? "" : "s"} committed to the Codex.`, "discovery");
         cue("bank");
+        break;
+      case Ev.REJECTED:
+        if (e.a === Action.BANK && this.pendingBank !== null) {
+          this.pendingBank = null;
+          this.hud.toast("The stone is beyond reach — nothing was committed.", "warning");
+        }
         break;
       case Ev.STAIRS_TOUCHED:
         this.hud.toast("Stairs down. Enter (or tap yourself) to descend.", "info");
@@ -943,6 +996,9 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.DROPPED_LOOT:
         this.hud.toast(`It drops the ${subjectItem(e.a)}.`, "discovery");
+        break;
+      case Ev.HANDS_FULL:
+        this.hud.toast(`Your hands are full — the chest keeps its ${subjectItem(e.a)}.`, "info");
         break;
       case Ev.PICKPOCKET:
         this.hud.toast("His master key comes away in silence.", "discovery");
@@ -1199,10 +1255,14 @@ export class DescentScene extends Phaser.Scene {
     });
 
     const alive = new Set<number>();
+    let feverNear = false;
     for (const ent of s.entities) {
       alive.add(ent.id);
       let view = this.entityViews.get(ent.id);
       let shadowView = this.entityShadows.get(ent.id);
+      // a first-seen entity is PLACED, never glided — otherwise it streaks
+      // in from world (0,0) at the map's corner (D64)
+      const justBorn = view === undefined;
       if (view === undefined) {
         view = this.add.image(0, 0, entityTextureFor(ent.kind, ent.state));
         view.setOrigin(0.5, 1);
@@ -1223,9 +1283,9 @@ export class DescentScene extends Phaser.Scene {
       }
       const c = gridToScreen(ent.x, ent.y);
       const flies = ent.kind === EntityKind.MOTH || ent.kind === EntityKind.GASLIGHT;
-      this.glide(view, c.sx, c.sy + HALF_H - (flies ? 14 : 2), depthOf(ent.x, ent.y, Layer.ENTITY), instant);
+      this.glide(view, c.sx, c.sy + HALF_H - (flies ? 14 : 2), depthOf(ent.x, ent.y, Layer.ENTITY), instant || justBorn);
       if (shadowView !== undefined) {
-        this.glide(shadowView, c.sx, c.sy + 4, depthOf(ent.x, ent.y, Layer.CORPSE), instant);
+        this.glide(shadowView, c.sx, c.sy + 4, depthOf(ent.x, ent.y, Layer.CORPSE), instant || justBorn);
       }
       const lastX = this.entityLastX.get(ent.id)!;
       if (ent.x !== lastX) view.setFlipX(ent.x < lastX);
@@ -1243,9 +1303,12 @@ export class DescentScene extends Phaser.Scene {
       // heirloom whispers
       if (s.heirloom === 2 && ent.kind === EntityKind.MIMIC && ent.state === MimicState.DISGUISED) {
         const d = Math.abs(ent.x - s.px) + Math.abs(ent.y - s.py);
-        if (d === 1) this.hud.toast("Your ring warms.", "discovery");
+        if (d === 1) feverNear = true;
       }
     }
+    // edge-triggered: one whisper on approach, not a toast per redraw (D64)
+    if (feverNear && !this.feverOn) this.hud.toast("Your ring warms.", "discovery");
+    this.feverOn = feverNear;
     this.entityViews.forEach((view, id) => {
       if (!alive.has(id)) {
         view.destroy();
@@ -1284,8 +1347,11 @@ export class DescentScene extends Phaser.Scene {
       (picked) => {
         this.overlayOpen = false;
         if (picked.length > 0) {
-          for (const p of picked) this.bankedKeys.add(p.key);
-          this.ports.bankClaims(picked);
+          // nothing is committed yet: the Codex write and bankedKeys wait
+          // for Ev.BANKED so the ledger can never outrun the sim (D64) —
+          // and stale queued moves are dropped so BANK runs at the stone
+          this.queue = [];
+          this.pendingBank = picked;
           this.enqueue(Action.BANK, picked.length & 3);
         }
       },
@@ -1318,7 +1384,7 @@ export class DescentScene extends Phaser.Scene {
         unbanked: this.unbankedThisRun(),
         echoFrames: this.echoRing.slice(),
       });
-      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.confirmRun();
       this.afterCeremony(rest);
     });
   }
@@ -1331,7 +1397,7 @@ export class DescentScene extends Phaser.Scene {
     this.overlayOpen = true;
     this.running = false;
     openExitSheet(host, s, this.runSummary(), (rest) => {
-      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.confirmRun();
       this.ports.reportExit();
       this.afterCeremony(rest);
     });
@@ -1344,7 +1410,7 @@ export class DescentScene extends Phaser.Scene {
     this.overlayOpen = true;
     this.running = false;
     openVictorySheet(host, this.runSummary(), () => {
-      this.ports.confirmObservations(this.learnedThisRun().map((r) => r.key));
+      this.confirmRun();
       this.afterCeremony(true);
     });
   }

@@ -103,4 +103,24 @@ describe("biome generator (floors 1–25)", () => {
     const again = generateFloor(777, 1, { spawnMul: { [EntityKind.RAT]: 3 } });
     expect(again.floorData.entities).toEqual(vermin.floorData.entities);
   });
+
+  // D64 regression sweep: braziers/chests/shrines placed after the door
+  // check used to seal ~1.8% of floors — a per-pair sample this small never
+  // tripped it. 1500 floors would have expected ~27 hits before the fix.
+  test("broad sweep: no floor is sealed by blocking features (60 seeds × 25 floors)", () => {
+    const passable = (t: number): boolean =>
+      (TILE_FLAGS[t]! & F_WALK) !== 0 || t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK;
+    for (let seed = 5000; seed < 5060; seed++) {
+      for (let floor = 1; floor <= MAX_FLOOR; floor++) {
+        const { floorData } = generateFloor(seed, floor);
+        const { tiles, w, h, px, py } = floorData;
+        const dist = bfsReachable(tiles, w, h, px, py);
+        for (let i = 0; i < tiles.length; i++) {
+          if (passable(tiles[i]!) && dist[i]! < 0) {
+            expect.fail(`seed ${seed} floor ${floor}: walkable (${i % w},${(i / w) | 0}) sealed off`);
+          }
+        }
+      }
+    }
+  });
 });

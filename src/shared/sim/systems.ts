@@ -260,6 +260,26 @@ function boom(ctx: Ctx, x: number, y: number): void {
   if (cheb(s.px, s.py, x, y) <= 1) damagePlayer(ctx, GAS_BOOM_DAMAGE, DmgSource.FIRE);
 }
 
+/**
+ * Nearest tile that can carry a KEY_DROP without erasing anything that
+ * matters: the spot itself, then its 4-neighbours, then diagonals — plain
+ * FLOOR preferred over MOSS. Returns -1 when nothing near can hold it.
+ */
+export function keyDropSpot(s: SimState, x: number, y: number): number {
+  const SX = [0, 0, 1, 0, -1, 1, 1, -1, -1];
+  const SY = [0, -1, 0, 1, 0, -1, 1, 1, -1];
+  for (const want of [Tile.FLOOR, Tile.MOSS] as const) {
+    for (let k = 0; k < 9; k++) {
+      const nx = x + SX[k]!;
+      const ny = y + SY[k]!;
+      if (!inBounds(s, nx, ny)) continue;
+      const i = idx(s, nx, ny);
+      if (s.tiles[i] === want) return i;
+    }
+  }
+  return -1;
+}
+
 // ── Killing & rule effects ─────────────────────────────────────────────────
 function removeEntity(s: SimState, id: number): void {
   for (let i = 0; i < s.entities.length; i++) {
@@ -276,9 +296,11 @@ export function killEntity(ctx: Ctx, e: Entity, melted: boolean): string | null 
   ev(ctx, melted ? Ev.MONSTER_MELTED : Ev.MONSTER_DIED, e.id, e.kind);
   // stolen goods return to the floor (Rustlings)
   if (e.kind === EntityKind.RUSTLING && e.data !== 0) {
-    ev(ctx, Ev.DROPPED_LOOT, e.data);
-    const i = idx(s, e.x, e.y);
-    if (s.tiles[i] === Tile.FLOOR) s.tiles[i] = Tile.KEY_DROP;
+    const di = keyDropSpot(s, e.x, e.y);
+    if (di >= 0) {
+      s.tiles[di] = Tile.KEY_DROP;
+      ev(ctx, Ev.DROPPED_LOOT, e.data);
+    }
   }
   // Bellhung drop a Bell when cut down (01 §8 #9)
   if (e.kind === EntityKind.BELLHUNG) {
@@ -461,11 +483,12 @@ export function interactTile(ctx: Ctx, x: number, y: number): InteractOutcome | 
       // real chest: open and take (mimics are entities wearing this face)
       const roll = rollInt(s.rng, Stream.LOOT, CHEST_LOOT.length);
       const [item, charges] = CHEST_LOOT[roll]!;
-      s.tiles[i] = Tile.FLOOR;
-      if (giveItem(s, item, charges)) ev(ctx, Ev.CHEST_LOOT, item);
-      else {
-        ev(ctx, Ev.DROPPED_LOOT, item); // hands full — it spills
-        if (item === Item.KEY_IRON) s.tiles[i] = Tile.KEY_DROP;
+      if (giveItem(s, item, charges)) {
+        s.tiles[i] = Tile.FLOOR;
+        ev(ctx, Ev.CHEST_LOOT, item);
+      } else {
+        // hands full: the chest keeps its hoard — come back lighter
+        ev(ctx, Ev.HANDS_FULL, item);
       }
       return { ...OK };
     }
@@ -732,15 +755,14 @@ export function aiPass(ctx: Ctx, effRadius: number, lastMoveDir: number): string
                 break;
               }
             }
-            for (let step = 1; step <= 8; step++) {
-              const i = (cur + step) & 7;
-              const nx = s.px + OX[i]!;
-              const ny = s.py + OY[i]!;
-              if (canEnter(s, e, nx, ny, true, false)) {
-                e.x = nx;
-                e.y = ny;
-                break;
-              }
+            // one ring slot per tick — a blocked moth flutters in place
+            // rather than teleporting through the player (D64)
+            const ni = (cur + 1) & 7;
+            const nx = s.px + OX[ni]!;
+            const ny = s.py + OY[ni]!;
+            if (canEnter(s, e, nx, ny, true, false)) {
+              e.x = nx;
+              e.y = ny;
             }
           }
         } else if (e.state === MothState.SEEK) {
@@ -976,7 +998,9 @@ export function shockPass(ctx: Ctx): string | null {
   const s = ctx.s;
   const pi = idx(s, s.px, s.py);
   if (s.tiles[pi] !== Tile.WATER || s.status !== 0) return null;
-  // flood the player's water component; salt bridges break conduction
+  // flood the player's water component; salt bridges break conduction —
+  // including a salt line under the player's own feet
+  if (s.salt[pi]! !== 0) return null;
   const region = new Uint8Array(s.w * s.h);
   const q = [pi];
   region[pi] = 1;

@@ -110,6 +110,7 @@ export const NOISE_STONE = 2;
 export const NOISE_SOFT = 1;
 export const NOISE_INTERACT = 2;
 export const NOISE_BELL = 3; // thrown decoy (01 §9)
+export const BELL_PEAL_TICKS = 6; // decoy holds the dark's attention this long (⚖ D64)
 
 // ── Items (01 §9; charges ⚖ DECISIONS 15) ──────────────────────────────────
 export const START_INVENTORY: readonly [number, number][] = [
