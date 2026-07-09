@@ -21,7 +21,12 @@ export function createUndervaultGame(parent: HTMLElement, ports: GamePorts): Pha
     type: Phaser.WEBGL,
     parent,
     backgroundColor: COLOR.void,
-    pixelArt: true,
+    // NOT pixelArt (D68): that flag forces NEAREST filtering — right for
+    // retro sprites, ruinous for our supersampled painterly masters (it
+    // was the "why is everything pixelated" bug). Linear + mipmaps keeps
+    // the 4× masters crisp at every camera zoom.
+    antialias: true,
+    mipmapFilter: "LINEAR_MIPMAP_LINEAR",
     roundPixels: true, // v4 defaults false — set explicitly (02 §8)
     scale: {
       mode: Phaser.Scale.RESIZE,

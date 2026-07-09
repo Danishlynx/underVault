@@ -51,6 +51,7 @@ import {
   isWallishTile,
   propTextureFor,
   TEX_SCALE,
+  GROUND_SCALE,
 } from "../render/tilemap.js";
 import {
   computeLightMap,
@@ -523,21 +524,32 @@ export class DescentScene extends Phaser.Scene {
       this.activeEcho = null;
     }
 
+    // the ground carries GROUND_SCALE× art rendered at 1/GROUND_SCALE, so
+    // effective world geometry stays 64×32 while zoomed cameras sample
+    // real texels (D68)
     const mapData = new Phaser.Tilemaps.MapData({
       name: `floor-${s.floor}`,
       width: s.w,
       height: s.h,
-      tileWidth: TILE_W,
-      tileHeight: TILE_H,
+      tileWidth: TILE_W * GROUND_SCALE,
+      tileHeight: TILE_H * GROUND_SCALE,
       orientation: Phaser.Tilemaps.Orientation.ISOMETRIC,
       format: Phaser.Tilemaps.Formats.ARRAY_2D,
     });
     this.map = new Phaser.Tilemaps.Tilemap(this, mapData);
-    const tileset = this.map.addTilesetImage("iso-ground", "iso-ground", TILE_W, TILE_H, 0, 0);
+    const tileset = this.map.addTilesetImage(
+      "iso-ground",
+      "iso-ground",
+      TILE_W * GROUND_SCALE,
+      TILE_H * GROUND_SCALE,
+      0,
+      0,
+    );
     if (tileset === null) throw new Error("iso-ground tileset missing");
     const layer = this.map.createBlankLayer("ground", tileset, 0, 0);
     if (layer === null) throw new Error("ground layer creation failed");
     this.groundLayer = layer;
+    layer.setScale(1 / GROUND_SCALE);
     layer.setDepth(0);
     this.worldLayer.add(layer);
 

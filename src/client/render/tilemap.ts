@@ -75,6 +75,10 @@ function hiBegin(t: Phaser.Textures.CanvasTexture): CanvasRenderingContext2D {
  *  strip must stay 64×32 cells for the iso TilemapLayer; soft utility
  *  sprites gain nothing from resolution). */
 export const TEX_SCALE = 1 / SS;
+/** Ground tileset resolution multiplier: strip cells are authored at
+ *  (64×32)·GROUND_SCALE and the TilemapLayer renders at 1/GROUND_SCALE, so
+ *  zoomed cameras sample real texels (D68). */
+export const GROUND_SCALE = 2;
 function hiEnd(t: Phaser.Textures.CanvasTexture, keepHiRes = true): void {
   if (ssMaster !== null && keepHiRes) {
     t.setSize(ssMaster.width, ssMaster.height);
@@ -283,10 +287,14 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
   const INK = shade(C.void, 0.7, 0.9); // the woodcut line
 
   // ── Ground strip: tile kinds + floor variants, 64×32 each ───────────────
+  // authored at GROUND_SCALE× so camera zoom (scout 1.6, delve 2.6)
+  // magnifies real detail, not stretched pixels; the TilemapLayer renders
+  // at 1/GROUND_SCALE (D68)
   const stripW = TILE_W * (TILE_KINDS + FLOOR_VARIANTS - 1);
-  const strip = T.createCanvas("iso-ground", stripW, TILE_H);
+  const strip = T.createCanvas("iso-ground", stripW * GROUND_SCALE, TILE_H * GROUND_SCALE);
   if (strip !== null) {
     const ctx = hiBegin(strip);
+    ctx.scale(GROUND_SCALE, GROUND_SCALE); // author in 1× logical coords
     const drawAt = (index: number, draw: (cx: number, cy: number) => void): void => {
       draw(index * TILE_W + TILE_W / 2, TILE_H / 2);
     };

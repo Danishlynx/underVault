@@ -413,3 +413,20 @@ candidates; flip them in the named data file, not in code.
     in-the-action read where the delver is large and the light pool
     intentionally crops. 320ms eased zoom between them. Fully reversible:
     delete the toggle + VIEW_KEY and applyViewport falls back to scout.
+
+68. Crispness pipeline (operator: "why are things pixelated?"). Root cause
+    was threefold. (a) `pixelArt: true` in the game config - correct for
+    retro sprites, ruinous here: it forces NEAREST filtering and disables
+    antialiasing, so the supersampled painterly masters rendered as
+    jaggies. Removed; explicit antialias + `mipmapFilter:
+    LINEAR_MIPMAP_LINEAR` so 4x masters minify cleanly at scout zoom.
+    (b) The ground strip was downsampled to 1x (64x32 cells) and then
+    MAGNIFIED by the camera (scout up to 1.6x, delve 2.6x) - stretched
+    pixels. Now authored at GROUND_SCALE=2x (128x64 cells) with the
+    TilemapLayer rendered at 0.5 scale: world geometry unchanged, zoomed
+    cameras sample real texels. Calibration verified (tileToWorldXY
+    applies layer scale). (c) Deferred: the RESIZE canvas is sized in CSS
+    pixels, so OS display scaling (125-150% on Windows) upscales the whole
+    backbuffer ~1.5x - a mild global softness. Fixing it means a
+    DPR-scaled backbuffer + HUD metric multiplication (Hud layout
+    constants are in buffer px); logged for the M2 resolution revisit.
