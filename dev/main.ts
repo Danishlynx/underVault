@@ -11,12 +11,12 @@ const parent = document.getElementById("app");
 if (parent === null) throw new Error("dev harness: #app missing");
 
 const ports = createDevPorts();
-createUndervaultGame(parent, ports);
+const game = createUndervaultGame(parent, ports);
 
 // DEV-ONLY: M = the Tower X-Ray (all 25 floors of today's seed at a glance)
 window.addEventListener("keydown", (ev) => {
   if (ev.key !== "m" && ev.key !== "M") return;
   const t = ev.target as HTMLElement | null;
   if (t !== null && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-  toggleTowerView(parent, ports, ports.getGuildhall().day);
+  toggleTowerView(parent, ports, ports.getGuildhall().day, game);
 });
