@@ -24,15 +24,25 @@ function lerpColor(a: number, b: number, t: number): number {
   return (r << 16) | (g << 8) | bl;
 }
 
-const COOL_DARK = lerpColor(COLOR.void, COLOR.surface2, 0.55); // lit-but-far
 const WARM_WHITE = lerpColor(0xffffff, COLOR.flameHi, 0.22); // candle-close
-export const MEMORY_TINT = lerpColor(COLOR.void, COLOR.verdigrisDim, 0.34); // ghost
+let coolDark = lerpColor(COLOR.void, COLOR.surface2, 0.55); // lit-but-far
+export let MEMORY_TINT = lerpColor(COLOR.void, COLOR.verdigrisDim, 0.34); // ghost
 // (unseen tiles render at alpha 0 — see Descent.redraw; no tint constant)
+
+/**
+ * Per-biome color story (D63): the far/dark end of the light ramp leans
+ * into the biome's accent hue, so warm candlelight pops against a cool,
+ * place-specific ambient — the two-hue grade every reference shot uses.
+ */
+export function setBiomeGrade(accent: number): void {
+  coolDark = lerpColor(lerpColor(COLOR.void, COLOR.surface2, 0.4), accent, 0.3);
+  MEMORY_TINT = lerpColor(COLOR.void, accent, 0.28);
+}
 
 /** light 0..1 → multiplicative tint. */
 export function tintForLight(light: number): number {
   const t = Math.pow(Math.min(Math.max(light, 0), 1), 0.8); // soft knee
-  return lerpColor(COOL_DARK, WARM_WHITE, t);
+  return lerpColor(coolDark, WARM_WHITE, t);
 }
 
 // ── Light field ────────────────────────────────────────────────────────────

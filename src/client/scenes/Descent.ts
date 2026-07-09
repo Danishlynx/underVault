@@ -35,6 +35,7 @@ import {
   SNUFF_TICKS,
   SIGN_TEMPLATES,
   ECHO_KEYFRAMES,
+  BIOMES,
   biomeFor,
 } from "../../shared/sim/constants.js";
 import { PORTS_KEY } from "../game.js";
@@ -42,6 +43,7 @@ import type { EchoRecord, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import {
   entityTextureFor,
+  floorDecoFor,
   groundIndexFor,
   isWallishTile,
   propTextureFor,
@@ -53,6 +55,7 @@ import {
   MEMORY_TINT,
   positionHalo,
   pulseGlows,
+  setBiomeGrade,
   syncSourceGlows,
   tintForLight,
   type GlowPool,
@@ -166,6 +169,7 @@ export class DescentScene extends Phaser.Scene {
   private groundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private lastTiles: Uint8Array = new Uint8Array(0);
   private props = new Map<number, PropView>();
+  private decos = new Map<number, Phaser.GameObjects.Image>();
   private overlays = new Map<string, Phaser.GameObjects.Image>();
   private glowPool: GlowPool = { images: new Map() };
   private cursorG!: Phaser.GameObjects.Graphics;
@@ -410,6 +414,8 @@ export class DescentScene extends Phaser.Scene {
     this.map?.destroy();
     this.props.forEach((p) => p.sprite.destroy());
     this.props.clear();
+    this.decos.forEach((d) => d.destroy());
+    this.decos.clear();
     this.overlays.forEach((o) => o.destroy());
     this.overlays.clear();
     this.glowPool.images.forEach((g) => g.destroy());
@@ -449,6 +455,25 @@ export class DescentScene extends Phaser.Scene {
     this.lastTiles = new Uint8Array(s.tiles.length);
     this.lastTiles.fill(255);
     this.syncTiles();
+
+    // biome color story + set dressing (D63)
+    const biome = biomeFor(s.floor);
+    const accents = [COLOR.ember, COLOR.verdigrisDim, COLOR.verdigris, COLOR.seal, COLOR.boneDim, COLOR.borderVoid, COLOR.goldInk];
+    setBiomeGrade(accents[BIOMES.indexOf(biome)] ?? COLOR.ember);
+    for (let i = 0; i < s.tiles.length; i++) {
+      if (s.tiles[i] !== Tile.FLOOR && s.tiles[i] !== Tile.MOSS) continue;
+      const x = i % s.w;
+      const y = (i / s.w) | 0;
+      const d = floorDecoFor(x, y, s.floor);
+      if (d === null) continue;
+      const c = gridToScreen(x, y);
+      const img = this.add.image(c.sx + d.ox, c.sy + HALF_H - 2 + d.oy, d.key);
+      img.setOrigin(0.5, 1);
+      img.setScale(TEX_SCALE);
+      img.depth = depthOf(x, y, Layer.CORPSE);
+      this.worldLayer.add(img);
+      this.decos.set(i, img);
+    }
 
     const b = worldBounds(s.w, s.h);
     this.cameras.main.setBounds(b.x, b.y, b.width, b.height);
@@ -1147,6 +1172,13 @@ export class DescentScene extends Phaser.Scene {
       if (s.gas[i]! > 0) wantOverlay("gas", i, COLOR.verdigrisDim, 0.5 * dim);
       if (s.signs[i]! !== 0) wantOverlay("sign", i, COLOR.parchmentAged, 0.6 * dim);
     }
+
+    this.decos.forEach((img, i) => {
+      const seen = s.seen[i]! === 1;
+      const vis = this.visibleMask[i]! === 1;
+      img.setVisible(seen);
+      if (seen) img.setTint(vis ? tintForLight(light[i]!) : MEMORY_TINT);
+    });
 
     this.props.forEach((prop, i) => {
       const x = i % s.w;

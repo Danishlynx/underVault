@@ -2686,6 +2686,119 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     hiEnd(corpse);
   }
 
+  // ── Set dressing (D63): rooms must never be bare — every reference the
+  //    operator loves is dense with quiet props. Non-blocking, render-only.
+  const deco = (key: string, w2: number, h2: number, draw: (ctx: CanvasRenderingContext2D) => void): void => {
+    const c = T.createCanvas(key, w2, h2);
+    if (c === null) return;
+    const dctx = hiBegin(c);
+    draw(dctx);
+    hiEnd(c);
+  };
+  deco("deco-barrel", 26, 30, (ctx) => {
+    const g = ctx.createLinearGradient(4, 0, 22, 0);
+    g.addColorStop(0, shade(C.parchmentAged, 0.75));
+    g.addColorStop(0.5, shade(C.parchmentAged, 0.55));
+    g.addColorStop(1, shade(C.parchmentAged, 0.35));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(13, 15, 9, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shade(C.void, 2);
+    ctx.lineWidth = 1.4;
+    for (const y of [9, 15, 21]) {
+      ctx.beginPath();
+      ctx.ellipse(13, y, 8.4, 2.6, 0, 0, Math.PI);
+      ctx.stroke();
+    }
+    ctx.fillStyle = shade(C.void, 1.6);
+    ctx.beginPath();
+    ctx.ellipse(13, 4.5, 6.5, 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  deco("deco-crate", 24, 24, (ctx) => {
+    ctx.fillStyle = shade(C.parchmentAged, 0.55);
+    ctx.fillRect(3, 6, 18, 15);
+    ctx.fillStyle = shade(C.parchmentAged, 0.7);
+    ctx.beginPath();
+    ctx.moveTo(3, 6);
+    ctx.lineTo(12, 2);
+    ctx.lineTo(21, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(C.void, 1.8);
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(3, 6, 18, 15);
+    ctx.beginPath();
+    ctx.moveTo(3, 6);
+    ctx.lineTo(21, 21);
+    ctx.moveTo(21, 6);
+    ctx.lineTo(3, 21);
+    ctx.stroke();
+  });
+  deco("deco-rubble", 28, 16, (ctx) => {
+    for (let r = 0; r < 6; r++) {
+      const x = 4 + crand() * 20;
+      const y = 8 + crand() * 6;
+      const rr = 1.6 + crand() * 2.6;
+      const g = ctx.createRadialGradient(x - rr * 0.3, y - rr * 0.4, 0.4, x, y, rr);
+      g.addColorStop(0, shade(C.surface2, 1.7));
+      g.addColorStop(1, shade(C.surface2, 0.7));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rr, rr * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  deco("deco-bones", 26, 14, (ctx) => {
+    ctx.strokeStyle = shade(C.bone, 0.85);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(5, 9);
+    ctx.lineTo(15, 5);
+    ctx.moveTo(9, 11);
+    ctx.lineTo(18, 9);
+    ctx.stroke();
+    ctx.fillStyle = shade(C.bone, 0.9);
+    for (const [x, y] of [[4, 9], [16, 4.5], [8.5, 11], [19, 9]] as const) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.beginPath(); // a small skull, politely anonymous
+    ctx.ellipse(21.5, 6.5, 3, 2.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(C.void, 1.4);
+    ctx.beginPath();
+    ctx.arc(20.6, 6.2, 0.7, 0, Math.PI * 2);
+    ctx.arc(22.4, 6.2, 0.7, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  deco("deco-stubs", 22, 16, (ctx) => {
+    // spent candle stubs from delvers before you — pure lore
+    for (const [x, hgt] of [[6, 7], [11, 4], [16, 9]] as const) {
+      ctx.fillStyle = shade(C.parchment, 0.8);
+      ctx.fillRect(x - 2, 14 - hgt, 4, hgt);
+      ctx.fillStyle = shade(C.parchment, 0.6);
+      ctx.beginPath();
+      ctx.ellipse(x, 14 - hgt, 2.4, 1, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  deco("deco-shard", 20, 18, (ctx) => {
+    ctx.fillStyle = shade(C.surface2, 1.5);
+    ctx.beginPath();
+    ctx.moveTo(4, 15);
+    ctx.lineTo(9, 4);
+    ctx.lineTo(13, 8);
+    ctx.lineTo(16, 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(C.void, 1.6);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
   // ── HUD item icons (28 px, woodcut-simple per 04 §2.4) ───────────────────
   const iconFlint = T.createCanvas("icon-flint", 28, 28);
   if (iconFlint !== null) {
@@ -2926,6 +3039,19 @@ export function propTextureFor(t: number): string {
     default:
       return "";
   }
+}
+
+/** Deterministic set dressing: ~1 in 8 plain floor tiles hosts a quiet,
+ *  non-blocking prop. Same (x,y,floor) → same prop, every visit. */
+const DECO_KEYS = ["deco-barrel", "deco-crate", "deco-rubble", "deco-bones", "deco-stubs", "deco-shard"] as const;
+export function floorDecoFor(x: number, y: number, floor: number): { key: string; ox: number; oy: number } | null {
+  const h = (Math.imul(x, 73) ^ Math.imul(y, 151) ^ Math.imul(floor + 1, 397)) >>> 0;
+  if (h % 100 >= 18) return null;
+  return {
+    key: DECO_KEYS[(h >>> 4) % DECO_KEYS.length]!,
+    ox: ((h >>> 8) % 21) - 10,
+    oy: ((h >>> 13) % 9) - 4,
+  };
 }
 
 /** Entity billboard textures; mimics wear the chest's face until revealed. */
