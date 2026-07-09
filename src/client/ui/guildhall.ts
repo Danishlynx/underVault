@@ -128,6 +128,14 @@ function injectStyles(): void {
   line-height: var(--lh-display);
 }
 .uv-hall-stat .uv-dim { display: block; }
+.uv-hall-charge {
+  margin: var(--pad-component) 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--size-body-sm);
+  color: var(--bone);
+}
 .uv-hall-rumor {
   margin: var(--pad-component) 0;
   padding: var(--pad-component) 0;
@@ -165,6 +173,16 @@ export function openGuildhall(
   head.appendChild(el("span", "uv-dim", "☾ reshuffles at dusk"));
   panel.appendChild(head);
   panel.appendChild(el("hr", "uv-rule"));
+
+  // the charge — a player must never wonder what the game is asking (D66)
+  panel.appendChild(
+    el(
+      "p",
+      "uv-hall-charge",
+      "One candle a day. Descend the shared Vault, learn its hidden laws, " +
+        "and bank them at the waystones — what you learn is all that survives you.",
+    ),
+  );
 
   // B — hero: unlit match over the vault-door etching + hold-to-strike seal.
   const hero = el("div", "uv-hall-hero");
@@ -260,7 +278,7 @@ export function openGuildhall(
   });
   foot.appendChild(codexBtn);
   const how = el("ul", "uv-list uv-hall-how");
-  how.hidden = true;
+  how.hidden = model.day !== 1; // first dawn: the controls are on the table (D66)
   for (const line of HOW_LINES) how.appendChild(el("li", "uv-dim", line));
   const howBtn = el("button", "uv-ink-btn", "How to delve") as HTMLButtonElement;
   howBtn.type = "button";

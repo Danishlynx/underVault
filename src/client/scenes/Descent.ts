@@ -37,6 +37,9 @@ import {
   ECHO_KEYFRAMES,
   BIOMES,
   biomeFor,
+  TILE_FLAGS,
+  F_OPAQUE,
+  MAX_FLOOR,
 } from "../../shared/sim/constants.js";
 import { PORTS_KEY } from "../game.js";
 import type { EchoRecord, GamePorts, LearnedRule } from "../net/ports.js";
@@ -96,6 +99,7 @@ const DIRS = { N: 0, E: 1, S: 2, W: 3 } as const;
 const RULES_KEY = "uv-session-rules";
 const AUDIO_KEY = "uv-audio";
 const AUTOSTART_KEY = "uv-autostart";
+const GUIDES_KEY = "uv-guides"; // once-per-session lessons (memory only, inv. 3)
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
   "XXI", "XXII", "XXIII", "XXIV", "XXV"];
@@ -207,6 +211,9 @@ export class DescentScene extends Phaser.Scene {
   private pressConsumed = false;
   private pendingBump: { x: number; y: number } | null = null;
 
+  private guides!: Set<string>;
+  private lastGuideAt = 0;
+
   constructor() {
     super("Descent");
   }
@@ -219,6 +226,9 @@ export class DescentScene extends Phaser.Scene {
     const existingAudio = this.registry.get(AUDIO_KEY) as AudioGraph | undefined;
     this.audio = existingAudio ?? new AudioGraph();
     this.registry.set(AUDIO_KEY, this.audio);
+    const existingGuides = this.registry.get(GUIDES_KEY) as Set<string> | undefined;
+    this.guides = existingGuides ?? new Set<string>();
+    this.registry.set(GUIDES_KEY, this.guides);
 
     const host = this.host();
     if (host !== null) closeAllSheets(host);
@@ -390,6 +400,62 @@ export class DescentScene extends Phaser.Scene {
     this.buildFloor();
     this.redraw(true);
     this.hud.toast("The match catches. The Vault is listening.", "info");
+    // the first lesson, once the flavor line has had its moment (D66)
+    this.time.delayedCall(2800, () => {
+      if (this.running) {
+        this.guide(
+          "charge",
+          "Find the stairs and descend. The candle burns as you act — when it dies, you die.",
+        );
+      }
+    });
+  }
+
+  // ── Guidance: once-per-session lessons + the standing order (D66) ────────
+  private guide(key: string, text: string): void {
+    if (this.guides.has(key)) return;
+    if (this.time.now - this.lastGuideAt < 4200) return; // one lesson at a time; re-tries later
+    this.guides.add(key);
+    this.lastGuideAt = this.time.now;
+    this.hud.toast(text, "info");
+  }
+
+  private runGuides(): void {
+    const s = this.state;
+    if (s === null || s.status !== Status.ALIVE) return;
+    if (!this.guides.has("monster")) {
+      for (const e of s.entities) {
+        if (e.kind !== EntityKind.CORPSE && this.visibleMask[e.y * s.w + e.x]! === 1) {
+          this.guide("monster", "Something lives down here. Its habits are hidden laws — salt, bells, light. Test them.");
+          break;
+        }
+      }
+    }
+    if (!this.guides.has("waystone") || !this.guides.has("stairs")) {
+      for (let i = 0; i < s.tiles.length; i++) {
+        if (this.visibleMask[i]! !== 1) continue;
+        if (s.tiles[i] === Tile.WAYSTONE) {
+          this.guide("waystone", "A waystone. Truths banked here enter the Codex — and outlive you.");
+        } else if (s.tiles[i] === Tile.STAIRS_DOWN) {
+          this.guide("stairs", "The stairs down. Deeper floors keep deeper secrets.");
+        }
+      }
+    }
+    if (s.wax > 0 && s.wax < 150) {
+      this.guide("lowwax", "The candle wanes. Wax drippings feed it — or make for the way out.");
+    }
+  }
+
+  private objectiveLine(): string {
+    const s = this.state;
+    if (s === null) return "";
+    if (s.graceLeft > 0) return "Flame, or the way out.";
+    if (s.floor === MAX_FLOOR) {
+      return s.banked >= 5 ? "Break the Seal." : `The Seal asks 5 banked truths — ${s.banked} given.`;
+    }
+    const n = this.unbankedThisRun().length;
+    if (n > 0) return `Bank ${n} truth${n === 1 ? "" : "s"} at a waystone.`;
+    return "Find the stairs. Descend.";
   }
 
   /** Run over (death handled separately): rest ends the day. */
@@ -513,6 +579,60 @@ export class DescentScene extends Phaser.Scene {
     cam.setFollowOffset(0, -bias);
   }
 
+  /**
+   * Diorama cutaway (D65, render-only — the sim never learns): a wall with
+   * see-through ground to its screen-front (N/W/NW) would hide the room
+   * behind it, so it renders as a low CUT wall you see over; a wall showing
+   * the camera its lit face (open ground S/E/SEs) is a room's back wall and
+   * may carry dressing. "Open" mirrors the FOV's opacity rule — chests,
+   * braziers, shrines are non-walkable but the player SEES them, so a wall
+   * must never stand tall in front of one (adversarial-verify fix). Doors
+   * count as open explicitly so jambs classify stably in any door state;
+   * this also makes the classification immune to every mid-run tile
+   * mutation (chest→floor etc. never flips opacity).
+   */
+  private wallTextureAt(x: number, y: number): string {
+    const s = this.state!;
+    const open = (xx: number, yy: number): boolean => {
+      if (xx < 0 || yy < 0 || xx >= s.w || yy >= s.h) return false;
+      const t = s.tiles[yy * s.w + xx]!;
+      return (
+        (TILE_FLAGS[t]! & F_OPAQUE) === 0 ||
+        t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK || t === Tile.DOOR_IRON ||
+        t === Tile.DOOR_HUNGER || t === Tile.DOOR_CHOIR || t === Tile.DOOR_SIGIL
+      );
+    };
+    if (open(x - 1, y) || open(x, y - 1) || open(x - 1, y - 1)) return "iso-wall-cut";
+    if (open(x + 1, y) || open(x, y + 1) || open(x + 1, y + 1)) {
+      const h = (Math.imul(x, 131) ^ Math.imul(y, 61) ^ Math.imul(s.floor + 1, 401)) >>> 0;
+      const r = h % 100;
+      return r < 58 ? "iso-wall" : r < 72 ? "iso-wall-2" : r < 86 ? "iso-wall-3" : "iso-wall-4";
+    }
+    return "iso-wall";
+  }
+
+  /**
+   * A 64×96 billboard at (x,y) covers tiles at (x-i, y-j) for i+j ≤ 5 with
+   * |i-j| ≤ 1 (beyond that the columns no longer overlap on screen). Ring-1
+   * is already the CUT rule; this asks whether any DEEPER cone tile is
+   * see-through and currently FOV-visible — if so the tall prop must ghost.
+   */
+  private static readonly OCCLUSION_CONE: readonly [number, number][] = [
+    [1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [2, 2], [3, 2], [2, 3],
+  ];
+  private buriesVisibleGround(x: number, y: number): boolean {
+    const s = this.state;
+    if (s === null) return false;
+    for (const [i, j] of DescentScene.OCCLUSION_CONE) {
+      const tx = x - i;
+      const ty = y - j;
+      if (tx < 0 || ty < 0 || tx >= s.w || ty >= s.h) continue;
+      const ti = ty * s.w + tx;
+      if (this.visibleMask[ti]! === 1 && (TILE_FLAGS[s.tiles[ti]!]! & F_OPAQUE) === 0) return true;
+    }
+    return false;
+  }
+
   private syncTiles(): void {
     const s = this.state;
     if (s === null) return;
@@ -524,7 +644,7 @@ export class DescentScene extends Phaser.Scene {
       const y = (i / s.w) | 0;
       this.groundLayer?.putTileAt(groundIndexFor(t, x, y), x, y);
 
-      const want = propTextureFor(t);
+      const want = t === Tile.WALL ? this.wallTextureAt(x, y) : propTextureFor(t);
       const have = this.props.get(i);
       if (have !== undefined && (want === "" || have.tile !== t)) {
         have.sprite.destroy();
@@ -861,6 +981,7 @@ export class DescentScene extends Phaser.Scene {
     this.playBump();
     this.playTells();
     this.maybeStartEcho();
+    this.runGuides();
 
     // ambience follows the light
     const r = effectiveRadius(this.state);
@@ -1244,7 +1365,15 @@ export class DescentScene extends Phaser.Scene {
       prop.sprite.setVisible(seen);
       if (!seen) return;
       prop.sprite.setTint(vis ? tintForLight(Math.min(light[i]! + 0.08, 1)) : MEMORY_TINT);
-      const shouldOcclude = isWallishTile(prop.tile) && occludes(s.px, s.py, x, y);
+      // cut walls are knee-high — they never hide the delver (D65).
+      // Tall walls and doors ghost when their 96px body buries ANY ground
+      // the FOV says you can see (a monster you can see must never render
+      // invisible behind a wall — adversarial-verify fix), not only when
+      // they stand over the player.
+      const shouldOcclude =
+        isWallishTile(prop.tile) &&
+        prop.sprite.texture.key !== "iso-wall-cut" &&
+        (occludes(s.px, s.py, x, y) || this.buriesVisibleGround(x, y));
       const targetAlpha = shouldOcclude ? OCCLUDED_ALPHA : 1;
       if (shouldOcclude !== prop.occluded) {
         prop.occluded = shouldOcclude;
@@ -1321,6 +1450,7 @@ export class DescentScene extends Phaser.Scene {
     });
 
     this.hud.update(s, effR, 0);
+    this.hud.setObjective(this.objectiveLine());
   }
 
   // ── Sheets ───────────────────────────────────────────────────────────────

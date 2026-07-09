@@ -350,3 +350,53 @@ candidates; flip them in the named data file, not in code.
     sheet covers the hall. Goldens re-minted (12; sim semantics changed).
     Known deferred: master key stolen by a Rustling still drops as an
     iron key (typed ground-drops need an M2 tile or entity field).
+
+65. Diorama cutaway walls (operator reference: PolyArt3D "Isometric -
+    Interiors", Two Point Hospital cutaways). Render-only, sim untouched:
+    a WALL tile with open ground (walkable or any door) at its screen-
+    front neighbours (x-1,y | x,y-1 | x-1,y-1) renders as `iso-wall-cut`,
+    a 64x46 knee-high stub whose sawn top plane reads brighter - you see
+    OVER it into the room, like a carved model. Walls showing the camera
+    their lit face (open ground at x+1,y | x,y+1 | x+1,y+1) are room back
+    walls: hash-picked per position among plain (58%), banner (14%),
+    chains (14%), moss-fall (14%) full-height variants - the D63-deferred
+    wall variety. Deep filler rock stays plain and is never seen (FOV
+    reveals only the first wall ring; unseen renders alpha 0), so a
+    single-ring cut suffices. Cut walls skip the 35% occlusion fade (they
+    cannot hide the delver); doors keep full height + fade (portals must
+    read). Classification treats doors as open so jambs stay stable
+    across door-state changes; the one stale case (chest opened mid-run
+    converts CHEST->FLOOR without reclassifying the wall south of it) is
+    accepted - that wall face is camera-facing, occludes nothing.
+
+    D65 amended after the adversarial verify pass (3-lens workflow, probe
+    evidence): (a) "open" now mirrors FOV opacity (!F_OPAQUE, doors explicit)
+    instead of walkability - chests/braziers/shrines are see-through, so
+    walls in front of them cut; this also makes classification immune to
+    every mid-run tile mutation (chest->floor flips nothing). (b) A 64x96
+    billboard occludes a 5-row cone (i+j<=5, |i-j|<=1), not just ring-1:
+    tall walls AND doors now ghost to 35% whenever their body buries any
+    FOV-visible see-through tile (probe: 108 walls / 39 doors across 3
+    seeds x 6 floors could fully hide visible monsters/floor) - the fade is
+    no longer player-only. (c) DOOR_OPEN added to isWallishTile (its arch
+    occludes like any door; it previously never faded). (d) Visual-judge
+    fixes: cut lids no longer outshine lit floor (ink rim carries the sawn
+    read), stub faces brightened (x1.35) with whisper AO, chains redrawn as
+    heavy links with a mounting plate. Doors intentionally keep full height
+    (portals must read); the cone-ghost covers their occlusion.
+
+66. First-run clarity (operator playtest: "I do not know what the game is
+    about, I feel dropped randomly"). Three layers, all in the game's
+    voice, none modal: (a) the Guildhall states the charge under the day
+    header - "One candle a day. Descend the shared Vault, learn its hidden
+    laws, and bank them at the waystones - what you learn is all that
+    survives you." - and the how-to-delve list is unfolded by default on
+    day 1; (b) a persistent HUD objective line under the depth plaque
+    always answers "what now": find the stairs / bank N truths at a
+    waystone / the Seal asks 5 banked truths / flame-or-the-way-out during
+    grace; (c) once-per-session contextual lessons as toasts, fired by
+    play, rate-limited to one per 4.2s: the charge after the match
+    catches, first visible creature (hidden laws - test them), first
+    waystone seen, first stairs seen, candle under 150 wax. Lesson state
+    lives in the scene registry (memory only, invariant 3: reload = fresh
+    season = lessons repeat, correct for a new session).

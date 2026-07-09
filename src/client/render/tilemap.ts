@@ -594,23 +594,32 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     hiEnd(strip, false);
   }
 
-  // ── Wall billboard: per-brick coursed masonry + lit lid ──────────────────
-  const wall = T.createCanvas("iso-wall", TILE_W, WALL_H);
-  if (wall !== null) {
+  // ── Wall billboards: per-brick coursed masonry + lit lid ─────────────────
+  // One recipe, many walls (D65): the plain full wall, three dressed
+  // variants for camera-facing room walls (banner / chains / moss-fall),
+  // and the low CUT wall — the diorama cutaway that lets you see into
+  // rooms, its sawn top plane catching the most light (the references'
+  // "cut model" read).
+  const buildWall = (key: string, totalH: number, dress: "plain" | "banner" | "chains" | "moss" | "cut"): void => {
+    const wall = T.createCanvas(key, TILE_W, totalH);
+    if (wall === null) return;
     const ctx = hiBegin(wall);
     const lidCy = TILE_H / 2;
-    const faceH = WALL_H - TILE_H;
+    const faceH = totalH - TILE_H;
     const faceBase = mix(C.surface2, C.void, 0.25);
+    const courses = Math.max(1, Math.round(faceH / 12.8));
 
     const face = (leftSide: boolean): void => {
       const x0 = leftSide ? 0 : TILE_W;
       const x1 = TILE_W / 2;
       const yAt = (u: number): number => lidCy + u * (TILE_H / 2); // top edge along slope
       const xAt = (u: number): number => x0 + (x1 - x0) * u;
-      const tone = leftSide ? 0.52 : 1.0; // W face in shadow, S face candle-lit
+      // W face in shadow, S face candle-lit; the cut stub's short faces run
+      // brighter so the stump keeps its volume away from the candle (D65)
+      const tone = (leftSide ? 0.52 : 1.0) * (dress === "cut" ? 1.35 : 1);
 
       // base wash
-      const g = ctx.createLinearGradient(0, lidCy, 0, WALL_H);
+      const g = ctx.createLinearGradient(0, lidCy, 0, totalH);
       g.addColorStop(0, shade(faceBase, 1.3 * tone));
       g.addColorStop(1, shade(faceBase, 0.45 * tone));
       ctx.beginPath();
@@ -626,7 +635,6 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
       ctx.clip();
 
       // per-brick masonry following the face slope
-      const courses = 5;
       const ch = faceH / courses;
       for (let c = 0; c < courses; c++) {
         const y0 = c * ch;
@@ -665,27 +673,124 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
 
       // clean pass (D60): drip stains removed; one quiet moss tuft at most
       ctx.globalAlpha = 1;
-      if (crand() < 0.3) {
+      if (dress !== "cut" && crand() < 0.3) {
         const u = 0.2 + crand() * 0.6;
         ctx.fillStyle = mix(C.verdigrisDim, C.verdigris, 0.3, 0.3);
         ctx.beginPath();
         ctx.ellipse(xAt(u), yAt(u) + faceH - 4, 3, 1.6, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-      // base sinks into darkness
-      const ao = ctx.createLinearGradient(0, WALL_H - 16, 0, WALL_H);
+      // base sinks into darkness (a whisper only on the cut stub — full AO
+      // swallowed its 14px faces and left the lid floating)
+      const aoH = dress === "cut" ? 4 : Math.min(16, faceH);
+      const ao = ctx.createLinearGradient(0, totalH - aoH, 0, totalH);
       ao.addColorStop(0, shade(C.void, 1, 0));
-      ao.addColorStop(1, shade(C.void, 0.8, 0.6));
+      ao.addColorStop(1, shade(C.void, 0.8, dress === "cut" ? 0.35 : 0.6));
       ctx.fillStyle = ao;
-      ctx.fillRect(0, WALL_H - 16, TILE_W, 16);
+      ctx.fillRect(0, totalH - aoH, TILE_W, aoH);
       ctx.restore();
     };
     face(true);
     face(false);
 
-    // lid: stone diamond catching the most light
-    const lidBase = mix(C.surface2, C.bone, 0.14);
+    // ── dressing on the candle-lit (right) face ──
+    const rTop = (x: number): number => lidCy + ((TILE_W - x) / (TILE_W / 2)) * (TILE_H / 2);
+    if (dress === "banner") {
+      // a hanging cloth, one confident shape (clean per D60)
+      const bx = 41;
+      const bw = 15;
+      const ty = rTop(bx + bw / 2) + 5;
+      ctx.strokeStyle = shade(C.goldInk, 0.9);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(bx - 2, ty - 2);
+      ctx.lineTo(bx + bw + 2, ty - 2);
+      ctx.stroke();
+      const bg = ctx.createLinearGradient(0, ty, 0, ty + 34);
+      bg.addColorStop(0, shade(C.seal, 1.05));
+      bg.addColorStop(1, shade(C.seal, 0.55));
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.moveTo(bx, ty);
+      ctx.lineTo(bx + bw, ty);
+      ctx.lineTo(bx + bw, ty + 28);
+      ctx.lineTo(bx + bw / 2, ty + 34);
+      ctx.lineTo(bx, ty + 28);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // the emblem: a single quiet diamond
+      ctx.strokeStyle = shade(C.goldInk, 1.1, 0.9);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(bx + bw / 2, ty + 9);
+      ctx.lineTo(bx + bw / 2 + 4, ty + 15);
+      ctx.lineTo(bx + bw / 2, ty + 21);
+      ctx.lineTo(bx + bw / 2 - 4, ty + 15);
+      ctx.closePath();
+      ctx.stroke();
+    } else if (dress === "chains") {
+      // one heavy idle chain from an iron mount — something hung here once.
+      // Bold links, not dots: the judge's screenshots read the thin version
+      // as stray noise (D65)
+      const cx = 47;
+      const ty = rTop(cx) + 3;
+      // mounting plate
+      ctx.fillStyle = shade(C.boneDim, 0.45);
+      ctx.fillRect(cx - 5, ty - 2, 10, 4);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx - 5, ty - 2, 10, 4);
+      // chain of visible links, swinging slightly
+      ctx.strokeStyle = shade(C.boneDim, 0.8);
+      ctx.lineWidth = 1.8;
+      for (let k = 0; k < 5; k++) {
+        const ly = ty + 4 + k * 6.4;
+        const sway = Math.sin(k * 0.9) * 1.6;
+        ctx.beginPath();
+        ctx.ellipse(cx + sway, ly, 2.4, 3.4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // an empty hook at the end
+      ctx.beginPath();
+      ctx.arc(cx + Math.sin(4 * 0.9) * 1.6, ty + 4 + 5 * 6.4, 2.6, -0.4, Math.PI * 0.9);
+      ctx.stroke();
+    } else if (dress === "moss") {
+      // a moss-fall over the lid edge, flat tongues, no speckle
+      for (const [mx, len, w2] of [[38, 18, 5], [47, 26, 6], [56, 14, 4]] as const) {
+        const ty = rTop(mx) - 1;
+        const mg = ctx.createLinearGradient(0, ty, 0, ty + len);
+        mg.addColorStop(0, mix(C.verdigris, C.bone, 0.15));
+        mg.addColorStop(1, shade(C.verdigrisDim, 0.7));
+        ctx.fillStyle = mg;
+        ctx.beginPath();
+        ctx.moveTo(mx - w2, ty);
+        ctx.lineTo(mx + w2, ty);
+        ctx.quadraticCurveTo(mx + w2 - 1, ty + len * 0.7, mx, ty + len);
+        ctx.quadraticCurveTo(mx - w2 + 1, ty + len * 0.7, mx - w2, ty);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // lid: stone diamond catching the most light. The CUT lid must NOT
+    // outshine lit floor — brightest-surface-reads-walkable inverted the
+    // affordance in playtest shots; its volume comes from the lit faces
+    // and the ink rim instead (D65)
+    const lidBase = mix(C.surface2, C.bone, dress === "cut" ? 0.10 : 0.14);
     stoneDiamond(ctx, TILE_W / 2, lidCy, lidBase, C.bone, C.void);
+    if (dress === "cut") {
+      // crisp rim so the stump's top edge reads as a cut, not a tile
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(1, lidCy);
+      ctx.lineTo(TILE_W / 2, 1);
+      ctx.lineTo(TILE_W - 1, lidCy);
+      ctx.stroke();
+    }
 
     // crisp silhouette edges — the woodcut line
     ctx.strokeStyle = INK;
@@ -696,10 +801,15 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     ctx.moveTo(TILE_W - 0.5, lidCy);
     ctx.lineTo(TILE_W - 0.5, lidCy + faceH);
     ctx.moveTo(TILE_W / 2, lidCy + TILE_H / 2);
-    ctx.lineTo(TILE_W / 2, WALL_H);
+    ctx.lineTo(TILE_W / 2, totalH);
     ctx.stroke();
     hiEnd(wall);
-  }
+  };
+  buildWall("iso-wall", WALL_H, "plain");
+  buildWall("iso-wall-2", WALL_H, "banner");
+  buildWall("iso-wall-3", WALL_H, "chains");
+  buildWall("iso-wall-4", WALL_H, "moss");
+  buildWall("iso-wall-cut", TILE_H + 14, "cut");
 
   // ── Doors: timber + iron in a dressed-stone arch ─────────────────────────
   const doorTex = (key: string, panel: boolean, stuck: boolean): void => {
@@ -3258,6 +3368,7 @@ export function isWallishTile(t: number): boolean {
   return (
     t === Tile.WALL || t === Tile.INSCRIPTION || t === Tile.DOOR_CLOSED ||
     t === Tile.DOOR_STUCK || t === Tile.DOOR_IRON || t === Tile.DOOR_HUNGER ||
-    t === Tile.DOOR_CHOIR || t === Tile.DOOR_SIGIL || t === Tile.SEAL
+    t === Tile.DOOR_CHOIR || t === Tile.DOOR_SIGIL || t === Tile.SEAL ||
+    t === Tile.DOOR_OPEN // its 96px arch occludes like any other (D65 verify fix)
   );
 }

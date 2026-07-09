@@ -60,6 +60,11 @@ at home as a woodcut, it's wrong."* Nothing glossy, nothing bounces.
   (their base must sit at the bottom of the canvas); creatures are upright
   billboards, bottom-anchored, drawn FACING RIGHT (the engine mirrors them
   with flipX for left-facing — keep a visible left/right asymmetry).
+  Exception: `iso-wall-cut` is 64×46 — the diorama cutaway stub (front
+  walls render low so rooms read as open dioramas; the engine picks
+  cut/full/dressed per position). Full-wall dressed variants live under
+  `iso-wall-2` (banner), `iso-wall-3` (chains), `iso-wall-4` (moss-fall) —
+  redesign their dressing freely, keep keys and sizes.
 - **The ground tileset strip**: one 64×32 slot per tile id, index = TileId
   (30 slots + floor variants appended). Don't reorder.
 - **Colors come from tokens only.** Use the `shade(color, factor)` and

@@ -58,6 +58,7 @@ export class Hud {
   private plaque!: Phaser.GameObjects.Rectangle;
   private plaqueInner!: Phaser.GameObjects.Rectangle;
   private depthText!: Phaser.GameObjects.Text;
+  private objectiveText!: Phaser.GameObjects.Text;
   private muteText!: Phaser.GameObjects.Text;
   private menuText!: Phaser.GameObjects.Text;
   private barRect!: Phaser.GameObjects.Rectangle;
@@ -107,6 +108,11 @@ export class Hud {
     this.plaqueInner.setStrokeStyle(1, COLOR.borderVoid, 0.5);
     this.depthText = this.fixed(
       s.add.text(0, 0, "Fl. I", { fontFamily: SERIF, fontSize: "20px", color: "#b7ae9c" }).setOrigin(0.5, 0.5),
+    );
+    // the standing order under the plaque — a player must always know what
+    // the game is asking of them right now (D66)
+    this.objectiveText = this.fixed(
+      s.add.text(0, 0, "", { fontFamily: SANS, fontSize: "11px", fontStyle: "italic", color: "#7e786c" }).setOrigin(0, 0),
     );
 
     this.muteText = this.fixed(
@@ -225,6 +231,7 @@ export class Hud {
     this.plaque.setPosition(16, 16);
     this.plaqueInner.setPosition(20, 20);
     this.depthText.setPosition(16 + 48, 16 + 18);
+    this.objectiveText.setPosition(17, 58);
     this.muteText.setPosition(w - 96, 20);
     this.menuText.setPosition(w - 40, 12);
 
@@ -334,6 +341,10 @@ export class Hud {
     const danger = radius <= 2;
     this.barRect.setFillStyle(COLOR.surface, danger ? 1 : HUD.bottomBarAlpha);
     this.barRim.setAlpha(danger ? 1 : 0);
+  }
+
+  setObjective(text: string): void {
+    if (this.objectiveText.text !== text) this.objectiveText.setText(text);
   }
 
   toast(text: string, kind: "info" | "discovery" | "warning" | "death"): void {
