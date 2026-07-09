@@ -4,6 +4,14 @@ Copy this whole file, plus the files it names, into your session. Your job:
 make the game beautiful. You cannot break gameplay from these files — they
 are render-only by architecture.
 
+## Art direction addendum (operator, 2026-07-09)
+
+**CLEAN over textured.** Reference: Hollow Knight / Silksong — flat confident
+shapes, smooth 2–3 stop gradients, strong silhouettes, minimal surface
+marks. NO mineral speckle storms, mortar seams, cracks, chips, or drip
+stains — at game scale they read as dirt. Variation comes from large quiet
+tonal blotches, bevels, and the lighting, never from high-frequency noise.
+
 ## What the game is
 
 A community knowledge-roguelike set in a candle-lit vault. One shared daily

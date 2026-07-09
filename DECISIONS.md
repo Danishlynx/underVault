@@ -206,6 +206,13 @@ candidates; flip them in the named data file, not in code.
     the player's tile) — walking through unexplored dark previously drew
     the delver floating in pure void.
 
+60. ⚖ **Clean pass over the design art** (operator: "clean like Silksong,
+    not more texture"): floors/lids lose mortar seams, 34-dot speckle,
+    pebbles and forked cracks (6 whisper-speckles remain); wall bricks
+    near-uniform (jitter 0.30→0.06), chips and drip stains removed, base
+    moss 4→≤1 tuft; film grain off. Shapes/gradients/bevels/AO untouched.
+    Direction added to design/DESIGN-BRIEF.md for future Design rounds.
+
 ## Claude Design handoff (2026-07-09)
 
 55. **Texture factory replaced by Claude Design's redesign** (handoff bundle

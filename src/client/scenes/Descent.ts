@@ -249,7 +249,7 @@ export class DescentScene extends Phaser.Scene {
     this.vignette.depth = DEPTH_VIGNETTE;
     this.grain = this.add.tileSprite(sw >> 1, sh >> 1, sw, sh, "uv-grain");
     this.grain.setScrollFactor(0);
-    this.grain.setAlpha(0.55);
+    this.grain.setAlpha(0); // clean pass (D60): film grain off — flat, artsy
     this.grain.depth = DEPTH_GRAIN;
 
     this.scale.on("resize", this.onResize, this);

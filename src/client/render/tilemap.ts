@@ -235,78 +235,18 @@ function stoneDiamond(
   }
   ctx.globalAlpha = 1;
 
-  // mortar seams: 1–2 polylines crossing the slab, dark cut + light bevel SE
-  const seams = 1 + (crand() < 0.55 ? 1 : 0);
-  for (let s = 0; s < seams; s++) {
-    const horiz = crand() < 0.5;
-    let x = horiz ? cx - 26 : cx - 8 + crand() * 16;
-    let y = horiz ? cy - 6 + crand() * 12 : cy - 12;
-    const steps = 4;
-    const pts: number[] = [x, y];
-    for (let p = 0; p < steps; p++) {
-      x += horiz ? 13 + crand() * 4 : (crand() - 0.5) * 8;
-      y += horiz ? (crand() - 0.5) * 5 : 6 + crand() * 3;
-      pts.push(x, y);
-    }
-    const trace = (ox: number, oy: number, style: string, w: number, a: number): void => {
-      ctx.strokeStyle = style;
-      ctx.lineWidth = w;
-      ctx.globalAlpha = a;
-      ctx.beginPath();
-      ctx.moveTo((pts[0] ?? 0) + ox, (pts[1] ?? 0) + oy);
-      for (let p = 2; p < pts.length; p += 2) ctx.lineTo((pts[p] ?? 0) + ox, (pts[p + 1] ?? 0) + oy);
-      ctx.stroke();
-    };
-    trace(0.6, 0.8, shade(base, 1.32), 0.8, 0.5); // lit far lip
-    trace(0, 0, shade(speckleDark, 1.1), 1, 0.55); // the cut itself
-    ctx.globalAlpha = 1;
-  }
-
-  // mineral speckle
-  for (let i = 0; i < 34; i++) {
+  // CLEAN PASS (⚖ D60, operator direction "clean like Silksong"): the
+  // mortar seams, 34-dot mineral speckle, pebbles and forked cracks read as
+  // rubble at game scale. Surfaces stay smooth; big quiet blotches + bevels
+  // + AO carry all the variation. A whisper of speckle remains for tooth.
+  for (let i = 0; i < 6; i++) {
     const px = cx - TILE_W / 2 + crand() * TILE_W;
     const py = cy - TILE_H / 2 + crand() * TILE_H;
     ctx.fillStyle = crand() < 0.5 ? speckleLight : speckleDark;
-    ctx.globalAlpha = 0.1 + crand() * 0.14;
-    ctx.fillRect(px, py, 1 + crand() * 1.6, 1);
-  }
-  // a few pebbles catching the light
-  for (let i = 0; i < 3; i++) {
-    const px = cx - 20 + crand() * 40;
-    const py = cy - 7 + crand() * 14;
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = shade(base, 0.6);
-    ctx.beginPath();
-    ctx.ellipse(px, py + 0.6, 1.6, 0.9, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = shade(base, 1.5);
-    ctx.beginPath();
-    ctx.ellipse(px - 0.3, py, 1.2, 0.7, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = 0.05 + crand() * 0.05;
+    ctx.fillRect(px, py, 1.2, 1);
   }
   ctx.globalAlpha = 1;
-
-  // a hairline crack now and then, with a fork
-  if (crand() < 0.45) {
-    ctx.globalAlpha = 0.3;
-    ctx.strokeStyle = speckleDark;
-    ctx.lineWidth = 0.8;
-    let x = cx - 10 + crand() * 20;
-    let y = cy - 6 + crand() * 12;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let s = 0; s < 3; s++) {
-      x += 4 + crand() * 6;
-      y += (crand() - 0.5) * 6;
-      ctx.lineTo(x, y);
-      if (s === 1 && crand() < 0.6) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + 3 + crand() * 4, y + (crand() < 0.5 ? -3 : 3));
-        ctx.moveTo(x, y);
-      }
-    }
-    ctx.stroke();
-  }
 
   // interior AO hugging the SE edges
   ctx.globalAlpha = 0.16;
@@ -696,7 +636,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
           const u0 = cuts[b] ?? 0;
           const u1 = cuts[b + 1] ?? 1;
           const depthFade = 1 - c * 0.055; // lower courses sink into gloom
-          const jitter = 0.86 + crand() * 0.3;
+          const jitter = 0.97 + crand() * 0.06; // clean pass: near-uniform bricks
           ctx.fillStyle = shade(faceBase, tone * depthFade * jitter);
           ctx.beginPath();
           ctx.moveTo(xAt(u0) + 0.5, yAt(u0) + y0 + 0.5);
@@ -712,14 +652,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
           ctx.moveTo(xAt(u0) + 1, yAt(u0) + y0 + 1);
           ctx.lineTo(xAt(u1) - 1, yAt(u1) + y0 + 1);
           ctx.stroke();
-          // occasional chip
-          if (crand() < 0.28) {
-            const uu = u0 + (u1 - u0) * (0.3 + crand() * 0.4);
-            ctx.fillStyle = shade(C.void, 1.2, 0.5);
-            ctx.beginPath();
-            ctx.ellipse(xAt(uu), yAt(uu) + y0 + ch * (0.3 + crand() * 0.4), 1.6, 1, 0, 0, Math.PI * 2);
-            ctx.fill();
-          }
+          // chips removed — clean pass (D60)
         }
         // mortar line under the course
         ctx.strokeStyle = shade(C.void, 1.3, 0.6);
@@ -730,26 +663,13 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
         ctx.stroke();
       }
 
-      // damp drip stains from the lid
-      ctx.globalAlpha = 0.22;
-      ctx.strokeStyle = shade(C.void, 1.1);
-      for (let d = 0; d < 3; d++) {
-        const u = 0.15 + crand() * 0.7;
-        const len = 10 + crand() * 22;
-        ctx.lineWidth = 1.4 + crand();
-        ctx.beginPath();
-        ctx.moveTo(xAt(u), yAt(u) + 1);
-        ctx.lineTo(xAt(u), yAt(u) + len);
-        ctx.stroke();
-      }
-      // moss creeping up from the base
+      // clean pass (D60): drip stains removed; one quiet moss tuft at most
       ctx.globalAlpha = 1;
-      for (let m2 = 0; m2 < 4; m2++) {
-        const u = crand();
-        const my = yAt(u) + faceH - 3 - crand() * 8;
-        ctx.fillStyle = mix(C.verdigrisDim, C.verdigris, crand() * 0.4, 0.3 + crand() * 0.25);
+      if (crand() < 0.3) {
+        const u = 0.2 + crand() * 0.6;
+        ctx.fillStyle = mix(C.verdigrisDim, C.verdigris, 0.3, 0.3);
         ctx.beginPath();
-        ctx.ellipse(xAt(u), my, 2 + crand() * 3, 1.2 + crand() * 1.6, 0, 0, Math.PI * 2);
+        ctx.ellipse(xAt(u), yAt(u) + faceH - 4, 3, 1.6, 0, 0, Math.PI * 2);
         ctx.fill();
       }
       // base sinks into darkness
