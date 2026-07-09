@@ -196,6 +196,24 @@ candidates; flip them in the named data file, not in code.
     Shrine, Ironbloom's two-key doors, and Doubledeep stairs are noted as
     cut/deferred (breadth valves; 03 §5 allows trimming W5 breadth).
 
+## Claude Design handoff (2026-07-09)
+
+55. **Texture factory replaced by Claude Design's redesign** (handoff bundle
+    from claude.ai/design, worked from design/DESIGN-BRIEF.md against the
+    attached repo). Mechanically verified before install: identical export
+    signatures, all texture keys present, zero Math.random (74 seeded
+    crand() sites), imports limited to tokens/types/iso. Textures are now
+    authored on **4× supersampled masters** (SS = 4) and downsampled into
+    the contract-size canvases — engine untouched, goldens unaffected.
+56. ⚖ **Deferred crispness upgrade**: Design suggests authoring textures at
+    SS× and rendering sprites at 1/SS scale so the in-game zoom shows the
+    full detail. Engine-side change (sprite scale factors at every creation
+    site); worth doing with the W4 atlas pipeline rather than piecemeal.
+57. **Handoff loop learning**: the design app's local-folder attach is
+    READ-only context — its edits stay in its own sandbox until exported
+    (bundle) or synced via /design-login + DesignSync. The bundle path
+    worked; files land in `project/src/...` mirroring the repo layout.
+
 ## Fidelity pass (operator: "highest possible settings", 2026-07-08)
 
 41. **Per-tile lighting replaces binary fog** (`lights.ts`): every visible
