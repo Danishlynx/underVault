@@ -93,7 +93,13 @@ export function lightRadiusBase(wax: number, candle: number): number {
       break;
     }
   }
-  if (candle === Candle.CUPPED) base = base >> 1;
+  if (candle === Candle.CUPPED) {
+    // −50% floored, but never fully blind while the flame exists (⚖ D58:
+    // cupping at 1–49 wax previously gave radius 0 with zero feedback —
+    // players read total blackness-while-lit as a bug, not sneaking)
+    const halved = base >> 1;
+    base = base > 0 && halved === 0 ? 1 : halved;
+  }
   return base;
 }
 

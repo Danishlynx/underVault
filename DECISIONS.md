@@ -196,6 +196,16 @@ candidates; flip them in the named data file, not in code.
     Shrine, Ironbloom's two-key doors, and Doubledeep stairs are noted as
     cut/deferred (breadth valves; 03 §5 allows trimming W5 breadth).
 
+## Playtest glitch pass (2026-07-09)
+
+58. ⚖ **Cupped radius floors at 1 while the flame exists** (was `base>>1`
+    exactly, so cupping at 1–49 wax gave radius 0 — total blackness with a
+    visibly lit sprite, reported as a glitch in play). Sneaking still costs
+    half your sight; it no longer costs all of it. Goldens regenerated.
+59. **You always see the tile you stand on** (renderer: light floor 0.34 on
+    the player's tile) — walking through unexplored dark previously drew
+    the delver floating in pure void.
+
 ## Claude Design handoff (2026-07-09)
 
 55. **Texture factory replaced by Claude Design's redesign** (handoff bundle

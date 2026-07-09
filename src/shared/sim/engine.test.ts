@@ -37,10 +37,10 @@ describe("light tiers (01 §5)", () => {
     expect(lightRadiusBase(1, Candle.LIT)).toBe(1);
     expect(lightRadiusBase(0, Candle.LIT)).toBe(0);
   });
-  test("cupped halves (floor); snuffed zeroes", () => {
+  test("cupped halves (floored, min 1 while lit); snuffed zeroes", () => {
     expect(lightRadiusBase(500, Candle.CUPPED)).toBe(2);
     expect(lightRadiusBase(200, Candle.CUPPED)).toBe(1);
-    expect(lightRadiusBase(40, Candle.CUPPED)).toBe(0);
+    expect(lightRadiusBase(40, Candle.CUPPED)).toBe(1); // ⚖ D58: never blind while lit
     expect(lightRadiusBase(500, Candle.SNUFFED)).toBe(0);
   });
 });

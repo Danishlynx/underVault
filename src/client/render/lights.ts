@@ -71,6 +71,10 @@ export function computeLightMap(s: SimState, visible: Uint8Array, candleRadius: 
     }
     light[i] = Math.min(best, 1);
   }
+  // you can always FEEL the floor you stand on — at radius 0 the delver
+  // otherwise appears to float in void, which playtests read as a glitch
+  const pi = s.py * s.w + s.px;
+  if (visible[pi]! === 1 && light[pi]! < 0.34) light[pi] = 0.34;
   return light;
 }
 
