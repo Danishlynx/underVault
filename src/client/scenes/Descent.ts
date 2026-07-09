@@ -329,6 +329,13 @@ export class DescentScene extends Phaser.Scene {
 
     this.bindInput();
 
+    // DEV-ONLY: deleted at M2 — the Tower X-Ray's click-to-teleport
+    const onDevTeleport = (floor: number): void => this.devTeleport(floor);
+    this.game.events.on("uv-dev-teleport", onDevTeleport);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off("uv-dev-teleport", onDevTeleport);
+    });
+
     if (this.registry.get(AUTOSTART_KEY) === true) {
       this.registry.set(AUTOSTART_KEY, false);
       this.matchStrike();
@@ -777,6 +784,7 @@ export class DescentScene extends Phaser.Scene {
       kb.on("keydown-X", () => this.enqueueSnuff());
       kb.on("keydown-B", () => this.openSigns()); // plant a sign
       kb.on("keydown-V", () => this.toggleView()); // scout ↔ delve camera (D67)
+      kb.on("keydown-M", () => this.devTeleport()); // DEV-ONLY: deleted at M2
     }
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -1027,29 +1035,7 @@ export class DescentScene extends Phaser.Scene {
     for (const e of result.events) this.handleEvent(e);
 
     if (s.status === Status.DESCENDING) {
-      const nf = this.ports.getFloor(s.floor + 1);
-      this.state = descendState(s, nf.floorData, nf.rngInit);
-      this.floorEchoes = nf.echoes;
-      this.echoPlayed.clear();
-      this.visibleMask = visibleFor(this.state);
-      this.queue = [];
-      // the ring must not leak previous-floor coordinates into a death
-      // echo recorded on this floor (D64)
-      this.echoRing = [];
-      this.buildFloor();
-      // place everything instantly and snap the camera: no sprite-slide
-      // from old-floor coordinates across the new map (D64)
-      this.redraw(true);
-      this.cameras.main.centerOn(this.playerView.x, this.playerView.y);
-      this.audio.play("descend");
-      this.cameras.main.flash(MOTION.ceremonial, 11, 10, 16);
-      const biome = biomeFor(this.state.floor);
-      this.hud.toast(
-        this.state.floor === biome.firstFloor
-          ? `${biome.name}. Fl. ${ROMAN[this.state.floor]}.`
-          : `Fl. ${ROMAN[this.state.floor]}. The dark is thicker here.`,
-        "warning",
-      );
+      this.installFloor(s.floor + 1);
     }
 
     this.redraw(false);
@@ -1066,6 +1052,47 @@ export class DescentScene extends Phaser.Scene {
     if (this.state.status === Status.DEAD) this.openEpitaph();
     else if (this.state.status === Status.EXITED) this.openExit();
     else if (this.state.status === Status.VICTORY) this.openVictory();
+  }
+
+  /** The one true floor transition — stairs and the dev skip share it. */
+  private installFloor(next: number): void {
+    const s = this.state;
+    if (s === null) return;
+    const nf = this.ports.getFloor(next);
+    this.state = descendState(s, nf.floorData, nf.rngInit);
+    this.floorEchoes = nf.echoes;
+    this.echoPlayed.clear();
+    this.visibleMask = visibleFor(this.state);
+    this.queue = [];
+    // the ring must not leak previous-floor coordinates into a death
+    // echo recorded on this floor (D64)
+    this.echoRing = [];
+    this.buildFloor();
+    // place everything instantly and snap the camera: no sprite-slide
+    // from old-floor coordinates across the new map (D64)
+    this.redraw(true);
+    this.cameras.main.centerOn(this.playerView.x, this.playerView.y);
+    this.audio.play("descend");
+    this.cameras.main.flash(MOTION.ceremonial, 11, 10, 16);
+    const biome = biomeFor(this.state.floor);
+    this.hud.toast(
+      this.state.floor === biome.firstFloor
+        ? `${biome.name}. Fl. ${ROMAN[this.state.floor]}.`
+        : `Fl. ${ROMAN[this.state.floor]}. The dark is thicker here.`,
+      "warning",
+    );
+  }
+
+  // DEV-ONLY: deleted at M2 — operator floor-skip for judging every biome
+  // without earning the stairs. Same transition as a real descend.
+  private devTeleport(target?: number): void {
+    const s = this.state;
+    if (s === null || !this.running || this.overlayOpen || s.status !== Status.ALIVE) return;
+    const next = target ?? s.floor + 1;
+    if (next < 1 || next > MAX_FLOOR || next === s.floor) return;
+    s.status = Status.DESCENDING; // the sim's transition guard demands it
+    this.installFloor(next);
+    this.hud.toast(`(dev) You fall through the stone to Fl. ${ROMAN[next]}.`, "info");
   }
 
   private handleEvent(e: OutcomeEvent): void {

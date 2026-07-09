@@ -114,7 +114,13 @@ function renderFloorIso(fd: FloorData, tex: (key: string) => Src | null, suf: st
 
 let open = false;
 
-export function toggleTowerView(host: HTMLElement, ports: GamePorts, day: number, game: Phaser.Game): void {
+export function toggleTowerView(
+  host: HTMLElement,
+  ports: GamePorts,
+  day: number,
+  game: Phaser.Game,
+  onPick?: (floor: number) => void,
+): void {
   const existing = host.querySelector(".uv-tower");
   if (existing !== null) {
     existing.remove();
@@ -139,7 +145,7 @@ export function toggleTowerView(host: HTMLElement, ports: GamePorts, day: number
   head.style.cssText = "margin-bottom:14px;";
   head.innerHTML =
     `<b style="font-size:17px;color:var(--parchment,#eae0c9)">THE TOWER — Day ${day}</b> ` +
-    `<span style="opacity:.55;font-size:12px">gallery lighting, real game art · M closes · dev x-ray, deleted at M2</span>`;
+    `<span style="opacity:.55;font-size:12px">click a floor to teleport there · P closes · M in-game skips a floor · dev x-ray, deleted at M2</span>`;
   backdrop.appendChild(head);
 
   const grid = document.createElement("div");
@@ -151,7 +157,14 @@ export function toggleTowerView(host: HTMLElement, ports: GamePorts, day: number
     const bi = BIOMES.indexOf(biomeFor(f));
     ensureBiomeSkin(game.textures, bi);
     const cell = document.createElement("div");
-    cell.style.cssText = "text-align:center;";
+    cell.style.cssText = "text-align:center;cursor:pointer;";
+    cell.title = `Teleport to Fl. ${ROMAN[f]}`;
+    const floorNo = f;
+    cell.addEventListener("click", () => {
+      backdrop.remove();
+      open = false;
+      onPick?.(floorNo);
+    });
     const label = document.createElement("div");
     label.style.cssText = "font-size:12px;margin-bottom:4px;color:var(--parchment-aged,#d6c7a3)";
     label.textContent = f === MAX_FLOOR ? `Fl. ${ROMAN[f]} — THE BOTTOM` : `Fl. ${ROMAN[f]} · ${biomeFor(f).name}`;

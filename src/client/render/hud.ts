@@ -14,7 +14,9 @@ import { Candle, Item, type SimState } from "../../shared/sim/types.js";
 import { START_WAX } from "../../shared/sim/constants.js";
 import { TEX_SCALE } from "./tilemap.js";
 
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+  "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
+  "XXI", "XXII", "XXIII", "XXIV", "XXV"];
 
 /** Slot icon per carriable item — chalk is the fallback no more (D64). */
 const ITEM_ICON: Record<number, string> = {

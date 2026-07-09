@@ -13,10 +13,13 @@ if (parent === null) throw new Error("dev harness: #app missing");
 const ports = createDevPorts();
 const game = createUndervaultGame(parent, ports);
 
-// DEV-ONLY: M = the Tower X-Ray (all 25 floors of today's seed at a glance)
+// DEV-ONLY: P = the Tower X-Ray (all 25 floors at a glance; click a floor
+// to teleport there). M is the in-game next-floor skip (Descent handles it).
 window.addEventListener("keydown", (ev) => {
-  if (ev.key !== "m" && ev.key !== "M") return;
+  if (ev.key !== "p" && ev.key !== "P") return;
   const t = ev.target as HTMLElement | null;
   if (t !== null && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-  toggleTowerView(parent, ports, ports.getGuildhall().day, game);
+  toggleTowerView(parent, ports, ports.getGuildhall().day, game, (floor) => {
+    game.events.emit("uv-dev-teleport", floor);
+  });
 });
