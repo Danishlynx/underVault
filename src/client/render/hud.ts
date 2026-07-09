@@ -34,6 +34,7 @@ export interface HudCallbacks {
 export class Hud {
   private readonly scene: Phaser.Scene;
   private readonly cb: HudCallbacks;
+  private readonly layer: Phaser.GameObjects.Layer | null;
 
   private w = 0;
   private h = 0;
@@ -67,9 +68,10 @@ export class Hud {
   private snuffHoldStart = 0;
   private snuffHolding = false;
 
-  constructor(scene: Phaser.Scene, cb: HudCallbacks) {
+  constructor(scene: Phaser.Scene, cb: HudCallbacks, layer: Phaser.GameObjects.Layer | null = null) {
     this.scene = scene;
     this.cb = cb;
+    this.layer = layer;
     this.build();
     this.layout(scene.scale.width, scene.scale.height);
   }
@@ -77,6 +79,7 @@ export class Hud {
   private fixed<T extends Phaser.GameObjects.GameObject & { setScrollFactor(v: number): T }>(o: T): T {
     o.setScrollFactor(0);
     (o as unknown as { depth: number }).depth = 1000;
+    this.layer?.add(o);
     return o;
   }
 
@@ -331,6 +334,7 @@ export class Hud {
       .setOrigin(0.5, 0)
       .setScrollFactor(0);
     t.depth = 1002;
+    this.layer?.add(t);
     this.scene.tweens.add({
       targets: t,
       alpha: 0,

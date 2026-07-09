@@ -91,11 +91,27 @@ export function gridRef(x: number, y: number): string {
   return `${String.fromCharCode(65 + x)}${y + 1}`;
 }
 
-/** World-extent helpers for camera bounds. */
+/** World-extent helpers for camera bounds. MARGIN keeps the clamped camera
+ *  from fighting zoom-to-fit centering on small floors / zoomed-out views. */
+const BOUNDS_MARGIN = 320;
 export function worldBounds(w: number, h: number): { x: number; y: number; width: number; height: number } {
-  const left = gridToScreen(0, h - 1).sx - HALF_W;
-  const right = gridToScreen(w - 1, 0).sx + HALF_W;
-  const top = gridToScreen(0, 0).sy - HALF_H - WALL_H;
-  const bottom = gridToScreen(w - 1, h - 1).sy + HALF_H + TILE_H;
+  const left = gridToScreen(0, h - 1).sx - HALF_W - BOUNDS_MARGIN;
+  const right = gridToScreen(w - 1, 0).sx + HALF_W + BOUNDS_MARGIN;
+  const top = gridToScreen(0, 0).sy - HALF_H - WALL_H - BOUNDS_MARGIN;
+  const bottom = gridToScreen(w - 1, h - 1).sy + HALF_H + TILE_H + BOUNDS_MARGIN;
   return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/**
+ * Camera zoom that guarantees the full candle pool (radius 4 ⇒ 9 diamonds)
+ * plus a tile of margin is visible in BOTH axes, HUD chrome subtracted.
+ * Clamped so we never blow pixels up past 1× or shrink into unreadability.
+ */
+export function fitZoom(viewW: number, viewH: number): number {
+  const tilesAcross = 11; // 9-tile light pool + margin
+  const zoomW = viewW / (tilesAcross * TILE_W);
+  const poolHeight = tilesAcross * HALF_H * 2 * 0.55 + WALL_H * 2; // iso pitch + wall headroom
+  const zoomH = (viewH - 150) / poolHeight; // 150 ≈ HUD bar + top chrome
+  const z = Math.min(zoomW, zoomH);
+  return Math.min(1, Math.max(0.6, z));
 }

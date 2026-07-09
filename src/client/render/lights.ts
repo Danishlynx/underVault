@@ -115,6 +115,7 @@ export function syncSourceGlows(
   s: SimState,
   visible: Uint8Array,
   depth: number,
+  layer?: Phaser.GameObjects.Layer,
 ): void {
   const want = new Set<string>();
   const place = (key: string, x: number, y: number, tiles: number, tint: number): void => {
@@ -124,6 +125,7 @@ export function syncSourceGlows(
       img = scene.add.image(0, 0, "halo");
       img.setBlendMode(Phaser.BlendModes.ADD);
       img.depth = depth;
+      layer?.add(img);
       pool.images.set(key, img);
     }
     const c = gridToScreen(x, y);

@@ -60,6 +60,7 @@ import {
 import {
   calibrate,
   depthOf,
+  fitZoom,
   gridRef,
   gridToScreen,
   HALF_H,
@@ -158,6 +159,9 @@ export class DescentScene extends Phaser.Scene {
   private visibleMask: Uint8Array = new Uint8Array(0);
   private running = false;
 
+  private worldLayer!: Phaser.GameObjects.Layer;
+  private uiLayer!: Phaser.GameObjects.Layer;
+  private uiCam!: Phaser.Cameras.Scene2D.Camera;
   private map: Phaser.Tilemaps.Tilemap | null = null;
   private groundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private lastTiles: Uint8Array = new Uint8Array(0);
@@ -228,46 +232,63 @@ export class DescentScene extends Phaser.Scene {
     this.dust = null;
     this.activeEcho = null;
 
-    // chrome
+    // chrome — split world/UI across two cameras so zoom-to-fit never
+    // scales the HUD (Layers keep per-object depth sorting intact)
     const sw = this.scale.width;
     const sh = this.scale.height;
+    this.worldLayer = this.add.layer();
+    this.uiLayer = this.add.layer();
+    this.uiCam = this.cameras.add(0, 0, sw, sh);
+    this.cameras.main.ignore(this.uiLayer);
+    this.uiCam.ignore(this.worldLayer);
+
     this.halo = this.add.image(0, 0, "halo");
     this.halo.setBlendMode(Phaser.BlendModes.ADD);
     this.halo.depth = DEPTH_HALO;
     this.halo.setVisible(false);
+    this.worldLayer.add(this.halo);
     this.cursorG = this.add.graphics();
     this.cursorG.depth = DEPTH_CURSOR;
+    this.worldLayer.add(this.cursorG);
     this.playerShadow = this.add.image(0, 0, "iso-shadow");
     this.playerShadow.setVisible(false);
+    this.worldLayer.add(this.playerShadow);
     this.playerView = this.add.image(0, 0, "iso-player");
     this.playerView.setOrigin(0.5, 1);
     this.playerView.setScale(TEX_SCALE); // 4× master rendered at ¼ (D56)
     this.playerView.setVisible(false);
+    this.worldLayer.add(this.playerView);
     this.vignette = this.add.image(sw >> 1, sh >> 1, "uv-vignette");
     this.vignette.setScrollFactor(0);
     this.vignette.setDisplaySize(sw, sh);
     this.vignette.depth = DEPTH_VIGNETTE;
+    this.uiLayer.add(this.vignette);
     this.grain = this.add.tileSprite(sw >> 1, sh >> 1, sw, sh, "uv-grain");
     this.grain.setScrollFactor(0);
     this.grain.setAlpha(0); // clean pass (D60): film grain off — flat, artsy
     this.grain.depth = DEPTH_GRAIN;
+    this.uiLayer.add(this.grain);
 
     this.scale.on("resize", this.onResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off("resize", this.onResize, this);
     });
 
-    this.hud = new Hud(this, {
-      onCup: () => this.enqueue(Action.CUP),
-      onSnuffComplete: () => this.enqueueSnuff(),
-      onRelight: () => this.enqueueRelight(),
-      onRestart: () => this.finishRun(false),
-      onUseSlot: (slot) => this.useSlot(slot),
-      onToggleMute: () => {
-        this.audio.setMuted(!this.audio.muted);
-        return this.audio.muted;
+    this.hud = new Hud(
+      this,
+      {
+        onCup: () => this.enqueue(Action.CUP),
+        onSnuffComplete: () => this.enqueueSnuff(),
+        onRelight: () => this.enqueueRelight(),
+        onRestart: () => this.finishRun(false),
+        onUseSlot: (slot) => this.useSlot(slot),
+        onToggleMute: () => {
+          this.audio.setMuted(!this.audio.muted);
+          return this.audio.muted;
+        },
       },
-    });
+      this.uiLayer,
+    );
 
     this.bindInput();
 
@@ -350,6 +371,7 @@ export class DescentScene extends Phaser.Scene {
         follow: this.playerView,
       });
       this.dust.setDepth(DEPTH_DUST);
+      this.worldLayer.add(this.dust);
     }
 
     this.buildFloor();
@@ -419,6 +441,7 @@ export class DescentScene extends Phaser.Scene {
     if (layer === null) throw new Error("ground layer creation failed");
     this.groundLayer = layer;
     layer.setDepth(0);
+    this.worldLayer.add(layer);
 
     const p00 = layer.tileToWorldXY(0, 0);
     calibrate(p00.x + HALF_W, p00.y + HALF_H);
@@ -430,6 +453,19 @@ export class DescentScene extends Phaser.Scene {
     const b = worldBounds(s.w, s.h);
     this.cameras.main.setBounds(b.x, b.y, b.width, b.height);
     this.cameras.main.startFollow(this.playerView, true, 0.12, 0.12);
+    this.applyViewport();
+  }
+
+  /** Zoom-to-fit + HUD-aware centering (portrait must show the full light
+   *  pool; landscape must not waste the vertical). */
+  private applyViewport(): void {
+    const cam = this.cameras.main;
+    const zoom = fitZoom(this.scale.width, this.scale.height);
+    cam.setZoom(zoom);
+    // usable area sits above the 72px HUD bar and below top chrome (~60px):
+    // bias the follow so the player rides its center, not the canvas center
+    const bias = ((72 - 60) / 2) / zoom;
+    cam.setFollowOffset(0, -bias);
   }
 
   private syncTiles(): void {
@@ -456,6 +492,7 @@ export class DescentScene extends Phaser.Scene {
         sprite.setScale(TEX_SCALE);
         const isItem = t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE;
         sprite.depth = depthOf(x, y, isItem ? Layer.ITEM : Layer.WALL);
+        this.worldLayer.add(sprite);
         this.props.set(i, { sprite, tile: t, occluded: false });
       } else if (want !== "") {
         this.props.get(i)!.tile = t;
@@ -471,6 +508,8 @@ export class DescentScene extends Phaser.Scene {
     this.grain.setPosition(w >> 1, h >> 1);
     this.grain.setSize(w, h);
     this.hud.layout(w, h);
+    this.uiCam.setSize(w, h);
+    if (this.running) this.applyViewport();
   }
 
   // ── Input ────────────────────────────────────────────────────────────────
@@ -1015,6 +1054,7 @@ export class DescentScene extends Phaser.Scene {
     img.setTint(COLOR.verdigris);
     img.setAlpha(0.45);
     img.depth = DEPTH_GHOST;
+    this.worldLayer.add(img);
     this.activeEcho = { frames: echo.frames, index: 0, img, nextAt: 0 };
     this.hud.toast("A shape retraces its last steps…", "discovery");
   }
@@ -1068,7 +1108,7 @@ export class DescentScene extends Phaser.Scene {
 
     positionHalo(this.halo, s, effR);
     this.halo.setTint(COLOR.flame);
-    syncSourceGlows(this, this.glowPool, s, this.visibleMask, DEPTH_HALO - 1);
+    syncSourceGlows(this, this.glowPool, s, this.visibleMask, DEPTH_HALO - 1, this.worldLayer);
 
     const pc = gridToScreen(s.px, s.py);
     const pi = s.py * s.w + s.px;
@@ -1090,6 +1130,7 @@ export class DescentScene extends Phaser.Scene {
         const c = gridToScreen(x, y);
         img = this.add.image(c.sx, c.sy, "iso-diamond");
         img.depth = depthOf(x, y, Layer.CORPSE);
+        this.worldLayer.add(img);
         this.overlays.set(key, img);
       }
       img.setTint(tint);
@@ -1134,7 +1175,9 @@ export class DescentScene extends Phaser.Scene {
         view = this.add.image(0, 0, entityTextureFor(ent.kind, ent.state));
         view.setOrigin(0.5, 1);
         view.setScale(TEX_SCALE);
+        this.worldLayer.add(view);
         shadowView = this.add.image(0, 0, "iso-shadow");
+        this.worldLayer.add(shadowView);
         if (ent.kind === EntityKind.BEAST || ent.kind === EntityKind.KEEPER) shadowView.setScale(1.6, 1.6);
         else if (ent.kind === EntityKind.MOTH || ent.kind === EntityKind.GASLIGHT) shadowView.setScale(0.5, 0.5);
         this.entityViews.set(ent.id, view);

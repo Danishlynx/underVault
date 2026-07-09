@@ -206,6 +206,15 @@ candidates; flip them in the named data file, not in code.
     the player's tile) — walking through unexplored dark previously drew
     the delver floating in pure void.
 
+61. **Camera rebuilt (operator: "camera angle is a mess")**: two-camera
+    split — a zoomed world camera + an unzoomed UI camera over Phaser
+    Layers (containers would break depth-sorting) so the HUD never scales.
+    `iso.fitZoom(w,h)` guarantees the full 9-diamond candle pool + margin
+    fits BOTH axes (portrait was physically unable to show the whole light
+    radius before: 576px pool on a 480px canvas). Follow bias accounts for
+    HUD chrome; camera bounds gain a 320px margin so edge clamping never
+    fights centering. ⚖ knobs: tilesAcross 11, zoom clamp [0.6, 1].
+
 60. ⚖ **Clean pass over the design art** (operator: "clean like Silksong,
     not more texture"): floors/lids lose mortar seams, 34-dot speckle,
     pebbles and forked cracks (6 whisper-speckles remain); wall bricks
