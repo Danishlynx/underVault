@@ -206,6 +206,16 @@ candidates; flip them in the named data file, not in code.
     the player's tile) — walking through unexplored dark previously drew
     the delver floating in pure void.
 
+62. **RESIZE scaling replaces FIT letterboxing (operator: "the whole
+    viewport is being wasted — Reddit posts have little space")**: the
+    canvas is now every pixel of its container at any aspect; the HUD
+    re-flows to true dimensions; `fitZoom` INVERTED from fit-the-pool to
+    FILL-the-frame (portrait ≈7 diamonds across, landscape ≈12, clamp
+    [1, 1.6]) — pool edges cropping offscreen is normal game framing.
+    ⚠ Deviates from the "decided" fixed 480×854 internal res: that stays
+    the DESIGN reference resolution (04 metrics), no longer the render
+    surface. Flagged per the conflict rule; docs need a catch-up edit.
+
 61. **Camera rebuilt (operator: "camera angle is a mess")**: two-camera
     split — a zoomed world camera + an unzoomed UI camera over Phaser
     Layers (containers would break depth-sorting) so the HUD never scales.

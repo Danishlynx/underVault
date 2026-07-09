@@ -103,15 +103,17 @@ export function worldBounds(w: number, h: number): { x: number; y: number; width
 }
 
 /**
- * Camera zoom that guarantees the full candle pool (radius 4 ⇒ 9 diamonds)
- * plus a tile of margin is visible in BOTH axes, HUD chrome subtracted.
- * Clamped so we never blow pixels up past 1× or shrink into unreadability.
+ * Camera zoom that FILLS the frame with world (D62 — the earlier
+ * fit-the-whole-pool version zoomed out into a lifeless miniature).
+ * Portrait: ~7 diamonds across the width — close and immersive; the pool
+ * edge cropping offscreen is normal game framing. Landscape: ~12 across,
+ * bounded by vertical room so walls keep headroom. Clamped ≥1 so the world
+ * never shrinks below native, ≤1.6 so huge desktop windows stay tactical.
  */
 export function fitZoom(viewW: number, viewH: number): number {
-  const tilesAcross = 11; // 9-tile light pool + margin
-  const zoomW = viewW / (tilesAcross * TILE_W);
-  const poolHeight = tilesAcross * HALF_H * 2 * 0.55 + WALL_H * 2; // iso pitch + wall headroom
-  const zoomH = (viewH - 150) / poolHeight; // 150 ≈ HUD bar + top chrome
-  const z = Math.min(zoomW, zoomH);
-  return Math.min(1, Math.max(0.6, z));
+  const portrait = viewH >= viewW;
+  const target = portrait
+    ? viewW / (7 * TILE_W)
+    : Math.min(viewW / (12 * TILE_W), (viewH - 160) / (8 * TILE_H));
+  return Math.min(1.6, Math.max(1, target));
 }
