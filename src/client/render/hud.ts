@@ -12,6 +12,7 @@ import Phaser from "phaser";
 import { COLOR, HUD, MOTION } from "../../../design/tokens/tokens.js";
 import { Candle, Item, type SimState } from "../../shared/sim/types.js";
 import { START_WAX } from "../../shared/sim/constants.js";
+import { TEX_SCALE } from "./tilemap.js";
 
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 const SANS = "system-ui, sans-serif"; // 04 §2.2 body fallback stack
@@ -148,6 +149,7 @@ export class Hud {
       bg.on("pointerdown", () => this.cb.onUseSlot(slotIndex));
       const underline = s.add.rectangle(4, HUD.slotCell - 3, HUD.slotCell - 8, 1, COLOR.flame, 0).setOrigin(0, 0);
       const icon = s.add.image(HUD.slotCell >> 1, (HUD.slotCell >> 1) - 2, "icon-flint").setVisible(false);
+      icon.setScale(TEX_SCALE); // icons are baked on 4× masters
       const charges = s.add
         .text(HUD.slotCell - 4, HUD.slotCell - 15, "", { fontFamily: SANS, fontSize: "11px", color: "#f5a93f" })
         .setOrigin(1, 0);

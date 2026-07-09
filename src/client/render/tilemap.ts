@@ -70,7 +70,21 @@ function hiBegin(t: Phaser.Textures.CanvasTexture): CanvasRenderingContext2D {
   ctx.scale(SS, SS);
   return ctx;
 }
-function hiEnd(t: Phaser.Textures.CanvasTexture): void {
+/** Billboards RETAIN their 4× master (render at TEX_SCALE — D56's crispness
+ *  upgrade); pass keepHiRes=false to downsample to contract size (the ground
+ *  strip must stay 64×32 cells for the iso TilemapLayer; soft utility
+ *  sprites gain nothing from resolution). */
+export const TEX_SCALE = 1 / SS;
+function hiEnd(t: Phaser.Textures.CanvasTexture, keepHiRes = true): void {
+  if (ssMaster !== null && keepHiRes) {
+    t.setSize(ssMaster.width, ssMaster.height);
+    const ctx = t.getContext();
+    ctx.clearRect(0, 0, t.width, t.height);
+    ctx.drawImage(ssMaster, 0, 0);
+    ssMaster = null;
+    t.refresh();
+    return;
+  }
   const ctx = t.getContext();
   if (ssMaster !== null) {
     ctx.clearRect(0, 0, t.width, t.height);
@@ -637,7 +651,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     for (let v = 0; v < FLOOR_VARIANTS - 1; v++) {
       drawAt(TILE_KINDS + v, (cx, cy) => stoneDiamond(ctx, cx, cy, floorBase, C.bone, C.void));
     }
-    hiEnd(strip);
+    hiEnd(strip, false);
   }
 
   // ── Wall billboard: per-brick coursed masonry + lit lid ──────────────────
@@ -1557,7 +1571,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     diamondPath(ctx, TILE_W / 2, TILE_H / 2, TILE_W - 2, TILE_H - 1);
     ctx.fillStyle = "#ffffff";
     ctx.fill();
-    hiEnd(dia);
+    hiEnd(dia, false);
   }
 
   const shadow = T.createCanvas("iso-shadow", 48, 24);
@@ -1574,7 +1588,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     ctx.arc(24, 24, 22, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    hiEnd(shadow);
+    hiEnd(shadow, false);
   }
 
   const mote = T.createCanvas("iso-mote", 6, 6);
@@ -1586,7 +1600,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     g.addColorStop(1, shade(C.bone, 1, 0));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 6, 6);
-    hiEnd(mote);
+    hiEnd(mote, false);
   }
 
   // ── Special doors, inscription, seal: dressed stone + a single motif ─────
@@ -2904,7 +2918,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     g.addColorStop(1, shade(C.void, 1, 0.72));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 480, 854);
-    hiEnd(vignette);
+    hiEnd(vignette, false);
   }
 
   const grain = T.createCanvas("uv-grain", 128, 128);

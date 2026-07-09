@@ -45,6 +45,7 @@ import {
   groundIndexFor,
   isWallishTile,
   propTextureFor,
+  TEX_SCALE,
 } from "../render/tilemap.js";
 import {
   computeLightMap,
@@ -240,6 +241,7 @@ export class DescentScene extends Phaser.Scene {
     this.playerShadow.setVisible(false);
     this.playerView = this.add.image(0, 0, "iso-player");
     this.playerView.setOrigin(0.5, 1);
+    this.playerView.setScale(TEX_SCALE); // 4× master rendered at ¼ (D56)
     this.playerView.setVisible(false);
     this.vignette = this.add.image(sw >> 1, sh >> 1, "uv-vignette");
     this.vignette.setScrollFactor(0);
@@ -451,6 +453,7 @@ export class DescentScene extends Phaser.Scene {
         const c = gridToScreen(x, y);
         const sprite = this.add.image(c.sx, c.sy + HALF_H, want);
         sprite.setOrigin(0.5, 1);
+        sprite.setScale(TEX_SCALE);
         const isItem = t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE;
         sprite.depth = depthOf(x, y, isItem ? Layer.ITEM : Layer.WALL);
         this.props.set(i, { sprite, tile: t, occluded: false });
@@ -663,14 +666,14 @@ export class DescentScene extends Phaser.Scene {
       if (kind === EntityKind.MOTH) {
         const frame = ((time / 130) | 0) % 2 === 0 ? "iso-ent-3" : "iso-ent-3b";
         if (view.texture.key !== frame) view.setTexture(frame);
-        view.setScale(1, 1 + 0.04 * Math.sin(time / 90 + id));
+        view.setScale(TEX_SCALE, TEX_SCALE * (1 + 0.04 * Math.sin(time / 90 + id)));
       } else if (kind !== EntityKind.CORPSE && kind !== EntityKind.MIMIC) {
         const speed = kind === EntityKind.BEAST || kind === EntityKind.KEEPER ? 640 : 300;
         const amp = kind === EntityKind.BEAST ? 0.02 : 0.035;
-        view.setScale(1, 1 + amp * Math.sin(time / speed + id * 1.7));
+        view.setScale(TEX_SCALE, TEX_SCALE * (1 + amp * Math.sin(time / speed + id * 1.7)));
       }
     });
-    this.playerView.setScale(1, 1 + 0.02 * Math.sin(time / 420));
+    this.playerView.setScale(TEX_SCALE, TEX_SCALE * (1 + 0.02 * Math.sin(time / 420)));
 
     // echo ghost playback
     if (this.activeEcho !== null && time >= this.activeEcho.nextAt) {
@@ -1008,6 +1011,7 @@ export class DescentScene extends Phaser.Scene {
   private startEcho(echo: EchoRecord): void {
     const img = this.add.image(0, 0, "iso-player");
     img.setOrigin(0.5, 1);
+    img.setScale(TEX_SCALE);
     img.setTint(COLOR.verdigris);
     img.setAlpha(0.45);
     img.depth = DEPTH_GHOST;
@@ -1129,6 +1133,7 @@ export class DescentScene extends Phaser.Scene {
       if (view === undefined) {
         view = this.add.image(0, 0, entityTextureFor(ent.kind, ent.state));
         view.setOrigin(0.5, 1);
+        view.setScale(TEX_SCALE);
         shadowView = this.add.image(0, 0, "iso-shadow");
         if (ent.kind === EntityKind.BEAST || ent.kind === EntityKind.KEEPER) shadowView.setScale(1.6, 1.6);
         else if (ent.kind === EntityKind.MOTH || ent.kind === EntityKind.GASLIGHT) shadowView.setScale(0.5, 0.5);

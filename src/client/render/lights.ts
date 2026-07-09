@@ -61,7 +61,8 @@ export function computeLightMap(s: SimState, visible: Uint8Array, candleRadius: 
     if (visible[i]! !== 1) continue;
     const x = i % s.w;
     const y = (i / s.w) | 0;
-    let best = 0.14; // ambient floor for anything you can see at all
+    let best = 0.2; // ambient floor for anything you can see at all (⚖ was
+    // 0.14 — the design-art midtones drowned; preview-parity rebalance)
     for (const src of sources) {
       const dx = x - src.x;
       const dy = y - src.y;
@@ -94,10 +95,12 @@ export function positionHalo(halo: Phaser.GameObjects.Image, s: SimState, radius
 
 export function flickerHalo(halo: Phaser.GameObjects.Image, radius: number): void {
   if (!halo.visible) return;
+  // quieter halo (⚖ was 0.95/0.72): the additive orange wash was drowning
+  // the texture detail the design pass added — tiles carry the light now
   if (radius <= 2 && radius > 0) {
-    halo.setAlpha(0.72 + Math.random() * 0.28 * (radius === 1 ? 1 : 0.5));
+    halo.setAlpha(0.42 + Math.random() * 0.2 * (radius === 1 ? 1 : 0.5));
   } else {
-    halo.setAlpha(0.95);
+    halo.setAlpha(0.55);
   }
 }
 
