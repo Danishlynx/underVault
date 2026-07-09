@@ -15,7 +15,9 @@
 import type Phaser from "phaser";
 import { COLOR_CSS } from "../../../design/tokens/tokens.js";
 import { Tile, TILE_KIND_COUNT, EntityKind } from "../../shared/sim/types.js";
+import { biomeFor, BIOMES } from "../../shared/sim/constants.js";
 import { TILE_W, TILE_H, WALL_H } from "./iso.js";
+import { buildAllDecoSets, DECO_SETS } from "./decos/index.js";
 
 const TILE_KINDS = TILE_KIND_COUNT; // 30 slots, index = TileId
 export const FLOOR_VARIANTS = 3; // extra floor looks appended after the slots
@@ -214,6 +216,7 @@ function stoneDiamond(
 export function makeIsoTextures(scene: Phaser.Scene): void {
   buildBiomeSkin(scene.textures, 0); // the Tallow Halls skin ships with boot
   makeGlobalIsoTextures(scene);
+  buildAllDecoSets(scene.textures); // per-biome furniture (D71)
 }
 
 // ── Biome skins (D70): each biome wears its own stone ──────────────────────
@@ -3466,12 +3469,14 @@ export function propTextureFor(t: number): string {
 
 /** Deterministic set dressing: ~1 in 8 plain floor tiles hosts a quiet,
  *  non-blocking prop. Same (x,y,floor) → same prop, every visit. */
-const DECO_KEYS = ["deco-barrel", "deco-crate", "deco-rubble", "deco-bones", "deco-stubs", "deco-shard"] as const;
 export function floorDecoFor(x: number, y: number, floor: number): { key: string; ox: number; oy: number } | null {
   const h = (Math.imul(x, 73) ^ Math.imul(y, 151) ^ Math.imul(floor + 1, 397)) >>> 0;
-  if (h % 100 >= 18) return null;
+  if (h % 100 >= 20) return null;
+  // each biome scatters its own furniture (D71)
+  const bi = BIOMES.indexOf(biomeFor(floor));
+  const set = DECO_SETS[bi] ?? DECO_SETS[0]!;
   return {
-    key: DECO_KEYS[(h >>> 4) % DECO_KEYS.length]!,
+    key: set[(h >>> 4) % set.length]!,
     ox: ((h >>> 8) % 21) - 10,
     oy: ((h >>> 13) % 9) - 4,
   };

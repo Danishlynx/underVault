@@ -465,3 +465,20 @@ candidates; flip them in the named data file, not in code.
     fallback so fast descents never break; the Tower X-Ray renders every
     floor in its own skin. Motifs draw only on undressed full walls, clean
     confident shapes per D60. snap.ts gains --scroll for overlay capture.
+
+71. Per-biome prop sets (operator: "there is no change in props or
+    additions - not distinctive enough"). Thirty new artist-drawn floor
+    props, five per biome, produced by a six-agent parallel workflow (one
+    module each under src/client/render/decos/, self-verified against
+    strict tsc + eslint): Tallow wax pillar/mound/votives/render-barrel/
+    pool; Cellar shrooms/urn/sack/roots/drying-rack; Drowned waterlogged
+    books/collapsed shelf/kelp/barnacled rock/dead lantern; Furnace anvil/
+    ember slag/black-glass shards/coals/cracked crucible with frozen gold
+    spill; Choir broken column/fallen bell/lectern/toppled candelabrum/
+    hymn tablet; Deep crystals/glyph monolith/eggs/obsidian spike/gold
+    offering bowl (the Bottom scatters offering-heavy). floorDecoFor is
+    biome-aware via DECO_SETS (repetition = weighting; shared fillers
+    mixed in), density 18->20%. Painting helpers split into paint.ts so
+    the six modules share the supersample pipeline cycle-free. Also this
+    session: M = dev next-floor teleport, Tower X-Ray on P with click-to-
+    teleport (both DEV-ONLY, deleted at M2).
