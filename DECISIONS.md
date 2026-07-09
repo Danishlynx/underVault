@@ -448,3 +448,20 @@ candidates; flip them in the named data file, not in code.
     floating in the dark. (c) BROKEN WALLS - iso-wall-broken (86px, two
     silhouette bites from the crown) mixed into full-wall picks: back
     walls 36% plain / 22% broken / 42% dressed; boundary walls 72/28.
+
+70. Biome skins (operator: "why do all 25 levels look alike?"). The walls,
+    ground strip, and under-skirts are now re-drawn PER BIOME from token-
+    derived palettes with one signature motif each: Tallow Halls warm grey
+    + frozen wax runs; Root Cellars earthy ochre + roots through masonry;
+    Drowned Stacks verdigris slate + tide-line; Glassblack Furnaces charred
+    obsidian + ember-lit cracks; Hollow Choir pale fluted limestone; the
+    Wickless Deep verdigris-veined basalt; the Bottom gold-veined dark.
+    Implementation: makeIsoTextures split into makeGlobalIsoTextures
+    (doors, entities, icons - shared) + buildBiomeSkin(T, bi) with the
+    SKINS palette table; skin 0 keeps the original unsuffixed keys, deeper
+    skins suffix -b1..-b6; each skin reseeds the cosmetic LCG (boot-stable
+    textures per contract). Boot pre-warms skins in idle time (400ms
+    stagger); Descent.buildFloor calls ensureBiomeSkin on demand as a
+    fallback so fast descents never break; the Tower X-Ray renders every
+    floor in its own skin. Motifs draw only on undressed full walls, clean
+    confident shapes per D60. snap.ts gains --scroll for overlay capture.

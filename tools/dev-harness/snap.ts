@@ -74,6 +74,20 @@ async function main(): Promise<void> {
   }
   if (KEYS !== "") await new Promise((r) => setTimeout(r, 500));
 
+  const scroll = Number(arg("--scroll", "0"));
+  if (scroll > 0) {
+    // scroll the topmost scrollable overlay (e.g. the Tower X-Ray);
+    // runs in the BROWSER, where document exists (node tsconfig has no DOM lib)
+    await page.evaluate((px) => {
+      const g = globalThis as unknown as {
+        document?: { querySelector(sel: string): { scrollTop: number } | null };
+      };
+      const el = g.document?.querySelector(".uv-tower, .uv-backdrop") ?? null;
+      if (el !== null) el.scrollTop = px;
+    }, scroll);
+    await new Promise((r) => setTimeout(r, 400));
+  }
+
   await page.screenshot({ path: OUT as `${string}.png` });
   await browser.close();
 

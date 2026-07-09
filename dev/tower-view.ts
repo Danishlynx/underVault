@@ -9,11 +9,13 @@
 
 import type Phaser from "phaser";
 import { Tile, EntityKind, type FloorData } from "../src/shared/sim/types.js";
-import { biomeFor, MAX_FLOOR, TILE_FLAGS, F_OPAQUE } from "../src/shared/sim/constants.js";
+import { biomeFor, BIOMES, MAX_FLOOR, TILE_FLAGS, F_OPAQUE } from "../src/shared/sim/constants.js";
 import {
+  ensureBiomeSkin,
   entityTextureFor,
   groundIndexFor,
   propTextureFor,
+  skinSuffix,
   GROUND_SCALE,
   TEX_SCALE,
 } from "../src/client/render/tilemap.js";
@@ -29,7 +31,7 @@ const SCALE = 0.3; // gallery thumbnails
 type Src = HTMLCanvasElement | HTMLImageElement;
 
 /** Mirror of Descent.wallTextureAt — identical hashes, identical picks. */
-function wallKeyAt(fd: FloorData, x: number, y: number): string {
+function wallKeyAt(fd: FloorData, x: number, y: number, suf: string): string {
   const open = (xx: number, yy: number): boolean => {
     if (xx < 0 || yy < 0 || xx >= fd.w || yy >= fd.h) return false;
     const t = fd.tiles[yy * fd.w + xx]!;
@@ -39,16 +41,17 @@ function wallKeyAt(fd: FloorData, x: number, y: number): string {
       t === Tile.DOOR_HUNGER || t === Tile.DOOR_CHOIR || t === Tile.DOOR_SIGIL
     );
   };
-  if (open(x - 1, y) || open(x, y - 1) || open(x - 1, y - 1)) return "iso-wall-cut";
+  if (open(x - 1, y) || open(x, y - 1) || open(x - 1, y - 1)) return `iso-wall-cut${suf}`;
   const h = (Math.imul(x, 131) ^ Math.imul(y, 61) ^ Math.imul(fd.floor + 1, 401)) >>> 0;
   const r = h % 100;
   if (open(x + 1, y) || open(x, y + 1) || open(x + 1, y + 1)) {
-    return r < 36 ? "iso-wall" : r < 58 ? "iso-wall-broken" : r < 72 ? "iso-wall-2" : r < 86 ? "iso-wall-3" : "iso-wall-4";
+    const k = r < 36 ? "iso-wall" : r < 58 ? "iso-wall-broken" : r < 72 ? "iso-wall-2" : r < 86 ? "iso-wall-3" : "iso-wall-4";
+    return k + suf;
   }
-  return r < 72 ? "iso-wall" : "iso-wall-broken";
+  return (r < 72 ? "iso-wall" : "iso-wall-broken") + suf;
 }
 
-function renderFloorIso(fd: FloorData, tex: (key: string) => Src | null): HTMLCanvasElement {
+function renderFloorIso(fd: FloorData, tex: (key: string) => Src | null, suf: string): HTMLCanvasElement {
   const topPad = WALL_H - HALF_H; // headroom for tall walls on the far rows
   const fullW = (fd.w + fd.h) * HALF_W;
   const fullH = (fd.w + fd.h) * HALF_H + topPad + 30;
@@ -68,7 +71,7 @@ function renderFloorIso(fd: FloorData, tex: (key: string) => Src | null): HTMLCa
   const entAt = new Map<number, { kind: number; state: number }>();
   for (const e of fd.entities) entAt.set(e.y * fd.w + e.x, { kind: e.kind, state: e.state });
 
-  const ground = tex("iso-ground");
+  const ground = tex(`iso-ground${suf}`);
   // depth order: everything on a tile draws together, back to front
   for (let sum = 0; sum <= fd.w + fd.h - 2; sum++) {
     for (let x = Math.max(0, sum - fd.h + 1); x <= Math.min(sum, fd.w - 1); x++) {
@@ -85,7 +88,7 @@ function renderFloorIso(fd: FloorData, tex: (key: string) => Src | null): HTMLCa
         ctx.drawImage(ground, gi * srcTw, 0, srcTw, TILE_H * GROUND_SCALE, cx - HALF_W, cy - HALF_H, TILE_W, TILE_H);
       }
       // standing billboard (walls picked exactly like the game)
-      const key = t === Tile.WALL ? wallKeyAt(fd, x, y) : propTextureFor(t);
+      const key = t === Tile.WALL ? wallKeyAt(fd, x, y, suf) : propTextureFor(t);
       if (key !== "") {
         const img = tex(key);
         if (img !== null) {
@@ -145,6 +148,8 @@ export function toggleTowerView(host: HTMLElement, ports: GamePorts, day: number
 
   for (let f = 1; f <= MAX_FLOOR; f++) {
     const { floorData } = ports.getFloor(f);
+    const bi = BIOMES.indexOf(biomeFor(f));
+    ensureBiomeSkin(game.textures, bi);
     const cell = document.createElement("div");
     cell.style.cssText = "text-align:center;";
     const label = document.createElement("div");
@@ -155,7 +160,7 @@ export function toggleTowerView(host: HTMLElement, ports: GamePorts, day: number
     sub.style.cssText = "font-size:11px;opacity:.6;margin-top:3px;";
     sub.textContent = `${monsters} creatures wait in the dark`;
     cell.appendChild(label);
-    cell.appendChild(renderFloorIso(floorData, tex));
+    cell.appendChild(renderFloorIso(floorData, tex, skinSuffix(bi)));
     cell.appendChild(sub);
     grid.appendChild(cell);
   }

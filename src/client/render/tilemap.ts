@@ -281,24 +281,69 @@ function stoneDiamond(
 }
 
 export function makeIsoTextures(scene: Phaser.Scene): void {
-  const T = scene.textures;
-  if (T.exists("iso-ground")) return;
+  buildBiomeSkin(scene.textures, 0); // the Tallow Halls skin ships with boot
+  makeGlobalIsoTextures(scene);
+}
+
+// ── Biome skins (D70): each biome wears its own stone ──────────────────────
+// The walls/floors/skirts are re-drawn per biome from token-derived palettes
+// with one signature motif each — the "every area has its own material" read
+// of the operator's references. Skin 0 keeps the original unsuffixed keys;
+// skins 1+ suffix theirs with -b{i}. All colors via shade()/mix() on tokens.
+interface BiomeSkin {
+  floor: string;
+  wall: string;
+  motif: "wax" | "roots" | "tide" | "ember" | "carved" | "veins";
+  motifColor: string;
+}
+const SKINS: readonly BiomeSkin[] = [
+  // 1–4 The Tallow Halls: warm grey stone, wax runs down the walls
+  { floor: mix(COLOR_CSS.surface, COLOR_CSS.surface2, 0.4), wall: mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.25), motif: "wax", motifColor: COLOR_CSS.parchmentAged },
+  // 5–8 The Root Cellars: earthy ochre, roots reach through the masonry
+  { floor: shade(mix(COLOR_CSS.surface2, COLOR_CSS.goldInk, 0.16), 0.92), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.goldInk, 0.2), COLOR_CSS.void, 0.25), motif: "roots", motifColor: mix(COLOR_CSS.goldInk, COLOR_CSS.void, 0.35) },
+  // 9–12 The Drowned Stacks: cold verdigris slate, an old tide-line
+  { floor: mix(COLOR_CSS.surface2, COLOR_CSS.verdigrisDim, 0.2), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.verdigrisDim, 0.26), COLOR_CSS.void, 0.22), motif: "tide", motifColor: COLOR_CSS.verdigrisDim },
+  // 13–16 The Glassblack Furnaces: charred obsidian, ember-lit cracks
+  { floor: mix(mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.45), COLOR_CSS.seal, 0.08), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.5), COLOR_CSS.seal, 0.1), motif: "ember", motifColor: COLOR_CSS.ember },
+  // 17–20 The Hollow Choir: pale carved limestone, fluted like organ pipes
+  { floor: mix(COLOR_CSS.surface2, COLOR_CSS.bone, 0.2), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.bone, 0.24), COLOR_CSS.void, 0.15), motif: "carved", motifColor: shade(COLOR_CSS.bone, 0.55) },
+  // 21–24 The Wickless Deep: near-black basalt, verdigris veins
+  { floor: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.35), wall: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.4), motif: "veins", motifColor: mix(COLOR_CSS.verdigrisDim, COLOR_CSS.void, 0.25) },
+  // 25 The Bottom: the dark itself, gold-veined
+  { floor: mix(COLOR_CSS.void, COLOR_CSS.goldInk, 0.08), wall: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.42), motif: "veins", motifColor: mix(COLOR_CSS.goldInk, COLOR_CSS.void, 0.3) },
+];
+
+export function skinSuffix(bi: number): string {
+  return bi <= 0 ? "" : `-b${bi}`;
+}
+
+/** Idempotent: builds a biome's texture set on first request (Boot pre-warms
+ *  them in idle time; a fast descent pays one small hitch at the biome gate). */
+export function ensureBiomeSkin(T: Phaser.Textures.TextureManager, bi: number): void {
+  buildBiomeSkin(T, bi);
+}
+
+function buildBiomeSkin(T: Phaser.Textures.TextureManager, bi: number): void {
+  const SUF = skinSuffix(bi);
+  if (T.exists(`iso-ground${SUF}`)) return;
   const C = COLOR_CSS;
   const INK = shade(C.void, 0.7, 0.9); // the woodcut line
+  const skin = SKINS[bi] ?? SKINS[0]!;
+  lcg = (0x9e3779b9 ^ Math.imul(bi + 1, 0x85ebca6b)) >>> 0; // boot-stable per skin
 
   // ── Ground strip: tile kinds + floor variants, 64×32 each ───────────────
   // authored at GROUND_SCALE× so camera zoom (scout 1.6, delve 2.6)
   // magnifies real detail, not stretched pixels; the TilemapLayer renders
   // at 1/GROUND_SCALE (D68)
   const stripW = TILE_W * (TILE_KINDS + FLOOR_VARIANTS - 1);
-  const strip = T.createCanvas("iso-ground", stripW * GROUND_SCALE, TILE_H * GROUND_SCALE);
+  const strip = T.createCanvas(`iso-ground${SUF}`, stripW * GROUND_SCALE, TILE_H * GROUND_SCALE);
   if (strip !== null) {
     const ctx = hiBegin(strip);
     ctx.scale(GROUND_SCALE, GROUND_SCALE); // author in 1× logical coords
     const drawAt = (index: number, draw: (cx: number, cy: number) => void): void => {
       draw(index * TILE_W + TILE_W / 2, TILE_H / 2);
     };
-    const floorBase = mix(C.surface, C.surface2, 0.4);
+    const floorBase = skin.floor;
 
     for (let t = 0; t < TILE_KINDS; t++) {
       if (t === Tile.VOID) continue;
@@ -614,7 +659,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     const ctx = hiBegin(wall);
     const lidCy = TILE_H / 2;
     const faceH = totalH - TILE_H;
-    const faceBase = mix(C.surface2, C.void, 0.25);
+    const faceBase = skin.wall;
     const courses = Math.max(1, Math.round(faceH / 12.8));
 
     const face = (leftSide: boolean): void => {
@@ -703,6 +748,89 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
 
     // ── dressing on the candle-lit (right) face ──
     const rTop = (x: number): number => lidCy + ((TILE_W - x) / (TILE_W / 2)) * (TILE_H / 2);
+    // biome signature motif — the material identity every reference had
+    // (undressed full walls only; the cut stub carries it in its stone tone)
+    if ((dress === "plain" || dress === "broken") && faceH > 24) {
+      const mc = skin.motifColor;
+      if (skin.motif === "wax") {
+        // old wax runs frozen mid-drip
+        ctx.fillStyle = shade(mc, 1.02, 0.85);
+        for (const [wx, len] of [[43, 16], [55, 24]] as const) {
+          const ty = rTop(wx) + 2;
+          ctx.fillRect(wx - 1.2, ty, 2.4, len);
+          ctx.beginPath();
+          ctx.ellipse(wx, ty + len, 2, 2.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (skin.motif === "roots") {
+        // one patient root working through the masonry
+        ctx.strokeStyle = mc;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(60, rTop(60) - 1);
+        ctx.bezierCurveTo(52, rTop(52) + 14, 46, rTop(46) + 22, 40, rTop(40) + faceH - 12);
+        ctx.stroke();
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(47, rTop(47) + 18);
+        ctx.lineTo(52, rTop(52) + 27);
+        ctx.stroke();
+      } else if (skin.motif === "tide") {
+        // the water stood here once
+        const wy = rTop(48) + faceH * 0.6;
+        ctx.fillStyle = shade(mc, 0.55, 0.5);
+        ctx.fillRect(33, wy, 30, 4);
+        ctx.strokeStyle = shade(mc, 1.25, 0.8);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(33, wy);
+        ctx.lineTo(63, wy);
+        ctx.stroke();
+      } else if (skin.motif === "ember") {
+        // a cooling crack, still glowing inside
+        ctx.strokeStyle = shade(mc, 0.9, 0.35);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(49, rTop(49) + 4);
+        ctx.lineTo(45, rTop(45) + 16);
+        ctx.lineTo(50, rTop(50) + 27);
+        ctx.stroke();
+        ctx.strokeStyle = shade(mc, 1.15, 0.95);
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(49, rTop(49) + 4);
+        ctx.lineTo(45, rTop(45) + 16);
+        ctx.lineTo(50, rTop(50) + 27);
+        ctx.stroke();
+      } else if (skin.motif === "carved") {
+        // organ-pipe fluting
+        for (const fx of [40, 48, 56] as const) {
+          const ty = rTop(fx) + 4;
+          ctx.strokeStyle = shade(C.void, 1.3, 0.6);
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(fx, ty);
+          ctx.lineTo(fx, ty + faceH - 14);
+          ctx.stroke();
+          ctx.strokeStyle = shade(mc, 1.3, 0.5);
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(fx + 1.4, ty);
+          ctx.lineTo(fx + 1.4, ty + faceH - 14);
+          ctx.stroke();
+        }
+      } else {
+        // veins: something mineral, faintly alive
+        ctx.strokeStyle = shade(mc, 1.1, 0.85);
+        ctx.lineWidth = 0.9;
+        for (const [vx, drift] of [[42, 6], [54, -4]] as const) {
+          ctx.beginPath();
+          ctx.moveTo(vx, rTop(vx) + 3);
+          ctx.quadraticCurveTo(vx + drift, rTop(vx) + faceH * 0.5, vx + drift / 2, rTop(vx) + faceH - 10);
+          ctx.stroke();
+        }
+      }
+    }
     if (dress === "banner") {
       // a hanging cloth, one confident shape (clean per D60)
       const bx = 41;
@@ -819,12 +947,12 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     ctx.stroke();
     hiEnd(wall);
   };
-  buildWall("iso-wall", WALL_H, "plain");
-  buildWall("iso-wall-2", WALL_H, "banner");
-  buildWall("iso-wall-3", WALL_H, "chains");
-  buildWall("iso-wall-4", WALL_H, "moss");
-  buildWall("iso-wall-cut", TILE_H + 14, "cut");
-  buildWall("iso-wall-broken", WALL_H - 10, "broken");
+  buildWall(`iso-wall${SUF}`, WALL_H, "plain");
+  buildWall(`iso-wall-2${SUF}`, WALL_H, "banner");
+  buildWall(`iso-wall-3${SUF}`, WALL_H, "chains");
+  buildWall(`iso-wall-4${SUF}`, WALL_H, "moss");
+  buildWall(`iso-wall-cut${SUF}`, TILE_H + 14, "cut");
+  buildWall(`iso-wall-broken${SUF}`, WALL_H - 10, "broken");
 
   // ── Diorama under-skirt (D69): the carved-block edge that hangs below
   // boundary ground, selling "a room cut from rock, floating in the dark"
@@ -863,8 +991,16 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
     ctx.stroke();
     hiEnd(skirt);
   };
-  buildSkirt("iso-skirt-l", true); // under the tile's south-facing edge
-  buildSkirt("iso-skirt-r", false); // under the tile's east-facing edge
+  buildSkirt(`iso-skirt-l${SUF}`, true); // under the tile's south-facing edge
+  buildSkirt(`iso-skirt-r${SUF}`, false); // under the tile's east-facing edge
+}
+
+function makeGlobalIsoTextures(scene: Phaser.Scene): void {
+  const T = scene.textures;
+  if (T.exists("iso-door-closed")) return;
+  const C = COLOR_CSS;
+  const INK = shade(C.void, 0.7, 0.9); // the woodcut line
+  lcg = 0x1234567; // boot-stable regardless of how many skins came first
 
   // ── Doors: timber + iron in a dressed-stone arch ─────────────────────────
   const doorTex = (key: string, panel: boolean, stuck: boolean): void => {

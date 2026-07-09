@@ -6,7 +6,8 @@
 
 import Phaser from "phaser";
 import { COLOR_CSS } from "../../../design/tokens/tokens.js";
-import { makeIsoTextures } from "../render/tilemap.js";
+import { ensureBiomeSkin, makeIsoTextures } from "../render/tilemap.js";
+import { BIOMES } from "../../shared/sim/constants.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -44,5 +45,11 @@ export class BootScene extends Phaser.Scene {
     }
 
     this.scene.start("Descent");
+
+    // pre-warm the deeper biome skins (D70) in idle time so descending
+    // never pays the texture-build hitch; ensureBiomeSkin is idempotent
+    for (let bi = 1; bi < BIOMES.length; bi++) {
+      setTimeout(() => ensureBiomeSkin(this.textures, bi), 400 * bi);
+    }
   }
 }

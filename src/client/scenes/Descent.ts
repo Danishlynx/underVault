@@ -45,11 +45,13 @@ import { PORTS_KEY } from "../game.js";
 import type { EchoRecord, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import {
+  ensureBiomeSkin,
   entityTextureFor,
   floorDecoFor,
   groundIndexFor,
   isWallishTile,
   propTextureFor,
+  skinSuffix,
   TEX_SCALE,
   GROUND_SCALE,
 } from "../render/tilemap.js";
@@ -180,6 +182,7 @@ export class DescentScene extends Phaser.Scene {
   private decos = new Map<number, Phaser.GameObjects.Image>();
   // diorama under-skirts, keyed i (south face) / i + tiles.length (east)
   private skirts = new Map<number, Phaser.GameObjects.Image>();
+  private skin = ""; // current biome texture-key suffix (D70)
   private overlays = new Map<string, Phaser.GameObjects.Image>();
   private glowPool: GlowPool = { images: new Map() };
   private cursorG!: Phaser.GameObjects.Graphics;
@@ -530,6 +533,13 @@ export class DescentScene extends Phaser.Scene {
       this.activeEcho = null;
     }
 
+    // every biome wears its own stone (D70): resolve the skin before the
+    // tilemap consumes it, generating it on demand for fast descents
+    const biome = biomeFor(s.floor);
+    const bi = BIOMES.indexOf(biome);
+    ensureBiomeSkin(this.textures, bi);
+    this.skin = skinSuffix(bi);
+
     // the ground carries GROUND_SCALE× art rendered at 1/GROUND_SCALE, so
     // effective world geometry stays 64×32 while zoomed cameras sample
     // real texels (D68)
@@ -544,8 +554,8 @@ export class DescentScene extends Phaser.Scene {
     });
     this.map = new Phaser.Tilemaps.Tilemap(this, mapData);
     const tileset = this.map.addTilesetImage(
-      "iso-ground",
-      "iso-ground",
+      `iso-ground${this.skin}`,
+      `iso-ground${this.skin}`,
       TILE_W * GROUND_SCALE,
       TILE_H * GROUND_SCALE,
       0,
@@ -567,9 +577,8 @@ export class DescentScene extends Phaser.Scene {
     this.syncTiles();
 
     // biome color story + set dressing (D63)
-    const biome = biomeFor(s.floor);
     const accents = [COLOR.ember, COLOR.verdigrisDim, COLOR.verdigris, COLOR.seal, COLOR.boneDim, COLOR.borderVoid, COLOR.goldInk];
-    setBiomeGrade(accents[BIOMES.indexOf(biome)] ?? COLOR.ember);
+    setBiomeGrade(accents[bi] ?? COLOR.ember);
     for (let i = 0; i < s.tiles.length; i++) {
       if (s.tiles[i] !== Tile.FLOOR && s.tiles[i] !== Tile.MOSS) continue;
       const x = i % s.w;
@@ -589,7 +598,7 @@ export class DescentScene extends Phaser.Scene {
     // face hangs below the edge — the room reads as a block carved from
     // stone, floating in the void, like the reference dioramas
     const fullWallAt = (xx: number, yy: number): boolean =>
-      s.tiles[yy * s.w + xx] === Tile.WALL && this.wallTextureAt(xx, yy) !== "iso-wall-cut";
+      s.tiles[yy * s.w + xx] === Tile.WALL && !this.wallTextureAt(xx, yy).startsWith("iso-wall-cut");
     const groundless = (xx: number, yy: number): boolean =>
       xx < 0 || yy < 0 || xx >= s.w || yy >= s.h ||
       s.tiles[yy * s.w + xx] === Tile.VOID || fullWallAt(xx, yy);
@@ -606,8 +615,8 @@ export class DescentScene extends Phaser.Scene {
       const x = i % s.w;
       const y = (i / s.w) | 0;
       if (s.tiles[i] === Tile.VOID || fullWallAt(x, y)) continue;
-      if (groundless(x, y + 1)) addSkirt(i, x, y, "iso-skirt-l", 0);
-      if (groundless(x + 1, y)) addSkirt(i, x, y, "iso-skirt-r", s.tiles.length);
+      if (groundless(x, y + 1)) addSkirt(i, x, y, `iso-skirt-l${this.skin}`, 0);
+      if (groundless(x + 1, y)) addSkirt(i, x, y, `iso-skirt-r${this.skin}`, s.tiles.length);
     }
 
     const b = worldBounds(s.w, s.h);
@@ -665,14 +674,15 @@ export class DescentScene extends Phaser.Scene {
         t === Tile.DOOR_HUNGER || t === Tile.DOOR_CHOIR || t === Tile.DOOR_SIGIL
       );
     };
-    if (open(x - 1, y) || open(x, y - 1) || open(x - 1, y - 1)) return "iso-wall-cut";
+    if (open(x - 1, y) || open(x, y - 1) || open(x - 1, y - 1)) return `iso-wall-cut${this.skin}`;
     const h = (Math.imul(x, 131) ^ Math.imul(y, 61) ^ Math.imul(s.floor + 1, 401)) >>> 0;
     const r = h % 100;
     if (open(x + 1, y) || open(x, y + 1) || open(x + 1, y + 1)) {
       // back walls: mostly sound masonry, some crumbled crowns, some dressed
-      return r < 36 ? "iso-wall" : r < 58 ? "iso-wall-broken" : r < 72 ? "iso-wall-2" : r < 86 ? "iso-wall-3" : "iso-wall-4";
+      const k = r < 36 ? "iso-wall" : r < 58 ? "iso-wall-broken" : r < 72 ? "iso-wall-2" : r < 86 ? "iso-wall-3" : "iso-wall-4";
+      return k + this.skin;
     }
-    return r < 72 ? "iso-wall" : "iso-wall-broken";
+    return (r < 72 ? "iso-wall" : "iso-wall-broken") + this.skin;
   }
 
   /**
@@ -1450,7 +1460,7 @@ export class DescentScene extends Phaser.Scene {
       // they stand over the player.
       const shouldOcclude =
         isWallishTile(prop.tile) &&
-        prop.sprite.texture.key !== "iso-wall-cut" &&
+        !prop.sprite.texture.key.startsWith("iso-wall-cut") &&
         (occludes(s.px, s.py, x, y) || this.buriesVisibleGround(x, y));
       const targetAlpha = shouldOcclude ? OCCLUDED_ALPHA : 1;
       if (shouldOcclude !== prop.occluded) {
