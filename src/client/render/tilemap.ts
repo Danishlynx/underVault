@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Iso texture factory — "vault fidelity" pass. Everything is still
  * canvas-generated (invariant 4: no external assets) but painted like the
  * design bible demands: illuminated-manuscript-meets-the-deep-dark. Every
@@ -229,22 +229,26 @@ interface BiomeSkin {
   wall: string;
   motif: "wax" | "roots" | "tide" | "ember" | "carved" | "veins";
   motifColor: string;
+  /** The wall's CONSTRUCTION, not just its color — a new environment is
+   *  built differently (D72): coursed brick, earthen blocks under timber,
+   *  wave-eroded strata, angular slabs, organ-pipe fluting, monolith. */
+  masonry: "coursed" | "earthen" | "strata" | "slab" | "fluted" | "monolith";
 }
 const SKINS: readonly BiomeSkin[] = [
   // 1–4 The Tallow Halls: warm grey stone, wax runs down the walls
-  { floor: mix(COLOR_CSS.surface, COLOR_CSS.surface2, 0.4), wall: mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.25), motif: "wax", motifColor: COLOR_CSS.parchmentAged },
+  { floor: mix(COLOR_CSS.surface, COLOR_CSS.surface2, 0.4), wall: mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.25), motif: "wax", motifColor: COLOR_CSS.parchmentAged, masonry: "coursed" },
   // 5–8 The Root Cellars: earthy ochre, roots reach through the masonry
-  { floor: shade(mix(COLOR_CSS.surface2, COLOR_CSS.goldInk, 0.16), 0.92), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.goldInk, 0.2), COLOR_CSS.void, 0.25), motif: "roots", motifColor: mix(COLOR_CSS.goldInk, COLOR_CSS.void, 0.35) },
+  { floor: shade(mix(COLOR_CSS.surface2, COLOR_CSS.goldInk, 0.16), 0.92), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.goldInk, 0.2), COLOR_CSS.void, 0.25), motif: "roots", motifColor: mix(COLOR_CSS.goldInk, COLOR_CSS.void, 0.35), masonry: "earthen" },
   // 9–12 The Drowned Stacks: cold verdigris slate, an old tide-line
-  { floor: mix(COLOR_CSS.surface2, COLOR_CSS.verdigrisDim, 0.2), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.verdigrisDim, 0.26), COLOR_CSS.void, 0.22), motif: "tide", motifColor: COLOR_CSS.verdigrisDim },
+  { floor: mix(COLOR_CSS.surface2, COLOR_CSS.verdigrisDim, 0.2), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.verdigrisDim, 0.26), COLOR_CSS.void, 0.22), motif: "tide", motifColor: COLOR_CSS.verdigrisDim, masonry: "strata" },
   // 13–16 The Glassblack Furnaces: charred obsidian, ember-lit cracks
-  { floor: mix(mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.45), COLOR_CSS.seal, 0.08), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.5), COLOR_CSS.seal, 0.1), motif: "ember", motifColor: COLOR_CSS.ember },
+  { floor: mix(mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.45), COLOR_CSS.seal, 0.08), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.void, 0.5), COLOR_CSS.seal, 0.1), motif: "ember", motifColor: COLOR_CSS.ember, masonry: "slab" },
   // 17–20 The Hollow Choir: pale carved limestone, fluted like organ pipes
-  { floor: mix(COLOR_CSS.surface2, COLOR_CSS.bone, 0.2), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.bone, 0.24), COLOR_CSS.void, 0.15), motif: "carved", motifColor: shade(COLOR_CSS.bone, 0.55) },
+  { floor: mix(COLOR_CSS.surface2, COLOR_CSS.bone, 0.2), wall: mix(mix(COLOR_CSS.surface2, COLOR_CSS.bone, 0.24), COLOR_CSS.void, 0.15), motif: "carved", motifColor: shade(COLOR_CSS.bone, 0.55), masonry: "fluted" },
   // 21–24 The Wickless Deep: near-black basalt, verdigris veins
-  { floor: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.35), wall: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.4), motif: "veins", motifColor: mix(COLOR_CSS.verdigrisDim, COLOR_CSS.void, 0.25) },
+  { floor: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.35), wall: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.4), motif: "veins", motifColor: mix(COLOR_CSS.verdigrisDim, COLOR_CSS.void, 0.25), masonry: "monolith" },
   // 25 The Bottom: the dark itself, gold-veined
-  { floor: mix(COLOR_CSS.void, COLOR_CSS.goldInk, 0.08), wall: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.42), motif: "veins", motifColor: mix(COLOR_CSS.goldInk, COLOR_CSS.void, 0.3) },
+  { floor: mix(COLOR_CSS.void, COLOR_CSS.goldInk, 0.08), wall: mix(COLOR_CSS.void, COLOR_CSS.surface2, 0.42), motif: "veins", motifColor: mix(COLOR_CSS.goldInk, COLOR_CSS.void, 0.3), masonry: "monolith" },
 ];
 
 export function skinSuffix(bi: number): string {
@@ -621,41 +625,147 @@ function buildBiomeSkin(T: Phaser.Textures.TextureManager, bi: number): void {
       ctx.save();
       ctx.clip();
 
-      // per-brick masonry following the face slope
-      const ch = faceH / courses;
-      for (let c = 0; c < courses; c++) {
-        const y0 = c * ch;
-        const y1 = y0 + ch;
-        const cuts = c % 2 === 0 ? [0, 0.5, 1] : [0, 0.28, 0.72, 1];
-        for (let b = 0; b < cuts.length - 1; b++) {
-          const u0 = cuts[b] ?? 0;
-          const u1 = cuts[b + 1] ?? 1;
-          const depthFade = 1 - c * 0.055; // lower courses sink into gloom
-          const jitter = 0.97 + crand() * 0.06; // clean pass: near-uniform bricks
-          ctx.fillStyle = shade(faceBase, tone * depthFade * jitter);
+      // ── construction per biome (D72): the wall ITSELF changes ──
+      const style = dress === "cut" ? "coursed" : skin.masonry;
+      if (style === "coursed" || style === "earthen") {
+        // per-brick masonry following the face slope; earthen = fewer,
+        // larger blocks with a timber lintel under the lid
+        const nCourses = style === "earthen" ? Math.max(1, Math.round(courses * 0.6)) : courses;
+        const ch = faceH / nCourses;
+        for (let c = 0; c < nCourses; c++) {
+          const y0 = c * ch;
+          const y1 = y0 + ch;
+          const cuts =
+            style === "earthen"
+              ? c % 2 === 0 ? [0, 0.55, 1] : [0, 0.4, 1]
+              : c % 2 === 0 ? [0, 0.5, 1] : [0, 0.28, 0.72, 1];
+          for (let b = 0; b < cuts.length - 1; b++) {
+            const u0 = cuts[b] ?? 0;
+            const u1 = cuts[b + 1] ?? 1;
+            const depthFade = 1 - c * 0.055; // lower courses sink into gloom
+            const jitter = 0.97 + crand() * 0.06; // clean pass: near-uniform bricks
+            ctx.fillStyle = shade(faceBase, tone * depthFade * jitter);
+            ctx.beginPath();
+            ctx.moveTo(xAt(u0) + 0.5, yAt(u0) + y0 + 0.5);
+            ctx.lineTo(xAt(u1) - 0.5, yAt(u1) + y0 + 0.5);
+            ctx.lineTo(xAt(u1) - 0.5, yAt(u1) + y1 - 0.5);
+            ctx.lineTo(xAt(u0) + 0.5, yAt(u0) + y1 - 0.5);
+            ctx.closePath();
+            ctx.fill();
+            // top lip of each brick catches light
+            ctx.strokeStyle = shade(faceBase, 1.55 * tone, 0.5);
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(xAt(u0) + 1, yAt(u0) + y0 + 1);
+            ctx.lineTo(xAt(u1) - 1, yAt(u1) + y0 + 1);
+            ctx.stroke();
+          }
+          // mortar line under the course
+          ctx.strokeStyle = shade(C.void, 1.3, 0.6);
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(xAt(u0) + 0.5, yAt(u0) + y0 + 0.5);
-          ctx.lineTo(xAt(u1) - 0.5, yAt(u1) + y0 + 0.5);
-          ctx.lineTo(xAt(u1) - 0.5, yAt(u1) + y1 - 0.5);
-          ctx.lineTo(xAt(u0) + 0.5, yAt(u0) + y1 - 0.5);
+          ctx.moveTo(x0, yAt(0) + y1);
+          ctx.lineTo(x1, yAt(1) + y1);
+          ctx.stroke();
+        }
+        if (style === "earthen" && faceH > 24) {
+          // the timber lintel holding the earth back
+          ctx.fillStyle = mix(shade(C.parchmentAged, 0.45), C.void, 0.25, 0.95 * tone);
+          ctx.beginPath();
+          ctx.moveTo(x0, yAt(0) + 1);
+          ctx.lineTo(x1, yAt(1) + 1);
+          ctx.lineTo(x1, yAt(1) + 7);
+          ctx.lineTo(x0, yAt(0) + 7);
           ctx.closePath();
           ctx.fill();
-          // top lip of each brick catches light
-          ctx.strokeStyle = shade(faceBase, 1.55 * tone, 0.5);
+          ctx.strokeStyle = shade(C.void, 1.2, 0.7);
           ctx.lineWidth = 0.8;
           ctx.beginPath();
-          ctx.moveTo(xAt(u0) + 1, yAt(u0) + y0 + 1);
-          ctx.lineTo(xAt(u1) - 1, yAt(u1) + y0 + 1);
+          ctx.moveTo(x0, yAt(0) + 7);
+          ctx.lineTo(x1, yAt(1) + 7);
+          ctx.moveTo(x0, yAt(0) + 4);
+          ctx.lineTo(x1, yAt(1) + 4);
           ctx.stroke();
-          // chips removed — clean pass (D60)
         }
-        // mortar line under the course
-        ctx.strokeStyle = shade(C.void, 1.3, 0.6);
-        ctx.lineWidth = 1;
+      } else if (style === "strata") {
+        // wave-eroded sediment bands — the water carved this
+        const bands = 5;
+        const bh = faceH / bands;
+        for (let c = 0; c < bands; c++) {
+          const depthFade = 1 - c * 0.05;
+          const y0 = c * bh;
+          ctx.fillStyle = shade(faceBase, tone * depthFade * (c % 2 === 0 ? 1.06 : 0.9));
+          ctx.beginPath();
+          ctx.moveTo(x0, yAt(0) + y0);
+          ctx.quadraticCurveTo(xAt(0.5), yAt(0.5) + y0 + (c % 2 === 0 ? 2.5 : -2.5), x1, yAt(1) + y0);
+          ctx.lineTo(x1, yAt(1) + y0 + bh);
+          ctx.quadraticCurveTo(xAt(0.5), yAt(0.5) + y0 + bh + (c % 2 === 0 ? -2.5 : 2.5), x0, yAt(0) + y0 + bh);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = shade(C.void, 1.2, 0.45);
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.moveTo(x0, yAt(0) + y0);
+          ctx.quadraticCurveTo(xAt(0.5), yAt(0.5) + y0 + (c % 2 === 0 ? 2.5 : -2.5), x1, yAt(1) + y0);
+          ctx.stroke();
+        }
+      } else if (style === "slab") {
+        // great angular obsidian slabs, seams cut on the diagonal
+        ctx.strokeStyle = shade(C.void, 1.35, 0.75);
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.moveTo(x0, yAt(0) + y1);
-        ctx.lineTo(x1, yAt(1) + y1);
+        ctx.moveTo(xAt(0.15), yAt(0.15) + faceH * 0.05);
+        ctx.lineTo(xAt(0.7), yAt(0.7) + faceH * 0.55);
+        ctx.lineTo(xAt(0.55), yAt(0.55) + faceH);
+        ctx.moveTo(xAt(0.85), yAt(0.85) + faceH * 0.1);
+        ctx.lineTo(xAt(0.35), yAt(0.35) + faceH * 0.75);
         ctx.stroke();
+        // the seam's lower slab catches a sharp light edge
+        ctx.strokeStyle = shade(faceBase, 1.7 * tone, 0.55);
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(xAt(0.15) + 1, yAt(0.15) + faceH * 0.05 + 2);
+        ctx.lineTo(xAt(0.7) + 1, yAt(0.7) + faceH * 0.55 + 2);
+        ctx.stroke();
+      } else if (style === "fluted") {
+        // full-height organ-pipe fluting with a capital band
+        for (let i = 1; i <= 4; i++) {
+          const u = i / 5;
+          ctx.strokeStyle = shade(C.void, 1.25, 0.65);
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(xAt(u), yAt(u) + 6);
+          ctx.lineTo(xAt(u), yAt(u) + faceH - 3);
+          ctx.stroke();
+          ctx.strokeStyle = shade(faceBase, 1.6 * tone, 0.6);
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(xAt(u) + 1.6, yAt(u) + 6);
+          ctx.lineTo(xAt(u) + 1.6, yAt(u) + faceH - 3);
+          ctx.stroke();
+        }
+        // capital band under the lid
+        ctx.strokeStyle = shade(faceBase, 1.5 * tone, 0.8);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x0, yAt(0) + 4);
+        ctx.lineTo(x1, yAt(1) + 4);
+        ctx.stroke();
+      } else {
+        // monolith: unbroken stone, one or two hairline fissures
+        ctx.strokeStyle = shade(C.void, 1.3, 0.55);
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        ctx.moveTo(xAt(0.35), yAt(0.35) + faceH * 0.12);
+        ctx.lineTo(xAt(0.45), yAt(0.45) + faceH * 0.45);
+        ctx.lineTo(xAt(0.38), yAt(0.38) + faceH * 0.8);
+        ctx.stroke();
+        if (crand() < 0.6) {
+          ctx.beginPath();
+          ctx.moveTo(xAt(0.72), yAt(0.72) + faceH * 0.3);
+          ctx.lineTo(xAt(0.66), yAt(0.66) + faceH * 0.7);
+          ctx.stroke();
+        }
       }
 
       // clean pass (D60): drip stains removed; one quiet moss tuft at most

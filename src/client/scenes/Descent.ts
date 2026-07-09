@@ -398,26 +398,6 @@ export class DescentScene extends Phaser.Scene {
     this.playerView.setVisible(true);
     this.playerShadow.setVisible(true);
 
-    if (this.dust === null) {
-      this.dust = this.add.particles(0, 0, "iso-mote", {
-        lifespan: 2800,
-        frequency: 340,
-        quantity: 1,
-        speedY: { min: -12, max: -4 },
-        speedX: { min: -5, max: 5 },
-        alpha: { start: 0.34, end: 0 },
-        scale: { start: 0.9, end: 0.35 },
-        emitZone: {
-          type: "random",
-          source: new Phaser.Geom.Rectangle(-84, -64, 168, 116),
-          quantity: 1,
-        },
-        follow: this.playerView,
-      });
-      this.dust.setDepth(DEPTH_DUST);
-      this.worldLayer.add(this.dust);
-    }
-
     this.buildFloor();
     this.redraw(true);
     this.hud.toast("The match catches. The Vault is listening.", "info");
@@ -630,6 +610,52 @@ export class DescentScene extends Phaser.Scene {
     this.cameras.main.setBounds(b.x, b.y, b.width, b.height);
     this.cameras.main.startFollow(this.playerView, true, 0.12, 0.12);
     this.applyViewport();
+    this.makeAtmosphere(bi);
+    this.audio.setBiome(bi); // the sound direction changes too (D72)
+  }
+
+  /**
+   * The AIR changes per biome (D72): motes in the halls, falling earth in
+   * the cellars, rising bubbles in the drowned stacks, embers in the
+   * furnaces, pale drifting dust in the choir, verdigris fireflies below.
+   */
+  private makeAtmosphere(bi: number): void {
+    this.dust?.destroy();
+    interface Air {
+      tint: number;
+      up: [number, number]; // speedY range (negative = rising)
+      alpha: number;
+      freq: number;
+      life: number;
+    }
+    const AIRS: Air[] = [
+      { tint: COLOR.bone, up: [-12, -4], alpha: 0.34, freq: 340, life: 2800 }, // Tallow motes
+      { tint: COLOR.parchmentAged, up: [6, 16], alpha: 0.3, freq: 420, life: 2200 }, // Cellars: earth falls
+      { tint: COLOR.verdigris, up: [-24, -12], alpha: 0.3, freq: 300, life: 2600 }, // Drowned: bubbles rise
+      { tint: COLOR.ember, up: [-30, -14], alpha: 0.5, freq: 190, life: 2000 }, // Furnace: embers
+      { tint: COLOR.bone, up: [4, 10], alpha: 0.26, freq: 460, life: 3200 }, // Choir: pale dust settles
+      { tint: COLOR.verdigrisDim, up: [-6, 4], alpha: 0.45, freq: 520, life: 3600 }, // Deep: fireflies drift
+      { tint: COLOR.goldInk, up: [-8, -2], alpha: 0.4, freq: 380, life: 3000 }, // Bottom: gold dust
+    ];
+    const air = AIRS[bi] ?? AIRS[0]!;
+    this.dust = this.add.particles(0, 0, "iso-mote", {
+      lifespan: air.life,
+      frequency: air.freq,
+      quantity: 1,
+      speedY: { min: air.up[0], max: air.up[1] },
+      speedX: { min: -5, max: 5 },
+      alpha: { start: air.alpha, end: 0 },
+      scale: { start: 0.9, end: 0.35 },
+      tint: air.tint,
+      emitZone: {
+        type: "random",
+        source: new Phaser.Geom.Rectangle(-84, -64, 168, 116),
+        quantity: 1,
+      },
+      follow: this.playerView,
+    });
+    this.dust.setDepth(DEPTH_DUST);
+    this.worldLayer.add(this.dust);
   }
 
   /** Zoom-to-fit + HUD-aware centering (portrait must show the full light

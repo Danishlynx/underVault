@@ -100,7 +100,11 @@ export class AudioGraph {
   private readonly sfx: GainNode;
   private readonly whisper: GainNode;
   private readonly heartbeat: GainNode;
+  private readonly bed: GainNode; // per-biome room tone (D72)
   private readonly noise: AudioBuffer;
+  private bedSources: AudioScheduledSourceNode[] = [];
+  private bedOthers: AudioNode[] = [];
+  private bedBiome = -1;
 
   private userMuted = false;
   private hidden: boolean;
@@ -136,6 +140,10 @@ export class AudioGraph {
     this.heartbeat = this.ctx.createGain();
     this.heartbeat.gain.value = 0;
     this.heartbeat.connect(this.master);
+
+    this.bed = this.ctx.createGain();
+    this.bed.gain.value = 0;
+    this.bed.connect(this.master);
 
     // Shared source material for every noise-based voice.
     this.noise = this.makeNoiseBuffer(2);
@@ -175,6 +183,138 @@ export class AudioGraph {
     const t = this.ctx.currentTime;
     this.whisper.gain.cancelScheduledValues(t);
     this.whisper.gain.setTargetAtTime(target, t, 0.4);
+  }
+
+  /**
+   * The sound direction changes per biome (D72): each biome gets its own
+   * synthesized room tone — warm hush in the Tallow Halls, earth-weight in
+   * the Cellars, submerged wash in the Drowned Stacks, furnace roar below,
+   * a hollow organ hum in the Choir, a thin subsonic ring in the Deep, a
+   * gold two-tone at the Bottom. Crossfades over ~2s on descent. Quiet by
+   * design: the bed is felt more than heard.
+   */
+  setBiome(bi: number): void {
+    if (bi === this.bedBiome) return;
+    this.bedBiome = bi;
+    const t = this.ctx.currentTime;
+    this.bed.gain.cancelScheduledValues(t);
+    this.bed.gain.setTargetAtTime(0, t, 0.5);
+    const oldSrc = this.bedSources;
+    const oldOther = this.bedOthers;
+    this.bedSources = [];
+    this.bedOthers = [];
+    window.setTimeout(() => {
+      for (const s of oldSrc) {
+        try {
+          s.stop();
+        } catch {
+          /* already stopped */
+        }
+        s.disconnect();
+      }
+      for (const n of oldOther) n.disconnect();
+    }, 2600);
+
+    // voice builders — everything routes into this.bed
+    const looped = (): AudioBufferSourceNode => {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noise;
+      src.loop = true;
+      return src;
+    };
+    const noiseVoice = (type: BiquadFilterType, freq: number, q: number, gain: number): BiquadFilterNode => {
+      const src = looped();
+      const f = this.ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = q;
+      const g = this.ctx.createGain();
+      g.gain.value = gain;
+      src.connect(f).connect(g).connect(this.bed);
+      src.start();
+      this.bedSources.push(src);
+      this.bedOthers.push(f, g);
+      return f;
+    };
+    const drone = (type: OscillatorType, freq: number, gain: number): void => {
+      const o = this.ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = freq;
+      const g = this.ctx.createGain();
+      g.gain.value = gain;
+      o.connect(g).connect(this.bed);
+      o.start();
+      this.bedSources.push(o);
+      this.bedOthers.push(g);
+    };
+    const lfo = (rate: number, depth: number, target: AudioParam): void => {
+      const o = this.ctx.createOscillator();
+      o.frequency.value = rate;
+      const g = this.ctx.createGain();
+      g.gain.value = depth;
+      o.connect(g).connect(target);
+      o.start();
+      this.bedSources.push(o);
+      this.bedOthers.push(g);
+    };
+
+    let level = 0.05;
+    switch (bi) {
+      case 1: {
+        // the Root Cellars: earth-weight, something settling far off
+        noiseVoice("lowpass", 140, 0.7, 0.8);
+        drone("sine", 41, 0.35);
+        level = 0.055;
+        break;
+      }
+      case 2: {
+        // the Drowned Stacks: a submerged wash that slowly wanders
+        const f = noiseVoice("bandpass", 320, 2.2, 1.1);
+        lfo(0.07, 90, f.frequency);
+        drone("sine", 49, 0.3);
+        level = 0.05;
+        break;
+      }
+      case 3: {
+        // the Glassblack Furnaces: a roar behind the walls, fire-flicker
+        // wobbling the roar's mouth
+        const f = noiseVoice("lowpass", 95, 0.7, 1.3);
+        lfo(6.2, 14, f.frequency);
+        drone("sawtooth", 36, 0.12);
+        level = 0.075;
+        break;
+      }
+      case 4: {
+        // the Hollow Choir: two pipes still sounding, wind over stone
+        drone("sine", 110, 0.5);
+        drone("sine", 165.2, 0.3); // a fifth, slightly wide — hollow beat
+        noiseVoice("highpass", 900, 0.7, 0.12);
+        level = 0.045;
+        break;
+      }
+      case 5: {
+        // the Wickless Deep: subsonic pressure, a thin ring of nothing
+        drone("sine", 33, 0.5);
+        noiseVoice("bandpass", 1250, 9, 0.1);
+        level = 0.055;
+        break;
+      }
+      case 6: {
+        // the Bottom: a gold two-tone, patient as a bell that never strikes
+        drone("sine", 45, 0.4);
+        drone("sine", 67.8, 0.22);
+        drone("triangle", 135.5, 0.06);
+        level = 0.05;
+        break;
+      }
+      default: {
+        // the Tallow Halls: the warm hush of a room full of candles
+        noiseVoice("lowpass", 210, 0.7, 0.7);
+        drone("sine", 55, 0.22);
+        level = 0.05;
+      }
+    }
+    this.bed.gain.setTargetAtTime(level, t + 0.3, 1.0);
   }
 
   /** Slow ~55 bpm lub-dub, faded in/out over ~a beat. Subtle by design. */

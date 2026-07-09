@@ -482,3 +482,25 @@ candidates; flip them in the named data file, not in code.
     the six modules share the supersample pipeline cycle-free. Also this
     session: M = dev next-floor teleport, Tower X-Ray on P with click-to-
     teleport (both DEV-ONLY, deleted at M2).
+
+72. Biomes as environments, not palettes (operator: "the iso wall itself
+    should change... sound direction, art direction should change - it is
+    a new environment"). Three systems now switch per biome:
+    (a) WALL CONSTRUCTION - each skin declares a masonry style drawn into
+    the wall geometry itself: coursed brick (Tallow), fewer/larger earthen
+    blocks under a timber lintel (Cellars), wave-eroded sediment strata
+    (Drowned), great diagonal obsidian slabs (Furnaces), full-height
+    organ-pipe fluting with a capital band (Choir), unbroken monolith with
+    hairline fissures (Deep + Bottom). Cut stubs stay coursed (14px faces
+    cannot carry style).
+    (b) ATMOSPHERE - the air itself: warm motes (Tallow), falling earth
+    (Cellars), rising verdigris bubbles (Drowned), embers (Furnaces), pale
+    settling dust (Choir), drifting verdigris fireflies (Deep), gold dust
+    (Bottom). Per-biome particle emitter rebuilt on floor entry.
+    (c) SOUND DIRECTION - AudioGraph.setBiome(bi): a synthesized room-tone
+    bed per biome on its own bus, crossfaded ~2s on descent: candle-room
+    hush + 55Hz warmth; earth-weight 41Hz; submerged bandpass wash that
+    wanders; furnace roar with 6Hz fire-flicker; two organ pipes a wide
+    fifth apart + wind; 33Hz subsonic pressure + a thin high ring; a gold
+    two-tone at the Bottom. Quiet by design (bed levels .045-.075), all
+    behind the master limiter; honors the unlock/mute invariants.
