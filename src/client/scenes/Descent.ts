@@ -100,6 +100,7 @@ const RULES_KEY = "uv-session-rules";
 const AUDIO_KEY = "uv-audio";
 const AUTOSTART_KEY = "uv-autostart";
 const GUIDES_KEY = "uv-guides"; // once-per-session lessons (memory only, inv. 3)
+const VIEW_KEY = "uv-view"; // D67 camera experiment (memory only, inv. 3)
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
   "XXI", "XXII", "XXIII", "XXIV", "XXV"];
@@ -214,6 +215,10 @@ export class DescentScene extends Phaser.Scene {
   private guides!: Set<string>;
   private lastGuideAt = 0;
 
+  /** D67 camera experiment: "scout" = fit the room (default), "delve" =
+   *  close follow — Hades-style in-the-action framing. Session-sticky. */
+  private viewMode: "scout" | "delve" = "scout";
+
   constructor() {
     super("Descent");
   }
@@ -229,6 +234,7 @@ export class DescentScene extends Phaser.Scene {
     const existingGuides = this.registry.get(GUIDES_KEY) as Set<string> | undefined;
     this.guides = existingGuides ?? new Set<string>();
     this.registry.set(GUIDES_KEY, this.guides);
+    this.viewMode = (this.registry.get(VIEW_KEY) as "scout" | "delve" | undefined) ?? "scout";
 
     const host = this.host();
     if (host !== null) closeAllSheets(host);
@@ -568,15 +574,29 @@ export class DescentScene extends Phaser.Scene {
   }
 
   /** Zoom-to-fit + HUD-aware centering (portrait must show the full light
-   *  pool; landscape must not waste the vertical). */
-  private applyViewport(): void {
+   *  pool; landscape must not waste the vertical). "Delve" view (D67)
+   *  pushes the camera in for an in-the-action read — trading tactical
+   *  overview for immersion; the light pool intentionally crops. */
+  private applyViewport(smooth = false): void {
     const cam = this.cameras.main;
-    const zoom = fitZoom(this.scale.width, this.scale.height);
-    cam.setZoom(zoom);
+    const base = fitZoom(this.scale.width, this.scale.height);
+    const zoom = this.viewMode === "delve" ? Math.min(2.6, Math.max(1.9, base * 1.75)) : base;
+    if (smooth) cam.zoomTo(zoom, 320, "Sine.easeInOut");
+    else cam.setZoom(zoom);
     // usable area sits above the 72px HUD bar and below top chrome (~60px):
     // bias the follow so the player rides its center, not the canvas center
     const bias = ((72 - 60) / 2) / zoom;
     cam.setFollowOffset(0, -bias);
+  }
+
+  private toggleView(): void {
+    this.viewMode = this.viewMode === "scout" ? "delve" : "scout";
+    this.registry.set(VIEW_KEY, this.viewMode);
+    this.applyViewport(true);
+    this.hud.toast(
+      this.viewMode === "delve" ? "Delve view — the dark leans close. (V to step back)" : "Scout view — the room at a glance.",
+      "info",
+    );
   }
 
   /**
@@ -702,6 +722,7 @@ export class DescentScene extends Phaser.Scene {
       kb.on("keydown-R", () => this.enqueueRelight());
       kb.on("keydown-X", () => this.enqueueSnuff());
       kb.on("keydown-B", () => this.openSigns()); // plant a sign
+      kb.on("keydown-V", () => this.toggleView()); // scout ↔ delve camera (D67)
     }
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {

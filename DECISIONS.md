@@ -400,3 +400,16 @@ candidates; flip them in the named data file, not in code.
     waystone seen, first stairs seen, candle under 150 wax. Lesson state
     lives in the scene registry (memory only, invariant 3: reload = fresh
     season = lessons repeat, correct for a new session).
+
+67. Camera experiment (operator: "is isometric the best thing? third-person
+    shooter style?"). A true TPS camera is out of scope for the 2D stack
+    (every sprite is authored for one 2:1 angle; a perspective camera means
+    a 3D engine rewrite) and would fight the core mechanic - the candle
+    casts a CIRCLE of light and the tactics live in seeing all of it. What
+    the ask actually points at is framing distance, so the camera now has
+    two modes toggled with V (session-sticky in the registry, default
+    unchanged): "scout" = the existing fit-the-room framing; "delve" =
+    close follow at ~1.75x scout zoom (clamped 1.9-2.6), Hades-style
+    in-the-action read where the delver is large and the light pool
+    intentionally crops. 320ms eased zoom between them. Fully reversible:
+    delete the toggle + VIEW_KEY and applyViewport falls back to scout.

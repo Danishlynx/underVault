@@ -27,6 +27,7 @@ const HOW_LINES = [
   "Cup the flame to hide it; hold Snuff to put it out.",
   "The candle burns with every step. It is your life.",
   "Keys: WASD move · Space wait · C cup · X snuff (hold) · E interact.",
+  "V switches the camera: room-at-a-glance, or in close with the flame.",
 ];
 
 let styled = false;
