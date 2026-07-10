@@ -42,7 +42,7 @@ import {
   F_OPAQUE,
   MAX_FLOOR,
 } from "../../shared/sim/constants.js";
-import { BACKDROP_KEY, PORTS_KEY } from "../game.js";
+import { PORTS_KEY } from "../game.js";
 import type { EchoRecord, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import {
@@ -206,8 +206,6 @@ export class DescentScene extends Phaser.Scene {
   private followBias = 0; // HUD-aware vertical bias (applyViewport)
   private camPullX = 0; // frame the LIT world, not just the player (D81)
   private camPullY = 0;
-  private cavern: Phaser.GameObjects.Image[] = []; // the dark is a place (D81)
-  private deepMotes: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private snuffGrade: Phaser.Filters.ColorMatrix | null = null;
   private baseZoom = 1;
   private hitStopUntil = 0;
@@ -651,48 +649,14 @@ export class DescentScene extends Phaser.Scene {
     this.cameras.main.setBounds(b.x, b.y, b.width, b.height);
     this.cameras.main.startFollow(this.playerView, true, 0.12, 0.12);
     this.applyViewport();
-    this.makeCavern(b, bi);
     this.makeAtmosphere(bi);
     this.audio.setBiome(bi); // the sound direction changes too (D72)
-    // the painted distance layer under the transparent canvas (D82)
-    const paintBackdrop = this.registry.get(BACKDROP_KEY) as ((n: number) => void) | undefined;
-    paintBackdrop?.(bi);
   }
 
-  /**
-   * The dark is a PLACE (D81/D82): deep motes drift across the whole
-   * floor so no pixel of darkness is ever static; the sense of DISTANCE
-   * comes from the per-biome painted backdrop behind everything. (The
-   * procedural prism/mass era is closed — isolated primitives read as
-   * glitched objects; only authored compositions read as depth.)
-   */
-  private makeCavern(b: { x: number; y: number; width: number; height: number }, bi: number): void {
-    for (const m of this.cavern) m.destroy();
-    this.cavern = [];
-    this.deepMotes?.destroy();
-    void bi;
-    // deep motes drifting across the WHOLE floor, void included — screen
-    // dressing only; they reveal nothing
-    this.deepMotes = this.add.particles(0, 0, "iso-mote", {
-      lifespan: 7000,
-      frequency: 130,
-      quantity: 1,
-      speedY: { min: -7, max: -2 },
-      speedX: { min: -4, max: 4 },
-      alpha: { start: 0.1, end: 0 },
-      scale: { start: 0.8, end: 0.3 },
-      // cool neutral — warm motes over the void fed the amber fog (D81)
-      tint: COLOR.boneDim,
-      emitZone: {
-        type: "random",
-        source: new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height),
-        quantity: 1,
-      },
-    });
-    this.deepMotes.setDepth(-16);
-    this.worldLayer.add(this.deepMotes);
-    this.deepMotes.fastForward(7000);
-  }
+  // (D83) the darkness-dressing program — ghost prisms, rim masses, deep
+  // motes, painted backdrops — was reverted on operator verdict ("looks
+  // ugly"). The paintings are parked unplugged in render/backdrops/. The
+  // dark is the dark.
 
   /**
    * The AIR changes per biome (D72): motes in the halls, falling earth in

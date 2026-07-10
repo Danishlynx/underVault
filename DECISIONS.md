@@ -689,3 +689,14 @@ candidates; flip them in the named data file, not in code.
     / Furnace ember-fissured shards / Deep near-nothing are live; Choir
     and Bottom land when their painters finish (safe void stubs until
     then).
+
+83. Darkness-dressing REVERTED on operator verdict ("it looks ugly").
+    Removed from the running game: painted per-biome backdrops + the
+    transparent-canvas rig (D82), deep motes, and every remnant of the
+    prism/mass experiments (D81). The seven backdrop paintings are parked
+    unplugged in src/client/render/backdrops/ (they cost nothing and may
+    serve the demo video or a future revisit). KEPT from the same arc,
+    operator-approved: aspect-aware fill zoom w/ 2.7 ceiling, centroid-of-
+    light camera framing, tightened candle halo (D80/D81 amendments).
+    Standing taste rule derived from this arc: the void stays pure -
+    depth belongs to the WORLD (walls, props, light), not to the dark.
