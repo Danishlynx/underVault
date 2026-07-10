@@ -603,3 +603,15 @@ candidates; flip them in the named data file, not in code.
     auto-advance, reduced-motion fades) shown once per session before the
     first Guildhall. Captions are single strings - retellable in minutes.
     Doubles as the demo-video opening.
+
+80. Viewport consumption (operator: "the game is not consuming the whole
+    viewport... reddit posts are already small"). Root cause: fitZoom's
+    binary portrait/landscape rule starved NEAR-SQUARE windows (the actual
+    Reddit-embed shape): a ~970x960 window hit the landscape 12-tile-width
+    target -> zoom 1.26 -> the world floated in margins. Replaced with one
+    continuous aspect-aware rule: min(w/(8.5 tiles), usable-h/(6.5 wall
+    heights)), clamp [1.1, 2.4] - the ceiling raised from 1.6 because the
+    D68 crispness pipeline holds at 2.4. Measured: square 1.26->1.78,
+    landscape 1.22->1.73, phone portrait ~unchanged (1.16->1.1). snap.ts
+    gains --vw/--vh viewport overrides and auto-skips the D79 telling for
+    game captures.

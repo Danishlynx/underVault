@@ -105,17 +105,18 @@ export function worldBounds(w: number, h: number): { x: number; y: number; width
 }
 
 /**
- * Camera zoom that FILLS the frame with world (D62 — the earlier
- * fit-the-whole-pool version zoomed out into a lifeless miniature).
- * Portrait: ~7 diamonds across the width — close and immersive; the pool
- * edge cropping offscreen is normal game framing. Landscape: ~12 across,
- * bounded by vertical room so walls keep headroom. Clamped ≥1 so the world
- * never shrinks below native, ≤1.6 so huge desktop windows stay tactical.
+ * Camera zoom that FILLS the frame with world (D62, rebuilt in D80).
+ * The old binary portrait/landscape rule starved near-square windows
+ * (a ~970×960 Reddit-embed shape hit the 12-tile landscape target →
+ * zoom 1.26 → the world floated in void). Now one continuous rule:
+ * ~8.5 diamonds across the width OR ~6.5 wall-heights of usable height,
+ * whichever binds — the light pool owns the frame at any aspect. The
+ * ceiling rises to 2.4: the D68 crispness pipeline (2× ground, 4×
+ * masters) holds up there, so big windows get a big world instead of
+ * big margins.
  */
 export function fitZoom(viewW: number, viewH: number): number {
-  const portrait = viewH >= viewW;
-  const target = portrait
-    ? viewW / (7 * TILE_W)
-    : Math.min(viewW / (12 * TILE_W), (viewH - 160) / (8 * TILE_H));
-  return Math.min(1.6, Math.max(1, target));
+  const chrome = viewH >= viewW ? 150 : 140; // HUD bar + top plaques
+  const target = Math.min(viewW / (8.5 * TILE_W), (viewH - chrome) / (6.5 * TILE_H));
+  return Math.min(2.4, Math.max(1.1, target));
 }

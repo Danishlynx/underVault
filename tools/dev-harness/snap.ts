@@ -22,6 +22,9 @@ const OUT = arg("--out", path.join(process.cwd(), "snap.png"));
 const WAIT = Number(arg("--wait", "4000"));
 const KEYS = arg("--keys", "");
 const LANDSCAPE = process.argv.includes("--landscape");
+// explicit viewport override (e.g. the near-square Reddit-embed shape)
+const VW = Number(arg("--vw", "0"));
+const VH = Number(arg("--vh", "0"));
 
 const EDGE_PATHS = [
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
@@ -32,8 +35,8 @@ async function main(): Promise<void> {
   const edge = EDGE_PATHS.find((p) => fs.existsSync(p));
   if (edge === undefined) throw new Error("Edge not found");
 
-  const vw = LANDSCAPE ? 940 : 520;
-  const vh = LANDSCAPE ? 520 : 940;
+  const vw = VW > 0 ? VW : LANDSCAPE ? 940 : 520;
+  const vh = VH > 0 ? VH : LANDSCAPE ? 520 : 940;
   const browser = await puppeteer.launch({
     executablePath: edge,
     headless: true,
@@ -52,6 +55,16 @@ async function main(): Promise<void> {
 
   await page.goto(URL, { waitUntil: "networkidle2", timeout: 30000 });
   await new Promise((r) => setTimeout(r, WAIT));
+
+  // the intro telling plays once per session — skip it for game captures
+  // unless the story itself is the subject (no --strike/--keys/--hold-mid)
+  if (process.argv.includes("--strike") || process.argv.includes("--hold-mid") || KEYS !== "") {
+    const skip = await page.$(".uv-story-skip");
+    if (skip !== null) {
+      await skip.click();
+      await new Promise((r) => setTimeout(r, 900));
+    }
+  }
 
   if (process.argv.includes("--hold-mid")) {
     // capture MID-hold (~260ms in): the kindling halo half-bloomed
