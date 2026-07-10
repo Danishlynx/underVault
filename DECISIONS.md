@@ -584,3 +584,22 @@ candidates; flip them in the named data file, not in code.
     essential; (c) the highest-leverage unbuilt items are the Overnight
     Ledger (what happened to YOUR investments while away) and corpse
     bounty listings - both Reddit-native, both M2+.
+
+79. "The Last Wick" - the story (operator: "we need a good story to make
+    it memory for people"). Canon established: the town above the door
+    paid a Tithe of light to keep the Vault asleep; one dusk the Vault
+    began rewriting its laws daily; the CANDLEMAID, keeper of the First
+    Flame, descended to ask why and never returned; every delver carries
+    a candle cut from her flame's stub; the Codex is the town learning
+    the way down to her; the Bottom Seal opens for five truths - rescue,
+    not escape, and she belongs to EVERYONE (a personal stake would break
+    the communal fantasy; the research doc's shared-referent principle).
+    Every mechanic is now diegetic: reshuffle = the Vault re-dreaming,
+    omen rumor = its morning mood leaking, heirs = the House sends the
+    next candle. Delivery: a Silksong-grammar intro - 7 painted canvas-2d
+    stills (7-agent workflow, one module each under src/client/ui/story/,
+    game's own woodcut pipeline, splash-safe no-Phaser) + story.ts player
+    (crossfades, tap/Enter advance, Skip the telling, slide dots, 6.5s
+    auto-advance, reduced-motion fades) shown once per session before the
+    first Guildhall. Captions are single strings - retellable in minutes.
+    Doubles as the demo-video opening.

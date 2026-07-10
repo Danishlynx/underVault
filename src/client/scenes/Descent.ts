@@ -106,6 +106,7 @@ import {
   openWaystoneSheet,
 } from "../ui/sheets.js";
 import { openGuildhall } from "../ui/guildhall.js";
+import { openStoryIntro } from "../ui/story.js";
 import { openCodexSheet } from "../ui/codex.js";
 import { openSignComposer } from "../ui/signs.js";
 import { describeRuleKey, earnedNouns } from "../ui/vocab.js";
@@ -117,6 +118,7 @@ const AUDIO_KEY = "uv-audio";
 const AUTOSTART_KEY = "uv-autostart";
 const GUIDES_KEY = "uv-guides"; // once-per-session lessons (memory only, inv. 3)
 const VIEW_KEY = "uv-view"; // D67 camera experiment (memory only, inv. 3)
+const STORY_KEY = "uv-story-told"; // the telling plays once per session (D79)
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
   "XXI", "XXII", "XXIII", "XXIV", "XXV"];
@@ -372,6 +374,17 @@ export class DescentScene extends Phaser.Scene {
     const host = this.host();
     if (host === null) return;
     this.overlayOpen = true;
+    // "The Last Wick" (D79): the telling plays once per session, before
+    // the first dawn at the hall — every mechanic gets its why
+    if (this.registry.get(STORY_KEY) !== true) {
+      this.registry.set(STORY_KEY, true);
+      openStoryIntro(host, () => this.openHallProper(host));
+      return;
+    }
+    this.openHallProper(host);
+  }
+
+  private openHallProper(host: HTMLElement): void {
     let closeHall: (() => void) | null = null;
     closeHall = openGuildhall(
       host,
