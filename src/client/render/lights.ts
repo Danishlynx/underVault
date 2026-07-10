@@ -168,6 +168,9 @@ export interface GlowPool {
   images: Map<string, Phaser.GameObjects.Image>;
 }
 
+// furnace heat-haze controllers, keyed by glow image (D77)
+const hazeMap = new WeakMap<Phaser.GameObjects.Image, Phaser.Filters.Displacement>();
+
 export function syncSourceGlows(
   scene: Phaser.Scene,
   pool: GlowPool,
@@ -175,8 +178,10 @@ export function syncSourceGlows(
   visible: Uint8Array,
   depth: number,
   layer?: Phaser.GameObjects.Layer,
+  haze = false,
 ): void {
   const want = new Set<string>();
+  const flames: { img: Phaser.GameObjects.Image; d: number }[] = [];
   const place = (key: string, x: number, y: number, tiles: number, tint: number): void => {
     want.add(key);
     let img = pool.images.get(key);
@@ -212,9 +217,19 @@ export function syncSourceGlows(
     const x = i % s.w;
     const y = (i / s.w) | 0;
     const t = s.tiles[i]!;
-    if (t === Tile.BRAZIER_LIT) place(`b:${i}`, x, y, 2.6, COLOR.flame);
-    else if (s.fire[i]! > 0) place(`f:${i}`, x, y, 1.8, COLOR.ember);
-    else if (t === Tile.WAYSTONE) place(`w:${i}`, x, y, 1.3, COLOR.verdigris);
+    if (t === Tile.BRAZIER_LIT) {
+      place(`b:${i}`, x, y, 2.6, COLOR.flame);
+      if (haze) {
+        const img = pool.images.get(`b:${i}`);
+        if (img !== undefined) flames.push({ img, d: Math.abs(x - s.px) + Math.abs(y - s.py) });
+      }
+    } else if (s.fire[i]! > 0) {
+      place(`f:${i}`, x, y, 1.8, COLOR.ember);
+      if (haze) {
+        const img = pool.images.get(`f:${i}`);
+        if (img !== undefined) flames.push({ img, d: Math.abs(x - s.px) + Math.abs(y - s.py) });
+      }
+    } else if (t === Tile.WAYSTONE) place(`w:${i}`, x, y, 1.3, COLOR.verdigris);
     else if (FEATURE_HALO[t] !== undefined) {
       const [tiles, tint] = FEATURE_HALO[t];
       place(`d:${i}`, x, y, tiles, tint);
@@ -223,6 +238,23 @@ export function syncSourceGlows(
   pool.images.forEach((img, key) => {
     if (!want.has(key)) img.setVisible(false);
   });
+
+  // furnace heat-haze (D77): OBJECT-scoped displacement — small render
+  // targets, never full-screen. Only the 3 nearest visible flames shimmer.
+  if (haze) {
+    flames.sort((a, b) => a.d - b.d);
+    flames.forEach(({ img }, idx) => {
+      const existing = hazeMap.get(img);
+      if (idx < 3 && existing === undefined) {
+        img.enableFilters();
+        const disp = img.filters?.internal.addDisplacement("uv-grain", 0.004, 0.01);
+        if (disp !== undefined) hazeMap.set(img, disp);
+      } else if (idx >= 3 && existing !== undefined) {
+        img.filters?.internal.remove(existing, true);
+        hazeMap.delete(img);
+      }
+    });
+  }
 }
 
 /** Per-frame breathing of the source glows (cosmetic). */
@@ -236,5 +268,11 @@ export function pulseGlows(pool: GlowPool, time: number): void {
     const amp = isFire ? 0.22 : isFeature ? 0.07 : 0.1;
     const base = isFeature ? 0.42 : 0.75;
     img.setAlpha(base + amp * Math.sin((time + phase) / speed));
+    // heat shimmer rides the same clock (D77)
+    const disp = hazeMap.get(img);
+    if (disp !== undefined) {
+      disp.y = 0.008 + 0.004 * Math.sin((time + phase) / 170);
+      disp.x = 0.003 * Math.sin((time + phase) / 230);
+    }
   });
 }

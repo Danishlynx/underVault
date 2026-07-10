@@ -87,6 +87,16 @@ import {
   worldBounds,
 } from "../render/iso.js";
 import { Hud } from "../render/hud.js";
+import {
+  addSnuffGrade,
+  armBloomValve,
+  removeSnuffGrade,
+  setupWorldFilters,
+  setVignetteDepth,
+  vignetteBreath,
+  vignetteHurt,
+  type WorldFx,
+} from "../render/fx.js";
 import { closeAllSheets } from "../ui/dom.js";
 import {
   openEpitaphSheet,
@@ -115,7 +125,6 @@ const DEPTH_CURSOR = 550;
 const DEPTH_DUST = 580;
 const DEPTH_HALO = 600;
 const DEPTH_GHOST = 590;
-const DEPTH_VIGNETTE = 900;
 const DEPTH_GRAIN = 901;
 const LONG_PRESS_MS = 400;
 // must complete INSIDE the 70ms queue drain — a longer glide gets truncated
@@ -191,7 +200,12 @@ export class DescentScene extends Phaser.Scene {
   private glowPool: GlowPool = { images: new Map() };
   private cursorG!: Phaser.GameObjects.Graphics;
   private halo!: Phaser.GameObjects.Image;
-  private vignette!: Phaser.GameObjects.Image;
+  private fx!: WorldFx;
+  private snuffGrade: Phaser.Filters.ColorMatrix | null = null;
+  private baseZoom = 1;
+  private hitStopUntil = 0;
+  private dustWell: Phaser.GameObjects.Particles.GravityWell | null = null;
+  private dustZone: Phaser.Geom.Ellipse | null = null;
   private grain!: Phaser.GameObjects.TileSprite;
   private dust: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private playerView!: Phaser.GameObjects.Image;
@@ -300,11 +314,11 @@ export class DescentScene extends Phaser.Scene {
     this.playerView.setScale(TEX_SCALE); // 4× master rendered at ¼ (D56)
     this.playerView.setVisible(false);
     this.worldLayer.add(this.playerView);
-    this.vignette = this.add.image(sw >> 1, sh >> 1, "uv-vignette");
-    this.vignette.setScrollFactor(0);
-    this.vignette.setDisplaySize(sw, sh);
-    this.vignette.depth = DEPTH_VIGNETTE;
-    this.uiLayer.add(this.vignette);
+    // world-camera filter stack (D75/D77): bloom, then a GPU vignette that
+    // darkens the bloomed frame — replaces the stretched uv-vignette texture
+    // and leaves the HUD camera untouched
+    this.fx = setupWorldFilters(this, this.cameras.main);
+    this.snuffGrade = null;
     this.grain = this.add.tileSprite(sw >> 1, sh >> 1, sw, sh, "uv-grain");
     this.grain.setScrollFactor(0);
     this.grain.setAlpha(0); // clean pass (D60): film grain off — flat, artsy
@@ -408,6 +422,7 @@ export class DescentScene extends Phaser.Scene {
 
     this.buildFloor();
     this.redraw(true);
+    armBloomValve(this, this.cameras.main, this.fx); // sample fps IN-run (D77)
     this.hud.toast("The match catches. The Vault is listening.", "info");
     // the first lesson, once the flavor line has had its moment (D66)
     this.time.delayedCall(2800, () => {
@@ -646,7 +661,12 @@ export class DescentScene extends Phaser.Scene {
       { tint: COLOR.goldInk, up: [-8, -2], alpha: 0.4, freq: 380, life: 3000 }, // Bottom: gold dust
     ];
     const air = AIRS[bi] ?? AIRS[0]!;
-    this.dust = this.add.particles(0, 0, "iso-mote", {
+    // fire ramps for the furnace, verdigris fade for the deep fireflies —
+    // color-over-life replaces the flat tint where it earns its keep (D75)
+    const colors =
+      bi === 3 ? [0xffd98a, 0xf5a93f, 0xc9701e, 0x2a2520] :
+      bi === 5 ? [0x4fb39a, 0x2e6b5c, 0x0b0a10] : null;
+    const cfg: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig = {
       lifespan: air.life,
       frequency: air.freq,
       quantity: 1,
@@ -654,16 +674,35 @@ export class DescentScene extends Phaser.Scene {
       speedX: { min: -5, max: 5 },
       alpha: { start: air.alpha, end: 0 },
       scale: { start: 0.9, end: 0.35 },
-      tint: air.tint,
       emitZone: {
         type: "random",
         source: new Phaser.Geom.Rectangle(-84, -64, 168, 116),
         quantity: 1,
       },
       follow: this.playerView,
-    });
+    };
+    if (colors !== null) {
+      cfg.color = colors;
+      cfg.colorEase = bi === 3 ? "quad.out" : "sine.inout";
+      cfg.blendMode = Phaser.BlendModes.ADD;
+    } else {
+      cfg.tint = air.tint;
+    }
+    // the light gathers the dust: motes only live inside the halo and are
+    // drawn gently toward the flame (D75); the Deep's fireflies are self-
+    // lit and exempt
+    this.dustZone = null;
+    if (bi !== 5) {
+      this.dustZone = new Phaser.Geom.Ellipse(0, 0, 300, 200);
+      cfg.deathZone = { type: "onLeave", source: this.dustZone };
+    }
+    this.dust = this.add.particles(0, 0, "iso-mote", cfg);
+    this.dustWell = bi !== 5
+      ? this.dust.createGravityWell({ x: 0, y: -6, power: 0.8, epsilon: 50, gravity: 40 })
+      : null;
     this.dust.setDepth(DEPTH_DUST);
     this.worldLayer.add(this.dust);
+    this.dust.fastForward(3000); // the air is already alive when a floor appears
   }
 
   /** Zoom-to-fit + HUD-aware centering (portrait must show the full light
@@ -674,6 +713,7 @@ export class DescentScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const base = fitZoom(this.scale.width, this.scale.height);
     const zoom = this.viewMode === "delve" ? Math.min(2.6, Math.max(1.9, base * 1.75)) : base;
+    this.baseZoom = zoom; // impact()/discovery pulses return here (D75)
     if (smooth) cam.zoomTo(zoom, 320, "Sine.easeInOut");
     else cam.setZoom(zoom);
     // usable area sits above the 72px HUD bar and below top chrome (~60px):
@@ -783,8 +823,6 @@ export class DescentScene extends Phaser.Scene {
   private onResize(gameSize: Phaser.Structs.Size): void {
     const w = gameSize.width;
     const h = gameSize.height;
-    this.vignette.setPosition(w >> 1, h >> 1);
-    this.vignette.setDisplaySize(w, h);
     this.grain.setPosition(w >> 1, h >> 1);
     this.grain.setSize(w, h);
     this.hud.layout(w, h);
@@ -1034,7 +1072,14 @@ export class DescentScene extends Phaser.Scene {
       this.inspect(this.pressTile.x, this.pressTile.y);
     }
 
-    if (this.queue.length > 0 && !this.overlayOpen && time - this.lastStep > 70) {
+    // hit-stop restoration: real game time is unscaled, so this is exact
+    if (this.hitStopUntil > 0 && time >= this.hitStopUntil) {
+      this.hitStopUntil = 0;
+      this.tweens.timeScale = 1;
+      if (this.dust !== null) this.dust.timeScale = 1;
+    }
+
+    if (this.queue.length > 0 && !this.overlayOpen && time - this.lastStep > 70 && time >= this.hitStopUntil) {
       this.lastStep = time;
       const step = this.queue.shift()!;
       this.step(step);
@@ -1065,6 +1110,16 @@ export class DescentScene extends Phaser.Scene {
     if (this.meaningfulLearned() > before) {
       this.hud.toast("◆ The Vault yields a truth — bank it at a Waystone", "discovery");
       this.audio.play("discovery");
+      // the discovery breath: the dark recedes for a moment and the world
+      // leans in — no white flash, the inverse of one (D75)
+      vignetteBreath(this, this.fx, s.floor);
+      const cam = this.cameras.main;
+      if (Math.abs(cam.zoom - this.baseZoom) < 0.01) {
+        cam.zoomTo(this.baseZoom * 1.05, 180, "Sine.easeOut", false, (_c, p) => {
+          if (p === 1) cam.zoomTo(this.baseZoom, 300, "Sine.easeIn");
+        });
+      }
+      this.tweens.add({ targets: this.halo, alpha: 0.9, duration: 140, yoyo: true });
     }
 
     // echo keyframes: the run's final 24 s (01 §13)
@@ -1111,6 +1166,9 @@ export class DescentScene extends Phaser.Scene {
     // from old-floor coordinates across the new map (D64)
     this.redraw(true);
     this.cameras.main.centerOn(this.playerView.x, this.playerView.y);
+    setVignetteDepth(this.fx, this.state.floor); // the dark presses harder below
+    this.puffAt(this.state.px, this.state.py, 14); // the landing (D75)
+    this.impact(0.002);
     this.audio.play("descend");
     this.cameras.main.flash(MOTION.ceremonial, 11, 10, 16);
     const biome = biomeFor(this.state.floor);
@@ -1179,9 +1237,11 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.DOOR_OPENED:
       case Ev.DOOR_SIGIL_OPEN:
+        this.puffAt(e.a, e.b, 8); // old hinges shed their dust (D75)
         cue("door");
         break;
       case Ev.DOOR_FORCED:
+        this.puffAt(e.a, e.b, 12);
         cue("door-force");
         break;
       case Ev.DOOR_FED:
@@ -1204,17 +1264,20 @@ export class DescentScene extends Phaser.Scene {
         cue("death");
         break;
       case Ev.PLAYER_HURT:
-        this.cameras.main.shake(MOTION.micro, 0.003 + e.b * 0.0002);
+        this.impact(0.003 + e.b * 0.0002);
+        this.hitStop(80);
         this.damageFlash();
         cue("bite");
         break;
       case Ev.FIRE_HURT:
-        this.cameras.main.shake(MOTION.micro, 0.005);
+        this.impact(0.005);
+        this.hitStop(80);
         this.damageFlash();
         cue("fire");
         break;
       case Ev.SHOCK:
-        this.cameras.main.shake(MOTION.micro, 0.006);
+        this.impact(0.006);
+        this.hitStop(80);
         this.damageFlash();
         cue("shock");
         break;
@@ -1226,11 +1289,15 @@ export class DescentScene extends Phaser.Scene {
         cue("ignite");
         break;
       case Ev.GAS_BOOM:
-        this.cameras.main.shake(180, 0.008);
+        this.impact(0.008);
         cue("boom");
         break;
       case Ev.MONSTER_DIED:
+        this.hitStop(60);
         cue("monster-die");
+        break;
+      case Ev.DIED:
+        this.hitStop(140);
         break;
       case Ev.MONSTER_MELTED:
         this.hud.toast("It melts away into the tallow.", "discovery");
@@ -1354,9 +1421,15 @@ export class DescentScene extends Phaser.Scene {
         cue("descend");
         break;
       case Ev.CANDLE_STATE:
-        if (e.a === Candle.SNUFFED) cue("snuff");
-        else if (e.a === Candle.CUPPED) cue("cup");
-        else cue("relight");
+        if (e.a === Candle.SNUFFED) {
+          cue("snuff");
+          // the world drains toward the memory view while dark (D77)
+          if (this.snuffGrade === null) this.snuffGrade = addSnuffGrade(this.cameras.main);
+        } else {
+          cue(e.a === Candle.CUPPED ? "cup" : "relight");
+          removeSnuffGrade(this.cameras.main, this.snuffGrade);
+          this.snuffGrade = null;
+        }
         break;
       case Ev.TIER_CHANGED:
         // dimming is feedback (the candle gutters down a tier); brightening
@@ -1374,8 +1447,47 @@ export class DescentScene extends Phaser.Scene {
   }
 
   private damageFlash(): void {
-    this.vignette.setTint(COLOR.seal);
-    this.time.delayedCall(140, () => this.vignette.clearTint());
+    vignetteHurt(this, this.fx, this.state?.floor ?? 1);
+  }
+
+  /** Hit-stop: the world holds its breath for a beat (D75). */
+  private hitStop(ms: number): void {
+    this.hitStopUntil = this.time.now + ms;
+    this.tweens.timeScale = 0.12;
+    if (this.dust !== null) this.dust.timeScale = 0.12;
+  }
+
+  /** Impact: shake plus a 2% zoom micro-punch that reads as weight (D75). */
+  private impact(intensity: number): void {
+    const cam = this.cameras.main;
+    cam.shake(90, intensity);
+    if (Math.abs(cam.zoom - this.baseZoom) > 0.01) return; // mid-zoomTo: skip the punch
+    this.tweens.add({
+      targets: cam,
+      zoom: this.baseZoom * 1.02,
+      duration: 50,
+      yoyo: true,
+      ease: "Quad.easeOut",
+      onComplete: () => cam.setZoom(this.baseZoom),
+    });
+  }
+
+  /** One-shot ground puff (descend landings, doors giving way). D75 */
+  private puffAt(x: number, y: number, count: number): void {
+    const c = gridToScreen(x, y);
+    const puff = this.add.particles(c.sx, c.sy + HALF_H - 2, "iso-mote", {
+      speed: { min: 25, max: 80 },
+      angle: { min: 200, max: 340 },
+      lifespan: 450,
+      scale: { start: 1.2, end: 0.2 },
+      alpha: { start: 0.5, end: 0 },
+      tint: COLOR.boneDim,
+      emitting: false,
+    });
+    puff.setDepth(depthOf(x, y, Layer.FX));
+    this.worldLayer.add(puff);
+    puff.explode(count);
+    this.time.delayedCall(700, () => puff.destroy());
   }
 
   private playBump(): void {
@@ -1529,8 +1641,27 @@ export class DescentScene extends Phaser.Scene {
     }
 
     positionHalo(this.halo, s, effR);
+    // the dust lives only where the light reaches, and leans toward the
+    // flame; a snuffed candle stops gathering it (D75)
+    if (this.dustZone !== null) {
+      this.dustZone.width = Math.max(64, (effR * 2 + 1) * TILE_W * 0.85);
+      this.dustZone.height = Math.max(48, (effR * 2 + 1) * TILE_H * 0.85);
+    }
+    if (this.dustWell !== null) this.dustWell.active = effR > 0;
+    if (this.dust !== null && this.dustZone !== null) {
+      if (effR === 0 && this.dust.emitting) this.dust.stop();
+      else if (effR > 0 && !this.dust.emitting) this.dust.start();
+    }
     this.halo.setTint(COLOR.flame);
-    syncSourceGlows(this, this.glowPool, s, this.visibleMask, DEPTH_HALO - 1, this.worldLayer);
+    syncSourceGlows(
+      this,
+      this.glowPool,
+      s,
+      this.visibleMask,
+      DEPTH_HALO - 1,
+      this.worldLayer,
+      BIOMES.indexOf(biomeFor(s.floor)) === 3, // the Furnaces shimmer (D77)
+    );
 
     const pc = gridToScreen(s.px, s.py);
     const pi = s.py * s.w + s.px;

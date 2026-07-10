@@ -13,7 +13,12 @@ import { COLOR } from "../../../design/tokens/tokens.js";
 import { MAX_FLOOR } from "../../shared/sim/constants.js";
 
 export const FX = {
-  bloom: true,
+  // Evaluated and CUT (D77): the candle halo is ADDITIVE flame over lit
+  // tiles — it saturates past any per-channel threshold, so bloom can only
+  // re-glow the entire light pool (an amber wash that buries the world).
+  // The halo already is the bloom; the near-black law wins. The recipe
+  // stays below for post-jam revisiting with a luminance-keyed approach.
+  bloom: false,
   vignette: true,
   snuffGrade: true,
   heatHaze: true,
@@ -39,22 +44,15 @@ export function setupWorldFilters(
     // sit far under the 0.55 knee — the near-black provably never lifts,
     // only flame/verdigris sources leak light into the dark (the art law,
     // rendered literally).
+    // threshold is PER-CHANNEL: warm-lit floor tiles carry flame-red ≈0.96,
+    // so a 0.55 knee bloomed the entire light pool into an amber wash. Only
+    // near-white cores (halo centers, flameHi glints) may pass.
     const bloom = cam.filters.internal.addParallelFilters();
-    bloom.top.addThreshold(0.55, 0.85);
+    bloom.top.addThreshold(0.78, 0.97);
     bloom.top.addBlur(0, 2, 2, 1.3, 0xffffff, 3); // LOW quality, 3 steps — mobile budget
     bloom.blend.blendMode = Phaser.BlendModes.ADD;
-    bloom.blend.amount = 0.4;
+    bloom.blend.amount = 0.25;
     fx.bloom = bloom;
-
-    // self-tuning valve: if a low-end GPU can't hold the line, shed bloom
-    // once and remember for the session (scene restarts must not re-add)
-    scene.time.delayedCall(3000, () => {
-      if (scene.game.loop.actualFps < 50 && fx.bloom !== null) {
-        cam.filters.internal.remove(fx.bloom, true);
-        fx.bloom = null;
-        scene.registry.set(LOWEND_KEY, true);
-      }
-    });
   }
 
   if (FX.vignette) {
@@ -64,6 +62,30 @@ export function setupWorldFilters(
   }
 
   return fx;
+}
+
+/**
+ * Self-tuning valve — arm this at RUN start (not scene create: the idle
+ * Guildhall renders nothing and reads a false 60fps). If a low-end GPU
+ * can't hold the line with the world actually drawing, shed bloom once
+ * and remember for the session (scene restarts must not re-add).
+ */
+export function armBloomValve(
+  scene: Phaser.Scene,
+  cam: Phaser.Cameras.Scene2D.Camera,
+  fx: WorldFx,
+): void {
+  if (fx.bloom === null) return;
+  scene.time.delayedCall(3000, () => {
+    const fps = scene.game.loop.actualFps;
+    console.log(`[fx-valve] fps=${fps.toFixed(1)} bloom=${fx.bloom !== null}`);
+    if (fps < 50 && fx.bloom !== null) {
+      cam.filters.internal.remove(fx.bloom, true);
+      fx.bloom = null;
+      scene.registry.set(LOWEND_KEY, true);
+      console.log("[fx-valve] bloom shed (low-end)");
+    }
+  });
 }
 
 /** The dark presses harder the deeper you go (02 §8 depth-scaled dread). */

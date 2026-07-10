@@ -542,3 +542,29 @@ candidates; flip them in the named data file, not in code.
     snap console pipe (baseline: 9 draws); fx.ts filter stack module
     (bloom-then-vignette order canonical, flag-gated, self-tuning fps
     valve) wired next.
+
+    D75 (continued) - fidelity wiring: GPU vignette on the world camera
+    (depth-scaled strength .36->.50 by floor; seal-red hurt pulse ports the
+    old texture tint; the old stretched uv-vignette image deleted);
+    hit-stop (tweens.timeScale 0.12 + input hold: hurt 80ms, kill 60ms,
+    death 140ms; real-time restoration); impact() = shake + 2% zoom
+    micro-punch returning to cached baseZoom; descend landing puff + door
+    dust; discovery moment = vignette DIP (the dark recedes - no white
+    flash) + 5% zoom breath + halo flare; furnace embers get color-over-
+    life fire ramps w/ ADD, deep fireflies verdigris ramps; a gravity well
+    at the flame gathers the motes (active only while lit); dust deathZone
+    tracks the light radius (fireflies exempt); emitters pre-warmed 3s.
+
+77. Bloom: evaluated and CUT. The ParallelFilters recipe (threshold+blur+
+    ADD) cannot separate light SOURCES from our additive candle halo -
+    the halo saturates warm-lit tiles past any per-channel threshold, so
+    bloom re-glows the whole pool into an amber wash that buries the
+    world. The halo already is the bloom; the near-black law wins. The
+    flag-gated recipe + a run-start fps valve (sheds bloom <50fps, sticky
+    per session) remain in fx.ts for a post-jam luminance-keyed retry.
+    Shipped from the same batch: snuffed-state ColorMatrix grade (world
+    desaturates -55% while dark, removed on relight - the memory view),
+    furnace heat-haze (object-scoped displacement on the 3 nearest flame
+    glows, shimmer clocked with the glow pulse). Per-biome GradientMap
+    REJECTED per plan (double-grades the tint rig). Perf: 19-28 draws
+    in-run (budget <40); worst always-on filter count = 1 (vignette).
