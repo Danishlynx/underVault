@@ -100,6 +100,16 @@ export interface EpitaphResult {
   houseName: string | null;
 }
 
+/** The Zeigarnik panel (D78): what died incomplete — tomorrow's pull. */
+export interface UnfinishedBusiness {
+  /** unbanked truths, already worded */
+  truths: string[];
+  /** codex claims one breath from inking ("… — 4/5 confirmations") */
+  nearClaims: string[];
+  /** the near-miss line ("The stairs down were 4 steps away."), if cruel */
+  nearMiss: string | null;
+}
+
 export function openEpitaphSheet(
   host: HTMLElement,
   state: SimState,
@@ -107,6 +117,7 @@ export function openEpitaphSheet(
   house: string | null,
   generation: number,
   onDone: (result: EpitaphResult, restAtDusk: boolean) => void,
+  unfinished?: UnfinishedBusiness,
 ): () => void {
   const close = openSheet(host, (sheet) => {
     const cause = CAUSE_LINE[state.deathCause] ?? "TAKEN BY THE DARK";
@@ -121,6 +132,33 @@ export function openEpitaphSheet(
         `The candle lasted ${summary.ticks} steps. ${summary.discoveries} unbanked truth${summary.discoveries === 1 ? "" : "s"} lie with the body.`,
       ),
     );
+
+    // ── LEFT UNFINISHED (D78): interrupted business outlives the run —
+    // research says the open loop, named explicitly, is tomorrow's trigger
+    if (
+      unfinished !== undefined &&
+      (unfinished.truths.length > 0 || unfinished.nearClaims.length > 0 || unfinished.nearMiss !== null)
+    ) {
+      const head = el("p", "uv-gold", "LEFT UNFINISHED");
+      head.style.letterSpacing = "0.18em";
+      head.style.fontSize = "12px";
+      head.style.marginBottom = "2px";
+      sheet.appendChild(head);
+      const list = el("ul", "uv-list");
+      for (const t of unfinished.truths.slice(0, 3)) {
+        list.appendChild(el("li", "uv-dim", `${t} — lies with your corpse, 72 hours.`));
+      }
+      for (const c of unfinished.nearClaims.slice(0, 2)) {
+        list.appendChild(el("li", "uv-dim", c));
+      }
+      if (unfinished.nearMiss !== null) {
+        const miss = el("li", "", unfinished.nearMiss);
+        miss.style.color = "var(--seal)";
+        miss.style.fontStyle = "italic";
+        list.appendChild(miss);
+      }
+      sheet.appendChild(list);
+    }
 
     const words = el("input", "uv-input") as HTMLInputElement;
     words.maxLength = 100;

@@ -568,3 +568,19 @@ candidates; flip them in the named data file, not in code.
     glows, shimmer clocked with the glow pulse). Per-biome GradientMap
     REJECTED per plan (double-grades the tint rig). Perf: 19-28 draws
     in-run (budget <40); worst always-on filter count = 1 (vignette).
+
+78. Retention research applied (4-lens research workflow: hook models,
+    daily-game case studies, roguelike replayability, game-feel canon;
+    synthesis + full 13-item ranked backlog in docs/06-RETENTION-RESEARCH
+    .md - every item sim-safe). Shipped now: the LEFT UNFINISHED panel on
+    the Epitaph (Zeigarnik open loops named explicitly): up to 3 unbanked
+    truths by name ("...lies with your corpse, 72 hours"), codex claims at
+    3-4/5 confirmations, and the near-miss line ("The stairs down were N
+    steps away", shown when within 8 - loss-aversion framing from the
+    research). Key research verdicts for the operator: (a) NEVER add
+    retries/archives - the one-candle scarcity IS the ritual (Wordle/
+    Spelunky-daily evidence); (b) the House lineage is our streak, and it
+    already has the mercy mechanic (the heir) that Duolingo data proves
+    essential; (c) the highest-leverage unbuilt items are the Overnight
+    Ledger (what happened to YOUR investments while away) and corpse
+    bounty listings - both Reddit-native, both M2+.

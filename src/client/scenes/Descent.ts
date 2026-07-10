@@ -108,7 +108,7 @@ import {
 import { openGuildhall } from "../ui/guildhall.js";
 import { openCodexSheet } from "../ui/codex.js";
 import { openSignComposer } from "../ui/signs.js";
-import { earnedNouns } from "../ui/vocab.js";
+import { describeRuleKey, earnedNouns } from "../ui/vocab.js";
 import { AudioGraph, type Cue } from "../audio/graph.js";
 
 const DIRS = { N: 0, E: 1, S: 2, W: 3 } as const;
@@ -1864,6 +1864,24 @@ export class DescentScene extends Phaser.Scene {
     this.audio.setHeartbeat(false);
     this.audio.play("death");
     const house = this.ports.getHouse();
+    // LEFT UNFINISHED (D78): name the open loops — the research says the
+    // interrupted business, made explicit, is what pulls a player back
+    const truths = this.unbankedThisRun()
+      .slice(0, 3)
+      .map((r) => describeRuleKey(r.key, r.effect).text);
+    const nearClaims = this.ports
+      .getCodex()
+      .filter((c) => c.status !== "inked" && c.status !== "disproven" && c.confirms >= 3)
+      .slice(0, 2)
+      .map((c) => `${c.text} — ${c.confirms}/5 confirmations.`);
+    let nearMiss: string | null = null;
+    for (let i = 0; i < s.tiles.length; i++) {
+      if (s.tiles[i] === Tile.STAIRS_DOWN) {
+        const d = Math.abs((i % s.w) - s.px) + Math.abs(((i / s.w) | 0) - s.py);
+        if (d <= 8) nearMiss = `The stairs down were ${d} step${d === 1 ? "" : "s"} away.`;
+        break;
+      }
+    }
     openEpitaphSheet(host, s, this.runSummary(), house, 0, (result, rest) => {
       if (result.houseName !== null) this.ports.setHouse(result.houseName);
       this.ports.reportDeath({
@@ -1879,7 +1897,7 @@ export class DescentScene extends Phaser.Scene {
       });
       this.confirmRun();
       this.afterCeremony(rest);
-    });
+    }, { truths, nearClaims, nearMiss });
   }
 
   private openExit(): void {
