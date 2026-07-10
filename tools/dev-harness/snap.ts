@@ -53,6 +53,24 @@ async function main(): Promise<void> {
   await page.goto(URL, { waitUntil: "networkidle2", timeout: 30000 });
   await new Promise((r) => setTimeout(r, WAIT));
 
+  if (process.argv.includes("--hold-mid")) {
+    // capture MID-hold (~260ms in): the kindling halo half-bloomed
+    const seal = await page.$(".uv-hall .uv-seal-btn, .uv-hall button");
+    const box = seal !== null ? await seal.boundingBox() : null;
+    if (box !== null) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await new Promise((r) => setTimeout(r, 260));
+      await page.screenshot({ path: OUT as `${string}.png` });
+      await page.mouse.up();
+      await browser.close();
+      console.log(`screenshot (mid-hold): ${OUT}`);
+      console.log(logs.length > 0 ? logs.join("\n") : "(no console output)");
+      return;
+    }
+    console.log("[snap] no seal button found for --hold-mid");
+  }
+
   if (process.argv.includes("--strike")) {
     // press-and-hold the Guildhall seal 700ms (hold-to-confirm strike)
     const seal = await page.$(".uv-hall .uv-seal-btn, .uv-hall button");
