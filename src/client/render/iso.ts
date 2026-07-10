@@ -117,6 +117,6 @@ export function worldBounds(w: number, h: number): { x: number; y: number; width
  */
 export function fitZoom(viewW: number, viewH: number): number {
   const chrome = viewH >= viewW ? 150 : 140; // HUD bar + top plaques
-  const target = Math.min(viewW / (8.5 * TILE_W), (viewH - chrome) / (6.5 * TILE_H));
-  return Math.min(2.4, Math.max(1.1, target));
+  const target = Math.min(viewW / (8 * TILE_W), (viewH - chrome) / (6 * TILE_H));
+  return Math.min(2.7, Math.max(1.1, target));
 }

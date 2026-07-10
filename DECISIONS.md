@@ -632,3 +632,14 @@ candidates; flip them in the named data file, not in code.
     its wide warm tail was glowing over pure void - light with nothing to
     catch it reads as fog. One dead end removed: a floor-wide "sheen"
     reusing the halo texture (baked-warm) washed everything amber - cut.
+
+    D81 amended (operator: "looks the same"): the timid version did not
+    move the needle. (a) zoom targets 8x6 tiles (was 8.5x6.5), ceiling
+    2.4->2.7 - tiles ~172px on desktop; (b) rim masses alpha .08->.14,
+    deep motes 210ms->130ms cadence - atmosphere now visible, not
+    homeopathic; (c) THE FRAMING FIX: the camera leans 45% toward the
+    centroid of currently-visible tiles (clamped +/-2.2 tiles, smoothed
+    by the follow lerp) - standing at a room's corner used to pin the
+    player dead-center and donate half the frame to void; now the lit
+    world owns the middle and the delver rides off-center like proper
+    cinematography.

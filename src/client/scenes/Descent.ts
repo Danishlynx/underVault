@@ -203,6 +203,9 @@ export class DescentScene extends Phaser.Scene {
   private cursorG!: Phaser.GameObjects.Graphics;
   private halo!: Phaser.GameObjects.Image;
   private fx!: WorldFx;
+  private followBias = 0; // HUD-aware vertical bias (applyViewport)
+  private camPullX = 0; // frame the LIT world, not just the player (D81)
+  private camPullY = 0;
   private cavern: Phaser.GameObjects.Image[] = []; // the dark is a place (D81)
   private deepMotes: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private snuffGrade: Phaser.Filters.ColorMatrix | null = null;
@@ -683,7 +686,7 @@ export class DescentScene extends Phaser.Scene {
       const sc = (2.2 + ((h0 >> i) % 4) * 0.6) / Math.max(1, this.baseZoom);
       m.setScale(sc, sc * 0.8);
       m.setTint(COLOR.surface2);
-      m.setAlpha(0.08);
+      m.setAlpha(0.14);
       m.setScrollFactor(0.85);
       m.depth = -18;
       this.worldLayer.add(m);
@@ -701,7 +704,7 @@ export class DescentScene extends Phaser.Scene {
     // dressing only; they reveal nothing
     this.deepMotes = this.add.particles(0, 0, "iso-mote", {
       lifespan: 7000,
-      frequency: 210,
+      frequency: 130,
       quantity: 1,
       speedY: { min: -7, max: -2 },
       speedX: { min: -4, max: 4 },
@@ -801,8 +804,8 @@ export class DescentScene extends Phaser.Scene {
     else cam.setZoom(zoom);
     // usable area sits above the 72px HUD bar and below top chrome (~60px):
     // bias the follow so the player rides its center, not the canvas center
-    const bias = ((72 - 60) / 2) / zoom;
-    cam.setFollowOffset(0, -bias);
+    this.followBias = ((72 - 60) / 2) / zoom;
+    cam.setFollowOffset(-this.camPullX, -this.camPullY - this.followBias);
   }
 
   private toggleView(): void {
@@ -1720,6 +1723,30 @@ export class DescentScene extends Phaser.Scene {
             tile.setAlpha(0);
           }
         }
+      }
+    }
+
+    // frame the lit WORLD, not just the delver (D81): standing at a room's
+    // corner used to donate half the frame to void — the camera now leans
+    // toward the centroid of everything currently visible (smoothed by the
+    // follow lerp), clamped so the player never leaves the middle third
+    {
+      let cx = 0;
+      let cyy = 0;
+      let n = 0;
+      for (let i = 0; i < s.tiles.length; i++) {
+        if (this.visibleMask[i]! === 1) {
+          cx += i % s.w;
+          cyy += (i / s.w) | 0;
+          n++;
+        }
+      }
+      if (n > 3) {
+        const wc = gridToScreen(cx / n, cyy / n);
+        const pcm = gridToScreen(s.px, s.py);
+        this.camPullX = Phaser.Math.Clamp((wc.sx - pcm.sx) * 0.45, -TILE_W * 2.2, TILE_W * 2.2);
+        this.camPullY = Phaser.Math.Clamp((wc.sy - pcm.sy) * 0.45, -TILE_H * 2.2, TILE_H * 2.2);
+        this.cameras.main.setFollowOffset(-this.camPullX, -this.camPullY - this.followBias);
       }
     }
 
