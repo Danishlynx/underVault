@@ -504,3 +504,18 @@ candidates; flip them in the named data file, not in code.
     fifth apart + wind; 33Hz subsonic pressure + a thin high ring; a gold
     two-tone at the Bottom. Quiet by design (bed levels .045-.075), all
     behind the master limiter; honors the unlock/mute invariants.
+
+73. The "player crosses the wall" bug (operator report) - root cause was a
+    depth/position desync, render-only (sim collision verified airtight:
+    player position writes are walkable()-gated). glide() set sprite depth
+    INSTANTLY at tween start while x/y lerped 85ms, so the draw order
+    jumped a step before the sprite visually crossed the tile boundary -
+    popping through wall billboards. Fixes: (a) depth now rides the same
+    tween as position (floats sort fine) so the crossover happens at the
+    visual boundary - player, entities, echo ghost; (b) GLIDE_MS 85->64 so
+    a glide completes inside the 70ms input drain (held keys used to
+    truncate every tween via killTweensOf, chronically lagging the sprite);
+    (c) the DOOR_OPEN arch ghosts while the player stands IN the doorway
+    (occludes() excludes equal depth-sums, so the 96px arch used to swallow
+    the delver); (d) player wins depth ties vs same-row entities (+0.5
+    bias) instead of flickering on insertion order.

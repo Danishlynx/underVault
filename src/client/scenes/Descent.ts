@@ -117,7 +117,10 @@ const DEPTH_GHOST = 590;
 const DEPTH_VIGNETTE = 900;
 const DEPTH_GRAIN = 901;
 const LONG_PRESS_MS = 400;
-const GLIDE_MS = 85;
+// must complete INSIDE the 70ms queue drain — a longer glide gets truncated
+// by killTweensOf every held-key step and the sprite chronically lags its
+// logical tile (D73)
+const GLIDE_MS = 64;
 
 const TILE_NAMES: Record<number, string> = {
   [Tile.WALL]: "vault wall",
@@ -1403,9 +1406,15 @@ export class DescentScene extends Phaser.Scene {
   // ── Rendering ────────────────────────────────────────────────────────────
   private glide(img: Phaser.GameObjects.Image, x: number, y: number, depth: number, instant: boolean): void {
     this.tweens.killTweensOf(img);
-    img.depth = depth;
-    if (instant) img.setPosition(x, y);
-    else this.tweens.add({ targets: img, x, y, duration: GLIDE_MS, ease: "Sine.easeOut" });
+    if (instant) {
+      img.depth = depth;
+      img.setPosition(x, y);
+      return;
+    }
+    // depth rides the same tween as position (sorting works on floats), so
+    // the sort crossover happens AT the visual tile boundary — setting it
+    // instantly made sprites pop through walls a step early (D73)
+    this.tweens.add({ targets: img, x, y, depth, duration: GLIDE_MS, ease: "Sine.easeOut" });
   }
 
   private redraw(instant: boolean): void {
@@ -1448,7 +1457,9 @@ export class DescentScene extends Phaser.Scene {
 
     const pc = gridToScreen(s.px, s.py);
     const pi = s.py * s.w + s.px;
-    this.glide(this.playerView, pc.sx, pc.sy + HALF_H - 2, depthOf(s.px, s.py, Layer.ENTITY), instant);
+    // +0.5: the delver wins depth ties against same-tile-row entities
+    // instead of flickering on insertion order (D73)
+    this.glide(this.playerView, pc.sx, pc.sy + HALF_H - 2, depthOf(s.px, s.py, Layer.ENTITY) + 0.5, instant);
     this.glide(this.playerShadow, pc.sx, pc.sy + 4, depthOf(s.px, s.py, Layer.CORPSE), instant);
     this.playerView.setFlipX(this.facing === DIRS.W);
     this.playerView.setTint(
@@ -1514,7 +1525,10 @@ export class DescentScene extends Phaser.Scene {
       const shouldOcclude =
         isWallishTile(prop.tile) &&
         !prop.sprite.texture.key.startsWith("iso-wall-cut") &&
-        (occludes(s.px, s.py, x, y) || this.buriesVisibleGround(x, y));
+        (occludes(s.px, s.py, x, y) ||
+          this.buriesVisibleGround(x, y) ||
+          // standing IN a doorway: the 96px arch must ghost, not swallow you
+          (prop.tile === Tile.DOOR_OPEN && s.px === x && s.py === y));
       const targetAlpha = shouldOcclude ? OCCLUDED_ALPHA : 1;
       if (shouldOcclude !== prop.occluded) {
         prop.occluded = shouldOcclude;
