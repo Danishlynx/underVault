@@ -207,6 +207,18 @@ export class Hud {
     this.graceText = this.fixed(
       s.add.text(0, 0, "", { fontFamily: SERIF, fontSize: "22px", color: "#a33b2e", align: "center" }).setOrigin(0.5, 0),
     );
+
+    // crisp glyphs on HiDPI displays — the sanctioned per-Text fix (D75)
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const texts: Phaser.GameObjects.Text[] = [
+      this.depthText, this.objectiveText, this.muteText, this.menuText,
+      this.waxText, this.graceText, this.snuffLabel, ...this.slotCharges,
+    ];
+    for (const c of [this.cupBtn, this.snuffBtn]) {
+      const label = c.getAt(1);
+      if (label instanceof Phaser.GameObjects.Text) texts.push(label);
+    }
+    for (const t of texts) t.setResolution(dpr);
   }
 
   private buildRoundButton(label: string, onTap: () => void): Phaser.GameObjects.Container {
@@ -363,6 +375,7 @@ export class Hud {
       })
       .setOrigin(0.5, 0)
       .setScrollFactor(0);
+    t.setResolution(Math.min(window.devicePixelRatio || 1, 3)); // D75
     t.depth = 1002;
     this.layer?.add(t);
     this.scene.tweens.add({
