@@ -662,3 +662,13 @@ candidates; flip them in the named data file, not in code.
     match-strike^s own 1.6s amber camera flash caught mid-decay in
     screenshots. The flash is intentional (the match catching); the
     steady state is clean.
+
+    D81c - ghost prisms made view-proof (operator could not see them: the
+    1/zoom sizing that prevents field-blanketing had shrunk them to ~40px
+    specks in DELVE view - verified only in scout, a testing blind spot).
+    Now sized to a fixed SCREEN presence (150-260px targets at any zoom),
+    tones raised to full surface2 / 0.6 lerp, density 34->80 with outward
+    bias (most prisms belong in the dark beyond the rooms, not under the
+    floor heart where revealed tiles hide them). Silksong-grade painted
+    parallax strata per biome remains the Design-round item; this is the
+    engine-side floor of the effect.

@@ -677,22 +677,33 @@ export class DescentScene extends Phaser.Scene {
     // FLAT dark-on-dark silhouettes with crisp edges: tone barely above
     // void, near-full alpha — overlaps stay invisible (same flat color),
     // edges give the eye structure. Two fog stops via two tones.
-    const nearTone = lerpColor(COLOR.void, COLOR.surface2, 0.75);
-    const farTone = lerpColor(COLOR.void, COLOR.surface2, 0.42);
+    const nearTone = COLOR.surface2;
+    const farTone = lerpColor(COLOR.void, COLOR.surface2, 0.6);
     const gh = (Math.imul(s.floor + 7, 1103515245) >>> 0) % 100000;
-    for (let i = 0; i < 34; i++) {
+    for (let i = 0; i < 80; i++) {
       const hx = (Math.imul(i + 1, 2654435761) ^ gh) >>> 0;
-      const px2 = b.x + ((hx % 1000) / 1000) * b.width;
-      const py2 = b.y + (((hx >> 10) % 1000) / 1000) * b.height;
+      // bias outward: most prisms belong in the dark BEYOND the rooms, not
+      // under the floor's heart where revealed tiles will hide them
+      let ux = ((hx % 1000) / 1000) * 2 - 1; // -1..1
+      let uy = (((hx >> 10) % 1000) / 1000) * 2 - 1;
+      if (i % 4 !== 0) {
+        ux = Math.sign(ux || 1) * (0.35 + Math.abs(ux) * 0.65);
+        uy = Math.sign(uy || 1) * (0.35 + Math.abs(uy) * 0.65);
+      }
+      const px2 = b.x + b.width / 2 + ux * (b.width / 2);
+      const py2 = b.y + b.height / 2 + uy * (b.height / 2);
       const far = i % 3 !== 0;
       const g = this.add.image(px2, py2, "uv-ghost-block");
-      // distant scenery is SCREEN-sized: divide by zoom or 34 prisms
-      // blanket the frame with a continuous field and lift it brown —
-      // the void's gaps are what keep the dark dark (fog lesson #5)
-      const sc = ((far ? 0.9 : 1.3) + ((hx >> 20) % 10) / 14) / Math.max(1, this.baseZoom);
+      // fixed SCREEN presence at any camera zoom (delve's 2.6× used to
+      // shrink these to invisible specks): target 150-260 screen px,
+      // texture is 150px tall. Flat same-tone fills, so overlaps never
+      // compound into fog (lesson #4); true-void gaps between them keep
+      // the dark dark (lesson #5)
+      const targetPx = (far ? 150 : 210) + ((hx >> 20) % 10) * 5;
+      const sc = targetPx / (150 * Math.max(1, this.baseZoom));
       g.setScale(sc, sc);
       g.setTint(far ? farTone : nearTone);
-      g.setAlpha(0.9);
+      g.setAlpha(0.95);
       g.depth = far ? -17 : -16; // nearer stops draw over farther
       this.worldLayer.add(g);
       this.cavern.push(g);
