@@ -643,3 +643,22 @@ candidates; flip them in the named data file, not in code.
     player dead-center and donate half the frame to void; now the lit
     world owns the middle and the delver rides off-center like proper
     cinematography.
+
+    D81b - fog of war with STRUCTURE (operator: "the dark looks like a
+    blank web page, not Silksong depth"). The unexplored dungeon now
+    contains ghost architecture: 34 flat iso-prism silhouettes (crisp
+    edges, two fog stops at void->surface2 lerps .75/.42, near-full
+    alpha) scattered across the floor bounds UNDER the ground layer -
+    revealed tiles cover them, so they exist only in the fog of war and
+    auto-retreat as you explore. Two laws were paid for in five failed
+    iterations, now canon: (1) soft gradients can NEVER build depth over
+    a warm-lit scene - they sum into amber wash; only flat same-tone
+    shapes with edges survive (overlaps of one flat color do not
+    compound); (2) atmosphere sprites are SCREEN dressing - always scale
+    by 1/zoom or the camera inflates them into a frame-blanketing field
+    (the void^s true-black gaps are what keep the dark dark). A cool
+    "haze transition ring" was attempted twice and cut for good. Also
+    discovered: two "regressions" during tuning were phantoms - the
+    match-strike^s own 1.6s amber camera flash caught mid-decay in
+    screenshots. The flash is intentional (the match catching); the
+    steady state is clean.

@@ -3501,6 +3501,49 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
     hiEnd(mass, false);
   }
 
+  // ghost block (D81b): a soft-edged iso-prism silhouette — the vague
+  // architecture of the UNEXPLORED dungeon. Drawn in neutral white and
+  // tinted at runtime; sits under the ground layer, so revealed tiles
+  // (alpha 1) cover it and it lives only in the fog of war.
+  // FLAT prism silhouette with crisp edges (four soft-gradient attempts
+  // all converged to amber fog: gradients SUM into a wash over a warm
+  // scene; flat same-tone fills don't compound at all). Painted in plain
+  // whites so runtime tint sets the exact dark-on-dark tone.
+  const ghost = T.createCanvas("uv-ghost-block", 96, 150);
+  if (ghost !== null) {
+    const ctx = hiBegin(ghost);
+    const W = 96;
+    const LID = 34;
+    // left face (darker)
+    ctx.fillStyle = "rgba(210,210,210,1)";
+    ctx.beginPath();
+    ctx.moveTo(0, LID / 2);
+    ctx.lineTo(W / 2, LID);
+    ctx.lineTo(W / 2, 150);
+    ctx.lineTo(0, 150 - LID / 2);
+    ctx.closePath();
+    ctx.fill();
+    // right face (lighter)
+    ctx.fillStyle = "rgba(255,255,255,1)";
+    ctx.beginPath();
+    ctx.moveTo(W, LID / 2);
+    ctx.lineTo(W / 2, LID);
+    ctx.lineTo(W / 2, 150);
+    ctx.lineTo(W, 150 - LID / 2);
+    ctx.closePath();
+    ctx.fill();
+    // lid
+    ctx.fillStyle = "rgba(235,235,235,1)";
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W, LID / 2);
+    ctx.lineTo(W / 2, LID);
+    ctx.lineTo(0, LID / 2);
+    ctx.closePath();
+    ctx.fill();
+    hiEnd(ghost, false);
+  }
+
   // ── Screen-space atmosphere ──────────────────────────────────────────────
   const vignette = T.createCanvas("uv-vignette", 480, 854);
   if (vignette !== null) {

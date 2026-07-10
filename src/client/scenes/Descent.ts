@@ -668,6 +668,36 @@ export class DescentScene extends Phaser.Scene {
     this.deepMotes?.destroy();
     const s = this.state!;
     void bi;
+
+    // the UNEXPLORED dungeon as vague architecture (D81b): a field of
+    // ghost prisms across the whole floor, under the ground layer —
+    // revealed tiles (alpha 1) cover them, so they live only in the fog
+    // of war and the dark reads as MORE DUNGEON, not blank page. Two fog
+    // stops: nearer/sharper and farther/fainter.
+    // FLAT dark-on-dark silhouettes with crisp edges: tone barely above
+    // void, near-full alpha — overlaps stay invisible (same flat color),
+    // edges give the eye structure. Two fog stops via two tones.
+    const nearTone = lerpColor(COLOR.void, COLOR.surface2, 0.75);
+    const farTone = lerpColor(COLOR.void, COLOR.surface2, 0.42);
+    const gh = (Math.imul(s.floor + 7, 1103515245) >>> 0) % 100000;
+    for (let i = 0; i < 34; i++) {
+      const hx = (Math.imul(i + 1, 2654435761) ^ gh) >>> 0;
+      const px2 = b.x + ((hx % 1000) / 1000) * b.width;
+      const py2 = b.y + (((hx >> 10) % 1000) / 1000) * b.height;
+      const far = i % 3 !== 0;
+      const g = this.add.image(px2, py2, "uv-ghost-block");
+      // distant scenery is SCREEN-sized: divide by zoom or 34 prisms
+      // blanket the frame with a continuous field and lift it brown —
+      // the void's gaps are what keep the dark dark (fog lesson #5)
+      const sc = ((far ? 0.9 : 1.3) + ((hx >> 20) % 10) / 14) / Math.max(1, this.baseZoom);
+      g.setScale(sc, sc);
+      g.setTint(far ? farTone : nearTone);
+      g.setAlpha(0.9);
+      g.depth = far ? -17 : -16; // nearer stops draw over farther
+      this.worldLayer.add(g);
+      this.cavern.push(g);
+    }
+
     // distant rock masses at the world's rim — vast, barely-there, and
     // gently adrift; near-full scrollFactor so they stay AT the rim
     // instead of converging into a center fog at high zoom
