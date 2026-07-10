@@ -42,7 +42,7 @@ import {
   F_OPAQUE,
   MAX_FLOOR,
 } from "../../shared/sim/constants.js";
-import { PORTS_KEY } from "../game.js";
+import { BACKDROP_KEY, PORTS_KEY } from "../game.js";
 import type { EchoRecord, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import {
@@ -654,93 +654,23 @@ export class DescentScene extends Phaser.Scene {
     this.makeCavern(b, bi);
     this.makeAtmosphere(bi);
     this.audio.setBiome(bi); // the sound direction changes too (D72)
+    // the painted distance layer under the transparent canvas (D82)
+    const paintBackdrop = this.registry.get(BACKDROP_KEY) as ((n: number) => void) | undefined;
+    paintBackdrop?.(bi);
   }
 
   /**
-   * The dark is a PLACE (D81): the unexplored void was flat dead pixels —
-   * on big windows it read as unfinished page, not buried cavern. Distant
-   * rock masses at low parallax + a floor-wide drift of deep motes give
-   * every pixel of darkness air and depth without revealing anything.
+   * The dark is a PLACE (D81/D82): deep motes drift across the whole
+   * floor so no pixel of darkness is ever static; the sense of DISTANCE
+   * comes from the per-biome painted backdrop behind everything. (The
+   * procedural prism/mass era is closed — isolated primitives read as
+   * glitched objects; only authored compositions read as depth.)
    */
   private makeCavern(b: { x: number; y: number; width: number; height: number }, bi: number): void {
     for (const m of this.cavern) m.destroy();
     this.cavern = [];
     this.deepMotes?.destroy();
-    const s = this.state!;
     void bi;
-
-    // the UNEXPLORED dungeon as vague architecture (D81b): a field of
-    // ghost prisms across the whole floor, under the ground layer —
-    // revealed tiles (alpha 1) cover them, so they live only in the fog
-    // of war and the dark reads as MORE DUNGEON, not blank page. Two fog
-    // stops: nearer/sharper and farther/fainter.
-    // FLAT dark-on-dark silhouettes with crisp edges: tone barely above
-    // void, near-full alpha — overlaps stay invisible (same flat color),
-    // edges give the eye structure. Two fog stops via two tones.
-    const nearTone = COLOR.surface2;
-    const farTone = lerpColor(COLOR.void, COLOR.surface2, 0.6);
-    const gh = (Math.imul(s.floor + 7, 1103515245) >>> 0) % 100000;
-    for (let i = 0; i < 80; i++) {
-      const hx = (Math.imul(i + 1, 2654435761) ^ gh) >>> 0;
-      // bias outward: most prisms belong in the dark BEYOND the rooms, not
-      // under the floor's heart where revealed tiles will hide them
-      let ux = ((hx % 1000) / 1000) * 2 - 1; // -1..1
-      let uy = (((hx >> 10) % 1000) / 1000) * 2 - 1;
-      if (i % 4 !== 0) {
-        ux = Math.sign(ux || 1) * (0.35 + Math.abs(ux) * 0.65);
-        uy = Math.sign(uy || 1) * (0.35 + Math.abs(uy) * 0.65);
-      }
-      const px2 = b.x + b.width / 2 + ux * (b.width / 2);
-      const py2 = b.y + b.height / 2 + uy * (b.height / 2);
-      const far = i % 3 !== 0;
-      const g = this.add.image(px2, py2, "uv-ghost-block");
-      // fixed SCREEN presence at any camera zoom (delve's 2.6× used to
-      // shrink these to invisible specks): target 150-260 screen px,
-      // texture is 150px tall. Flat same-tone fills, so overlaps never
-      // compound into fog (lesson #4); true-void gaps between them keep
-      // the dark dark (lesson #5)
-      const targetPx = (far ? 150 : 210) + ((hx >> 20) % 10) * 5;
-      const sc = targetPx / (150 * Math.max(1, this.baseZoom));
-      g.setScale(sc, sc);
-      g.setTint(far ? farTone : nearTone);
-      g.setAlpha(0.95);
-      g.depth = far ? -17 : -16; // nearer stops draw over farther
-      this.worldLayer.add(g);
-      this.cavern.push(g);
-    }
-
-    // distant rock masses at the world's rim — vast, barely-there, and
-    // gently adrift; near-full scrollFactor so they stay AT the rim
-    // instead of converging into a center fog at high zoom
-    const h0 = (Math.imul(s.floor + 1, 2654435761) >>> 0) % 1000;
-    for (let i = 0; i < 4; i++) {
-      const a = ((i + 0.5 + h0 / 1000) / 4) * Math.PI * 2;
-      const rx = b.width * (0.55 + ((h0 >> i) % 9) / 100);
-      const ry = b.height * (0.58 + ((h0 >> (i + 2)) % 9) / 100);
-      const m = this.add.image(
-        b.x + b.width / 2 + Math.cos(a) * rx,
-        b.y + b.height / 2 + Math.sin(a) * ry,
-        "uv-cavern-mass",
-      );
-      // divide by zoom: these are SCREEN dressing — at zoom 2.4 a world-
-      // scaled blob becomes a 3000px cloud whose tail fogs the whole frame
-      const sc = (2.2 + ((h0 >> i) % 4) * 0.6) / Math.max(1, this.baseZoom);
-      m.setScale(sc, sc * 0.8);
-      m.setTint(COLOR.surface2);
-      m.setAlpha(0.14);
-      m.setScrollFactor(0.85);
-      m.depth = -18;
-      this.worldLayer.add(m);
-      this.cavern.push(m);
-      this.tweens.add({
-        targets: m,
-        x: m.x + (i % 2 === 0 ? 22 : -18),
-        duration: 14000 + i * 2600,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
     // deep motes drifting across the WHOLE floor, void included — screen
     // dressing only; they reveal nothing
     this.deepMotes = this.add.particles(0, 0, "iso-mote", {

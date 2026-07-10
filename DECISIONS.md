@@ -672,3 +672,20 @@ candidates; flip them in the named data file, not in code.
     floor heart where revealed tiles hide them). Silksong-grade painted
     parallax strata per biome remains the Design-round item; this is the
     engine-side floor of the effect.
+
+82. The distance layer, done properly (operator on the ghost prisms:
+    "that random grey object was that your idea of showing depth?" -
+    correct review; isolated procedural primitives read as glitches, not
+    distance). The prism/mass era is CLOSED and deleted. Depth is now an
+    AUTHORED per-biome cavern painting (7-artist workflow, modules under
+    src/client/render/backdrops/): full-frame compositions with silhouette
+    skylines and 2-3 fog stops at the frame edges, near-void calm in the
+    center where the world renders, luminance ceiling at surface2 (the
+    five fog laws baked into the artist contract). Delivery: the game
+    canvas is now TRANSPARENT and a DOM canvas underneath carries the
+    painting - swapped per biome on floor entry, repainted on resize,
+    dpr-aware, and reusable by the no-Phaser splash at M2. Tallow
+    undercroft arches / Cellars root curtains / Drowned waterline horizon
+    / Furnace ember-fissured shards / Deep near-nothing are live; Choir
+    and Bottom land when their painters finish (safe void stubs until
+    then).
