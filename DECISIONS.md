@@ -519,3 +519,26 @@ candidates; flip them in the named data file, not in code.
     (occludes() excludes equal depth-sums, so the 96px arch used to swallow
     the delver); (d) player wins depth ties vs same-row entities (+0.5
     bias) instead of flickering on insertion order.
+
+74. Total audio coverage (operator: "make sure everything has audio").
+    All 58 OutcomeEvent kinds now voiced or explicitly silent-by-design;
+    31 new synthesized cues in the graph idiom (victory fanfare - the
+    climax was mute - exit resolve, waystone shimmer, monster-die thud,
+    salt/chalk/sign/plate/gas/ignite/stolen/locked/thump/mirror/vial/
+    shard/ritual/pool/chime/guttering + 8 new monster tells so all 14
+    kinds telegraph). Bug fixes: the match-strike race (unlock() stores
+    the resume promise; a cue requested mid-resume replays on settle -
+    the signature sound was silently dropped on first strike), the
+    FONT_TOUCHED "chime as Cue" invalid cast, the orphan stomp cue (now
+    the floor-alert footfalls). play(cue, quiet) trim for far/soft
+    variants. Heartbeat now stops on exit/victory ceremonies. Peaks
+    .012-.11, everything behind master->limiter; mute and the unlock
+    invariant verified intact.
+
+75. Fidelity groundwork: HiDPI text via setResolution(min(dpr,3)) on all
+    HUD glyphs + toasts (the sanctioned per-Text fix; full DPR backbuffer
+    deferred - dpr^2 fill cost vs mobile budget, spec preserved in the
+    sprint plan); dev-only GL draw-call counter + fps log through the
+    snap console pipe (baseline: 9 draws); fx.ts filter stack module
+    (bloom-then-vignette order canonical, flag-gated, self-tuning fps
+    valve) wired next.

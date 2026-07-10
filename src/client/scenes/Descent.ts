@@ -26,6 +26,7 @@ import {
   Status,
   Tile,
   WormState,
+  type Entity,
   type OutcomeEvent,
   type SimState,
   type Step,
@@ -217,6 +218,7 @@ export class DescentScene extends Phaser.Scene {
   private echoPlayed = new Set<number>();
   private activeEcho: EchoPlayback | null = null;
   private lastTellAt = 0;
+  private preTickRadius = 0; // light radius before the tick (TIER_CHANGED direction)
 
   private pressTile: { x: number; y: number } | null = null;
   private pressAt = 0;
@@ -368,6 +370,9 @@ export class DescentScene extends Phaser.Scene {
       () => {
         const h2 = this.host();
         if (h2 !== null) {
+          // pre-unlock (day one's first visit) this drops silently — correct;
+          // after any match-strike the codex opens with a parchment whisper
+          this.audio.play("sheet");
           openCodexSheet(h2, this.ports.getCodex(), () => undefined);
         }
       },
@@ -892,6 +897,7 @@ export class DescentScene extends Phaser.Scene {
   private inspect(tx: number, ty: number): void {
     const s = this.state;
     if (s === null) return;
+    this.audio.play("inspect"); // the long-press lands — a faint tick
     const i = ty * s.w + tx;
     const floorRoman = ROMAN[s.floor] ?? String(s.floor);
     if (s.seen[i]! !== 1) {
@@ -943,6 +949,7 @@ export class DescentScene extends Phaser.Scene {
     }
     const nouns = earnedNouns(this.rules.learned.map((r) => r.key));
     this.overlayOpen = true;
+    this.audio.play("sheet");
     openSignComposer(
       host,
       nouns,
@@ -1047,6 +1054,9 @@ export class DescentScene extends Phaser.Scene {
     const s0 = this.state;
     if (s0 === null) return;
     const before = this.meaningfulLearned();
+    // Ev.TIER_CHANGED only carries the NEW radius — remember the old one so
+    // handleEvent can tell a guttering-down from a brightening-up
+    this.preTickRadius = effectiveRadius(s0);
     const result = tickResolving(s0, stepIn, this.rules, (key) => this.ports.resolveRule(key));
     this.state = result.state;
     this.visibleMask = result.visible;
@@ -1127,7 +1137,7 @@ export class DescentScene extends Phaser.Scene {
   private handleEvent(e: OutcomeEvent): void {
     const s = this.state;
     if (s === null) return;
-    const cue = (c: Cue): void => this.audio.play(c);
+    const cue = (c: Cue, quiet = false): void => this.audio.play(c, quiet);
     switch (e.type) {
       case Ev.MOVED: {
         const t = s.tiles[e.b * s.w + e.a] ?? Tile.FLOOR;
@@ -1139,6 +1149,7 @@ export class DescentScene extends Phaser.Scene {
         cue("bump");
         break;
       case Ev.WAYSTONE_TOUCHED:
+        cue("waystone"); // the shimmer doubles as the bank sheet's opener
         this.openBank();
         break;
       case Ev.BANKED:
@@ -1154,10 +1165,12 @@ export class DescentScene extends Phaser.Scene {
         if (e.a === Action.BANK && this.pendingBank !== null) {
           this.pendingBank = null;
           this.hud.toast("The stone is beyond reach — nothing was committed.", "warning");
+          cue("reject");
         }
         break;
       case Ev.STAIRS_TOUCHED:
         this.hud.toast("Stairs down. Enter (or tap yourself) to descend.", "info");
+        cue("stairs-found");
         break;
       case Ev.BRAZIER_LIT:
         this.hud.toast("The brazier holds. A gift to everyone after you.", "discovery");
@@ -1177,9 +1190,13 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.DOOR_LOCKED:
         this.hud.toast(TILE_NAMES[s.tiles[e.b * s.w + e.a] ?? 0] === "an iron door" ? "Locked. It wants a key." : "It does not open for hands.", "info");
+        cue("locked");
         break;
       case Ev.RITUAL_TICK:
-        if (e.a > 0) this.hud.toast(`The sigil drinks the dark… (${e.a}/3)`, "discovery");
+        if (e.a > 0) {
+          this.hud.toast(`The sigil drinks the dark… (${e.a}/3)`, "discovery");
+          cue("ritual");
+        }
         break;
       case Ev.GRACE_STARTED:
         this.hud.toast("The candle is spent. Find flame, or the way out.", "death");
@@ -1203,13 +1220,25 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.GAS_RELEASED:
         this.hud.toast("It bursts into a cloud of spores.", "warning");
+        cue("gas");
+        break;
+      case Ev.FIRE_IGNITED:
+        cue("ignite");
         break;
       case Ev.GAS_BOOM:
         this.cameras.main.shake(180, 0.008);
         cue("boom");
         break;
+      case Ev.MONSTER_DIED:
+        cue("monster-die");
+        break;
       case Ev.MONSTER_MELTED:
         this.hud.toast("It melts away into the tallow.", "discovery");
+        cue("monster-die", true); // the waxy variant: same shape, softer
+        break;
+      case Ev.BUMP:
+        // shoving a creature that neither dies nor answers — a soft thud
+        cue("bump", true);
         break;
       case Ev.WORM_TELEGRAPH:
         this.cameras.main.shake(80, 0.002);
@@ -1232,6 +1261,7 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.SLIME_SPLIT:
         this.hud.toast("It splits where you struck it.", "warning");
+        cue("split");
         break;
       case Ev.BELL_RUNG:
         this.hud.toast("A bell tolls above the corpse — the floor knows.", "death");
@@ -1242,15 +1272,20 @@ export class DescentScene extends Phaser.Scene {
         cue("scream");
         break;
       case Ev.ALERT:
+        // the floor knows: distant heavy footfalls begin — the orphaned
+        // "stomp" finally earns its keep, kept low (it is far away)
+        cue("stomp", true);
         break;
       case Ev.STOLEN:
         this.hud.toast(`A rustling makes off with your ${subjectItem(e.a)}!`, "death");
+        cue("stolen");
         break;
       case Ev.DROPPED_LOOT:
         this.hud.toast(`It drops the ${subjectItem(e.a)}.`, "discovery");
         break;
       case Ev.HANDS_FULL:
         this.hud.toast(`Your hands are full — the chest keeps its ${subjectItem(e.a)}.`, "info");
+        cue("thump");
         break;
       case Ev.PICKPOCKET:
         this.hud.toast("His master key comes away in silence.", "discovery");
@@ -1270,14 +1305,22 @@ export class DescentScene extends Phaser.Scene {
         this.playDeepestEcho();
         break;
       case Ev.FONT_TOUCHED:
-        cue("chime" as Cue);
+        cue("chime");
         break;
       case Ev.SIGN_PLACED:
         this.ports.signPlaced(s.floor, s.py * s.w + s.px, e.a, e.b);
         this.hud.toast("The sign is planted. −5 wax.", "info");
+        cue("sign");
         break;
       case Ev.CHALK_MARKED:
         this.ports.chalkChanged(s.floor, s.chalk);
+        cue("chalk");
+        break;
+      case Ev.SALT_PLACED:
+        cue("salt");
+        break;
+      case Ev.PLATE_PRESSED:
+        cue("plate");
         break;
       case Ev.ITEM_USED:
         if (e.a === Item.GLOWVIAL) {
@@ -1286,6 +1329,9 @@ export class DescentScene extends Phaser.Scene {
         }
         if (e.a === Item.BELL) cue("bell");
         if (e.a === Item.DOUSE) cue("snuff");
+        if (e.a === Item.MIRROR) cue("mirror");
+        if (e.a === Item.GLOWVIAL) cue("vial");
+        if (e.a === Item.WSHARD) cue("shard");
         break;
       case Ev.CORPSE_RECOVERED: {
         const res = this.ports.corpseRecovered(e.b);
@@ -1311,6 +1357,16 @@ export class DescentScene extends Phaser.Scene {
         if (e.a === Candle.SNUFFED) cue("snuff");
         else if (e.a === Candle.CUPPED) cue("cup");
         else cue("relight");
+        break;
+      case Ev.TIER_CHANGED:
+        // dimming is feedback (the candle gutters down a tier); brightening
+        // already sounds through relight/brazier/pickup — keep it one-sided
+        if (e.a < this.preTickRadius) cue("guttering");
+        break;
+      case Ev.GRACE_PAUSED:
+      case Ev.CANDLE_CANCEL:
+        // silent by design: a brazier pausing grace and a cancelled
+        // snuff/relight are non-moments — sound here would cry wolf
         break;
       default:
         break;
@@ -1338,28 +1394,43 @@ export class DescentScene extends Phaser.Scene {
     });
   }
 
+  /** Every listed monster's whisper (01 §8); quiet=true marks reused cues
+   *  played at reduced level so a tell never reads as the event itself. */
+  private tellFor(e2: Entity): { cue: Cue; quiet?: boolean } | null {
+    switch (e2.kind) {
+      case EntityKind.RAT: return { cue: "squeak" };
+      case EntityKind.WICKWORM: return e2.state !== WormState.SURFACED ? { cue: "rumble" } : null;
+      case EntityKind.MOTH: return { cue: "flutter" };
+      case EntityKind.BEAST: return { cue: "click3" };
+      case EntityKind.SLIME: return { cue: "squelch-soft" };
+      case EntityKind.MIMIC: return e2.state === MimicState.GROWLED ? { cue: "growl" } : null;
+      case EntityKind.SPOREWIGHT: return { cue: "gas", quiet: true };
+      case EntityKind.DROWNED: return { cue: "drip" };
+      case EntityKind.BELLHUNG: return { cue: "bell-far" };
+      case EntityKind.SHADE: return { cue: "hiss" };
+      case EntityKind.GASLIGHT: return { cue: "hiss", quiet: true };
+      case EntityKind.CHOIRLESS: return { cue: "moan" };
+      case EntityKind.RUSTLING: return { cue: "skitter" };
+      case EntityKind.KEEPER: return { cue: "creak" };
+      default: return null; // corpses keep their silence
+    }
+  }
+
   /** Audio tells: the nearest threat whispers its nature (01 §8). */
   private playTells(): void {
     const s = this.state;
     if (s === null || s.tick - this.lastTellAt < 5) return;
     const range = s.heirloom === 3 ? 10 : 5; // Listening Horn doubles it
-    let best: { d: number; cue: Cue } | null = null;
+    let best: { d: number; cue: Cue; quiet?: boolean } | null = null;
     for (const e2 of s.entities) {
       const d = Math.abs(e2.x - s.px) + Math.abs(e2.y - s.py);
       if (d > range) continue;
-      const cue: Cue | null =
-        e2.kind === EntityKind.RAT ? "squeak"
-        : e2.kind === EntityKind.WICKWORM && e2.state !== WormState.SURFACED ? "rumble"
-        : e2.kind === EntityKind.MOTH ? "flutter"
-        : e2.kind === EntityKind.BEAST ? "click3"
-        : e2.kind === EntityKind.SHADE ? "hiss"
-        : e2.kind === EntityKind.MIMIC && e2.state === MimicState.GROWLED ? "growl"
-        : null;
-      if (cue !== null && (best === null || d < best.d)) best = { d, cue };
+      const tell = this.tellFor(e2);
+      if (tell !== null && (best === null || d < best.d)) best = { d, ...tell };
     }
     if (best !== null) {
       this.lastTellAt = s.tick;
-      this.audio.play(best.cue);
+      this.audio.play(best.cue, best.quiet ?? false);
     }
   }
 
@@ -1389,6 +1460,9 @@ export class DescentScene extends Phaser.Scene {
     img.depth = DEPTH_GHOST;
     this.worldLayer.add(img);
     this.activeEcho = { frames: echo.frames, index: 0, img, nextAt: 0 };
+    // one watery shimmer serves both entries: pool-triggered (Ev.POOL_ECHO →
+    // playDeepestEcho) and proximity-triggered (maybeStartEcho)
+    this.audio.play("pool");
     this.hud.toast("A shape retraces its last steps…", "discovery");
   }
 
@@ -1400,7 +1474,10 @@ export class DescentScene extends Phaser.Scene {
       if (deepest === null || e.frames.length > deepest.frames.length) deepest = e;
     }
     if (deepest !== null && this.activeEcho === null) this.startEcho(deepest);
-    else if (deepest === null) this.hud.toast("The pool shows only your own tired face.", "info");
+    else if (deepest === null) {
+      this.hud.toast("The pool shows only your own tired face.", "info");
+      this.audio.play("pool", true); // still water, nothing in it
+    }
   }
 
   // ── Rendering ────────────────────────────────────────────────────────────
@@ -1681,6 +1758,8 @@ export class DescentScene extends Phaser.Scene {
     closeAllSheets(host);
     this.overlayOpen = true;
     this.running = false;
+    this.audio.setHeartbeat(false);
+    this.audio.play("exit");
     openExitSheet(host, s, this.runSummary(), (rest) => {
       this.confirmRun();
       this.ports.reportExit();
@@ -1694,6 +1773,8 @@ export class DescentScene extends Phaser.Scene {
     closeAllSheets(host);
     this.overlayOpen = true;
     this.running = false;
+    this.audio.setHeartbeat(false);
+    this.audio.play("victory");
     openVictorySheet(host, this.runSummary(), () => {
       this.confirmRun();
       this.afterCeremony(true);

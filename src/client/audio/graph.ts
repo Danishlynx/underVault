@@ -51,7 +51,38 @@ export type Cue =
   | "bell"
   | "shock"
   | "growl"
-  | "match-strike";
+  | "match-strike"
+  | "chime"
+  | "victory"
+  | "exit"
+  | "waystone"
+  | "stairs-found"
+  | "monster-die"
+  | "split"
+  | "gas"
+  | "ignite"
+  | "salt"
+  | "chalk"
+  | "sign"
+  | "plate"
+  | "pool"
+  | "stolen"
+  | "locked"
+  | "thump"
+  | "mirror"
+  | "vial"
+  | "shard"
+  | "ritual"
+  | "sheet"
+  | "reject"
+  | "inspect"
+  | "guttering"
+  | "squelch-soft"
+  | "drip"
+  | "bell-far"
+  | "moan"
+  | "skitter"
+  | "creak";
 
 /** Envelope-shaped one-shot oscillator voice. */
 interface ToneOpts {
@@ -108,6 +139,10 @@ export class AudioGraph {
 
   private userMuted = false;
   private hidden: boolean;
+  /** In-flight ctx.resume() from unlock() — see play()'s race note. */
+  private resumed: Promise<void> | null = null;
+  /** Per-call peak scalar (playNow's `quiet` reuse) read by tone()/burst(). */
+  private trim = 1;
 
   constructor() {
     // Created outside any gesture, so the context starts suspended per
@@ -161,7 +196,10 @@ export class AudioGraph {
 
   /** Resume the context. Call ONLY inside the match-strike gesture. */
   unlock(): void {
-    void this.ctx.resume();
+    this.resumed = this.ctx.resume();
+    this.resumed.catch(() => {
+      // blocked or interrupted — the context stays locked, cues stay dropped
+    });
   }
 
   get muted(): boolean {
@@ -324,8 +362,39 @@ export class AudioGraph {
     this.heartbeat.gain.setTargetAtTime(on ? 0.12 : 0, t, 0.6);
   }
 
-  play(cue: Cue): void {
-    if (this.ctx.state !== "running") return; // locked or interrupted: drop silently
+  /**
+   * `quiet` replays a cue at reduced level (distant/soft variants — tells,
+   * off-screen thuds) without duplicating synth code: tone()/burst() scale
+   * their peaks by `this.trim` for the duration of the synchronous switch.
+   *
+   * Race note: unlock() and the first cue arrive inside the SAME gesture
+   * (match-strike), but ctx.resume() is async — the state is still
+   * "suspended" when play("match-strike") lands, and the signature cue used
+   * to drop. If a resume is in flight we replay the cue once it settles.
+   * Before any unlock() `resumed` is null, so nothing can sound early
+   * (invariant 6 holds).
+   */
+  play(cue: Cue, quiet = false): void {
+    if (this.ctx.state === "running") {
+      this.playNow(cue, quiet);
+      return;
+    }
+    const resumed = this.resumed;
+    if (resumed !== null) {
+      void resumed.then(
+        () => {
+          if (this.ctx.state === "running") this.playNow(cue, quiet);
+        },
+        () => {
+          /* resume failed — stay silent */
+        },
+      );
+    }
+    // no resume in flight: locked or interrupted — drop silently
+  }
+
+  private playNow(cue: Cue, quiet: boolean): void {
+    this.trim = quiet ? 0.35 : 1;
 
     switch (cue) {
       // ── movement ────────────────────────────────────────────────────────
@@ -751,7 +820,7 @@ export class AudioGraph {
         lp.frequency.setValueAtTime(340, t0);
         const env = this.ctx.createGain();
         env.gain.setValueAtTime(SILENT, t0);
-        env.gain.linearRampToValueAtTime(0.1, t0 + 0.06);
+        env.gain.linearRampToValueAtTime(0.1 * this.trim, t0 + 0.06);
         env.gain.exponentialRampToValueAtTime(SILENT, t0 + 0.5);
         osc.connect(lp);
         lp.connect(env);
@@ -767,6 +836,347 @@ export class AudioGraph {
           lp.disconnect();
           env.disconnect();
         };
+        return;
+      }
+
+      // ── resolves & ceremonies ───────────────────────────────────────────
+      case "victory": {
+        // the Bottom, reached: three ascending sines with slow attacks under
+        // a late soft shimmer — golden, restrained, never a fanfare
+        for (const [i, f] of [220, 330, 440].entries()) {
+          this.tone({ type: "sine", freq: f, at: i * 0.28, attack: 0.16, dur: 1.15, peak: 0.07 });
+        }
+        this.tone({ type: "triangle", freq: 880, at: 0.72, attack: 0.4, dur: 1.3, peak: 0.025, detune: 5 });
+        this.burst({ at: 0.6, dur: 1.1, peak: 0.02, attack: 0.5, filter: { type: "highpass", freq: 5200 } });
+        return;
+      }
+      case "exit": {
+        // survive-and-leave: a two-tone settle, humbler than victory
+        this.tone({ type: "sine", freq: 392, attack: 0.1, dur: 0.7, peak: 0.055 });
+        this.tone({ type: "sine", freq: 294, at: 0.3, attack: 0.14, dur: 0.9, peak: 0.05 });
+        return;
+      }
+
+      // ── shrines & stones ────────────────────────────────────────────────
+      case "waystone": {
+        // verdigris shimmer — the stone wakes to take your truths
+        this.tone({ type: "triangle", freq: 740, dur: 0.5, peak: 0.045, attack: 0.03 });
+        this.tone({ type: "triangle", freq: 1108, at: 0.08, dur: 0.55, peak: 0.035, attack: 0.05, detune: 6 });
+        this.burst({
+          dur: 0.5,
+          peak: 0.02,
+          attack: 0.12,
+          filter: { type: "bandpass", freq: 2400, freqEnd: 3600, q: 3 },
+        });
+        return;
+      }
+      case "stairs-found": {
+        // small hollow tick over the stairwell's cold draft
+        this.tone({ type: "sine", freq: 620, freqEnd: 480, dur: 0.09, peak: 0.06, attack: 0.002 });
+        this.burst({
+          at: 0.04,
+          dur: 0.25,
+          peak: 0.02,
+          attack: 0.08,
+          rate: 0.6,
+          filter: { type: "lowpass", freq: 300 },
+        });
+        return;
+      }
+      case "chime": {
+        // bright glassy ping, slow decay — the Font acknowledges
+        this.tone({ type: "sine", freq: 1568, dur: 0.9, peak: 0.05, attack: 0.004 });
+        this.tone({ type: "sine", freq: 2349, dur: 0.6, peak: 0.02, attack: 0.004 });
+        return;
+      }
+      case "pool": {
+        // watery shimmer — the surface remembers someone
+        this.burst({
+          dur: 0.55,
+          peak: 0.035,
+          attack: 0.1,
+          rate: 0.5,
+          filter: { type: "bandpass", freq: 600, freqEnd: 1400, q: 3 },
+        });
+        this.tone({ type: "sine", freq: 990, freqEnd: 1320, glide: 0.4, dur: 0.5, peak: 0.03, attack: 0.08 });
+        return;
+      }
+      case "shard": {
+        // stone hum — the waystone answers from afar
+        this.tone({ type: "triangle", freq: 220, dur: 0.6, peak: 0.05, attack: 0.08, detune: 4 });
+        this.tone({ type: "sine", freq: 440, at: 0.1, dur: 0.5, peak: 0.03, attack: 0.1 });
+        return;
+      }
+      case "ritual": {
+        // low pulse — the sigil drinks the offered dark
+        this.tone({ type: "sine", freq: 70, freqEnd: 55, dur: 0.4, peak: 0.09, attack: 0.05 });
+        this.tone({ type: "triangle", freq: 140, at: 0.02, dur: 0.3, peak: 0.03, attack: 0.06 });
+        return;
+      }
+      case "plate": {
+        // stone click — something under the floor takes note
+        this.tone({ type: "sine", freq: 210, freqEnd: 160, dur: 0.08, peak: 0.08, attack: 0.002 });
+        this.burst({ dur: 0.025, peak: 0.045, filter: { type: "bandpass", freq: 1500, q: 1.4 } });
+        return;
+      }
+
+      // ── creatures & consequences ────────────────────────────────────────
+      case "monster-die": {
+        // soft thud plus a last exhale (quiet variant = melting into tallow)
+        this.tone({ type: "sine", freq: 120, freqEnd: 60, dur: 0.16, peak: 0.09, attack: 0.003 });
+        this.burst({
+          at: 0.06,
+          dur: 0.28,
+          peak: 0.045,
+          attack: 0.05,
+          rate: 0.7,
+          filter: { type: "lowpass", freq: 900, freqEnd: 250 },
+        });
+        return;
+      }
+      case "split": {
+        // wet squelch — one body becomes two
+        this.burst({
+          dur: 0.14,
+          peak: 0.08,
+          attack: 0.01,
+          rate: 0.45,
+          filter: { type: "bandpass", freq: 380, freqEnd: 160, q: 2.5 },
+        });
+        this.tone({ type: "sine", freq: 240, freqEnd: 90, dur: 0.12, peak: 0.05, attack: 0.004 });
+        return;
+      }
+      case "gas": {
+        // hiss-pop: a spore bladder lets go
+        this.burst({ dur: 0.035, peak: 0.06, filter: { type: "bandpass", freq: 1900, q: 1.2 } });
+        this.burst({ at: 0.03, dur: 0.4, peak: 0.05, attack: 0.04, filter: { type: "highpass", freq: 2600 } });
+        return;
+      }
+      case "ignite": {
+        // whoomp — the air catches all at once
+        this.burst({
+          dur: 0.3,
+          peak: 0.11,
+          attack: 0.015,
+          rate: 0.8,
+          filter: { type: "lowpass", freq: 900, freqEnd: 180 },
+        });
+        this.tone({ type: "sine", freq: 90, freqEnd: 50, dur: 0.25, peak: 0.08, attack: 0.01 });
+        return;
+      }
+      case "stolen": {
+        // sharp descending sting — it's gone
+        this.tone({
+          type: "square",
+          freq: 880,
+          freqEnd: 220,
+          glide: 0.18,
+          dur: 0.2,
+          peak: 0.06,
+          attack: 0.002,
+          filter: { type: "lowpass", freq: 2200 },
+        });
+        this.tone({ type: "sine", freq: 660, freqEnd: 165, glide: 0.2, at: 0.02, dur: 0.22, peak: 0.05, attack: 0.002 });
+        return;
+      }
+      case "locked": {
+        // iron rattle — the door refuses
+        for (const [i, f] of [640, 590, 655].entries()) {
+          this.tone({
+            type: "square",
+            freq: f,
+            at: i * 0.055,
+            dur: 0.045,
+            peak: 0.045,
+            attack: 0.002,
+            filter: { type: "bandpass", freq: 1300, q: 2 },
+          });
+        }
+        this.burst({ dur: 0.05, peak: 0.03, filter: { type: "highpass", freq: 3000 } });
+        return;
+      }
+      case "thump": {
+        // dull hands-full thump — the lid drops back on its hoard
+        this.tone({ type: "sine", freq: 140, freqEnd: 85, dur: 0.12, peak: 0.08, attack: 0.003 });
+        this.burst({ dur: 0.05, peak: 0.03, rate: 0.7, filter: { type: "lowpass", freq: 600 } });
+        return;
+      }
+
+      // ── tools ───────────────────────────────────────────────────────────
+      case "salt": {
+        // granular scatter — a handful of grains across stone
+        for (let i = 0; i < 5; i++) {
+          this.burst({
+            at: i * 0.022 + Math.random() * 0.012,
+            dur: 0.02,
+            peak: 0.035 - i * 0.004,
+            filter: { type: "bandpass", freq: this.jitter(3400, 700), q: 2 },
+          });
+        }
+        return;
+      }
+      case "chalk": {
+        // dry scratch, two strokes
+        this.burst({
+          dur: 0.09,
+          peak: 0.045,
+          attack: 0.01,
+          rate: 1.4,
+          filter: { type: "bandpass", freq: 2600, freqEnd: 3400, q: 1.6 },
+        });
+        this.burst({
+          at: 0.11,
+          dur: 0.07,
+          peak: 0.035,
+          attack: 0.01,
+          rate: 1.5,
+          filter: { type: "bandpass", freq: 3000, freqEnd: 2400, q: 1.6 },
+        });
+        return;
+      }
+      case "sign": {
+        // two wooden knocks — the plank goes in
+        this.tone({ type: "sine", freq: 320, freqEnd: 240, dur: 0.07, peak: 0.09, attack: 0.002 });
+        this.burst({ dur: 0.03, peak: 0.04, filter: { type: "bandpass", freq: 1100, q: 1 } });
+        this.tone({ type: "sine", freq: 290, freqEnd: 220, at: 0.12, dur: 0.06, peak: 0.055, attack: 0.002 });
+        return;
+      }
+      case "mirror": {
+        // glassy upward sweep — the shard drinks the light
+        this.tone({ type: "sine", freq: 1200, freqEnd: 2400, glide: 0.3, dur: 0.35, peak: 0.04, attack: 0.03 });
+        this.burst({ dur: 0.3, peak: 0.02, attack: 0.06, filter: { type: "highpass", freq: 4800 } });
+        return;
+      }
+      case "vial": {
+        // liquid plink-plink — glowmoss decanted
+        this.tone({ type: "sine", freq: 900, freqEnd: 1350, glide: 0.06, dur: 0.12, peak: 0.055, attack: 0.003 });
+        this.tone({ type: "sine", freq: 1180, freqEnd: 1600, glide: 0.05, at: 0.09, dur: 0.1, peak: 0.035, attack: 0.003 });
+        return;
+      }
+
+      // ── interface murmurs ───────────────────────────────────────────────
+      case "sheet": {
+        // soft parchment whisper — a page turns
+        this.burst({
+          dur: 0.18,
+          peak: 0.035,
+          attack: 0.03,
+          rate: 1.1,
+          filter: { type: "bandpass", freq: 2000, freqEnd: 3200, q: 0.8 },
+        });
+        return;
+      }
+      case "reject": {
+        // tiny dull no — nothing happened
+        this.tone({
+          type: "sine",
+          freq: 220,
+          freqEnd: 180,
+          dur: 0.07,
+          peak: 0.045,
+          attack: 0.003,
+          filter: { type: "lowpass", freq: 700 },
+        });
+        return;
+      }
+      case "inspect": {
+        // faint tick — attention narrows on a tile
+        this.burst({ dur: 0.02, peak: 0.03, filter: { type: "bandpass", freq: 2100, q: 2 } });
+        return;
+      }
+      case "guttering": {
+        // the flame shrinks a tier — waxy sputter, felt more than heard
+        this.burst({
+          dur: 0.12,
+          peak: 0.03,
+          attack: 0.02,
+          rate: 0.9,
+          filter: { type: "bandpass", freq: 1600, freqEnd: 700, q: 1.4 },
+        });
+        this.tone({ type: "sine", freq: 200, freqEnd: 150, dur: 0.18, peak: 0.025, attack: 0.02 });
+        return;
+      }
+
+      // ── distant tells (01 §8 — very quiet by design) ────────────────────
+      case "squelch-soft": {
+        // something gelatinous shifts its weight nearby
+        this.burst({
+          dur: 0.12,
+          peak: 0.035,
+          attack: 0.02,
+          rate: 0.4,
+          filter: { type: "bandpass", freq: 300, freqEnd: 150, q: 2 },
+        });
+        return;
+      }
+      case "drip": {
+        // a low watery breath — something waterlogged inhales
+        this.tone({ type: "sine", freq: 520, freqEnd: 300, dur: 0.09, peak: 0.035, attack: 0.003 });
+        this.burst({
+          at: 0.06,
+          dur: 0.3,
+          peak: 0.025,
+          attack: 0.08,
+          rate: 0.5,
+          filter: { type: "lowpass", freq: 500, freqEnd: 200 },
+        });
+        return;
+      }
+      case "bell-far": {
+        // a bell heard through stone — the Bellhung sways somewhere close
+        this.tone({ type: "triangle", freq: 1046.5, dur: 0.5, peak: 0.02, attack: 0.01 });
+        this.tone({ type: "sine", freq: 523.25, dur: 0.45, peak: 0.012, attack: 0.01 });
+        return;
+      }
+      case "moan": {
+        // a choral vowel with no choir left behind it — distant, hollow
+        this.tone({
+          type: "sawtooth",
+          freq: 175,
+          freqEnd: 155,
+          glide: 0.5,
+          dur: 0.6,
+          peak: 0.025,
+          attack: 0.15,
+          filter: { type: "bandpass", freq: 700, freqEnd: 450, q: 4 },
+        });
+        this.tone({
+          type: "sawtooth",
+          freq: 262,
+          freqEnd: 233,
+          glide: 0.5,
+          dur: 0.55,
+          peak: 0.015,
+          attack: 0.18,
+          detune: -8,
+          filter: { type: "bandpass", freq: 900, freqEnd: 600, q: 4 },
+        });
+        return;
+      }
+      case "skitter": {
+        // dry legs over stone, too many of them
+        for (let i = 0; i < 6; i++) {
+          this.burst({
+            at: i * 0.035 + Math.random() * 0.015,
+            dur: 0.015,
+            peak: 0.025,
+            filter: { type: "bandpass", freq: this.jitter(4200, 800), q: 2.5 },
+          });
+        }
+        return;
+      }
+      case "creak": {
+        // old iron under a swinging lantern
+        this.tone({
+          type: "sawtooth",
+          freq: 480,
+          freqEnd: 640,
+          glide: 0.4,
+          dur: 0.5,
+          peak: 0.022,
+          attack: 0.12,
+          filter: { type: "bandpass", freq: 950, q: 6 },
+        });
         return;
       }
     }
@@ -892,7 +1302,7 @@ export class AudioGraph {
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(SILENT, t0);
-    env.gain.linearRampToValueAtTime(o.peak, t0 + (o.attack ?? 0.005));
+    env.gain.linearRampToValueAtTime(o.peak * this.trim, t0 + (o.attack ?? 0.005));
     env.gain.exponentialRampToValueAtTime(SILENT, tEnd);
 
     const filt = o.filter !== undefined ? this.makeFilter(o.filter, t0, tEnd) : undefined;
@@ -925,7 +1335,7 @@ export class AudioGraph {
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(SILENT, t0);
-    env.gain.linearRampToValueAtTime(o.peak, t0 + (o.attack ?? 0.003));
+    env.gain.linearRampToValueAtTime(o.peak * this.trim, t0 + (o.attack ?? 0.003));
     env.gain.exponentialRampToValueAtTime(SILENT, tEnd);
 
     const filt = this.makeFilter(o.filter, t0, tEnd);
