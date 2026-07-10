@@ -145,8 +145,10 @@ export function positionHalo(halo: Phaser.GameObjects.Image, s: SimState, radius
     return;
   }
   halo.setVisible(true);
-  const dw = (radius * 2 + 1) * TILE_W * 0.85;
-  const dh = (radius * 2 + 1) * TILE_H * 0.85;
+  // hug the lit tiles (D81): the old 0.85 factor left a wide warm tail
+  // glowing over pure void — light with nothing to catch it reads as fog
+  const dw = (radius * 2 + 1) * TILE_W * 0.7;
+  const dh = (radius * 2 + 1) * TILE_H * 0.7;
   halo.setDisplaySize(dw, dh);
   const c = gridToScreen(s.px, s.py);
   halo.setPosition(c.sx, c.sy);
@@ -157,9 +159,9 @@ export function flickerHalo(halo: Phaser.GameObjects.Image, radius: number): voi
   // quieter halo (⚖ was 0.95/0.72): the additive orange wash was drowning
   // the texture detail the design pass added — tiles carry the light now
   if (radius <= 2 && radius > 0) {
-    halo.setAlpha(0.42 + Math.random() * 0.2 * (radius === 1 ? 1 : 0.5));
+    halo.setAlpha(0.36 + Math.random() * 0.18 * (radius === 1 ? 1 : 0.5));
   } else {
-    halo.setAlpha(0.55);
+    halo.setAlpha(0.46);
   }
 }
 

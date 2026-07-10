@@ -3477,6 +3477,30 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
     hiEnd(iconWshard);
   }
 
+  // ── The cavern beyond (D81): a soft irregular rock-mass silhouette that
+  // parallaxes behind the world so the unexplored dark reads as a vast
+  // buried PLACE, never as dead pixels ────────────────────────────────────
+  const mass = T.createCanvas("uv-cavern-mass", 256, 192);
+  if (mass !== null) {
+    const ctx = hiBegin(mass);
+    const g = ctx.createRadialGradient(128, 100, 20, 128, 100, 120);
+    g.addColorStop(0, mix(C.void, C.surface, 0.55, 0.9));
+    g.addColorStop(0.55, mix(C.void, C.surface, 0.4, 0.55));
+    g.addColorStop(1, mix(C.void, C.surface, 0.3, 0));
+    ctx.fillStyle = g;
+    // irregular lobed blob — three overlapping soft ellipses
+    ctx.beginPath();
+    ctx.ellipse(100, 105, 88, 62, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(160, 88, 70, 52, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(130, 130, 60, 44, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    hiEnd(mass, false);
+  }
+
   // ── Screen-space atmosphere ──────────────────────────────────────────────
   const vignette = T.createCanvas("uv-vignette", 480, 854);
   if (vignette !== null) {

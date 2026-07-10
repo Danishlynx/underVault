@@ -203,6 +203,8 @@ export class DescentScene extends Phaser.Scene {
   private cursorG!: Phaser.GameObjects.Graphics;
   private halo!: Phaser.GameObjects.Image;
   private fx!: WorldFx;
+  private cavern: Phaser.GameObjects.Image[] = []; // the dark is a place (D81)
+  private deepMotes: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private snuffGrade: Phaser.Filters.ColorMatrix | null = null;
   private baseZoom = 1;
   private hitStopUntil = 0;
@@ -646,8 +648,76 @@ export class DescentScene extends Phaser.Scene {
     this.cameras.main.setBounds(b.x, b.y, b.width, b.height);
     this.cameras.main.startFollow(this.playerView, true, 0.12, 0.12);
     this.applyViewport();
+    this.makeCavern(b, bi);
     this.makeAtmosphere(bi);
     this.audio.setBiome(bi); // the sound direction changes too (D72)
+  }
+
+  /**
+   * The dark is a PLACE (D81): the unexplored void was flat dead pixels —
+   * on big windows it read as unfinished page, not buried cavern. Distant
+   * rock masses at low parallax + a floor-wide drift of deep motes give
+   * every pixel of darkness air and depth without revealing anything.
+   */
+  private makeCavern(b: { x: number; y: number; width: number; height: number }, bi: number): void {
+    for (const m of this.cavern) m.destroy();
+    this.cavern = [];
+    this.deepMotes?.destroy();
+    const s = this.state!;
+    void bi;
+    // distant rock masses at the world's rim — vast, barely-there, and
+    // gently adrift; near-full scrollFactor so they stay AT the rim
+    // instead of converging into a center fog at high zoom
+    const h0 = (Math.imul(s.floor + 1, 2654435761) >>> 0) % 1000;
+    for (let i = 0; i < 4; i++) {
+      const a = ((i + 0.5 + h0 / 1000) / 4) * Math.PI * 2;
+      const rx = b.width * (0.55 + ((h0 >> i) % 9) / 100);
+      const ry = b.height * (0.58 + ((h0 >> (i + 2)) % 9) / 100);
+      const m = this.add.image(
+        b.x + b.width / 2 + Math.cos(a) * rx,
+        b.y + b.height / 2 + Math.sin(a) * ry,
+        "uv-cavern-mass",
+      );
+      // divide by zoom: these are SCREEN dressing — at zoom 2.4 a world-
+      // scaled blob becomes a 3000px cloud whose tail fogs the whole frame
+      const sc = (2.2 + ((h0 >> i) % 4) * 0.6) / Math.max(1, this.baseZoom);
+      m.setScale(sc, sc * 0.8);
+      m.setTint(COLOR.surface2);
+      m.setAlpha(0.08);
+      m.setScrollFactor(0.85);
+      m.depth = -18;
+      this.worldLayer.add(m);
+      this.cavern.push(m);
+      this.tweens.add({
+        targets: m,
+        x: m.x + (i % 2 === 0 ? 22 : -18),
+        duration: 14000 + i * 2600,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+    // deep motes drifting across the WHOLE floor, void included — screen
+    // dressing only; they reveal nothing
+    this.deepMotes = this.add.particles(0, 0, "iso-mote", {
+      lifespan: 7000,
+      frequency: 210,
+      quantity: 1,
+      speedY: { min: -7, max: -2 },
+      speedX: { min: -4, max: 4 },
+      alpha: { start: 0.1, end: 0 },
+      scale: { start: 0.8, end: 0.3 },
+      // cool neutral — warm motes over the void fed the amber fog (D81)
+      tint: COLOR.boneDim,
+      emitZone: {
+        type: "random",
+        source: new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height),
+        quantity: 1,
+      },
+    });
+    this.deepMotes.setDepth(-16);
+    this.worldLayer.add(this.deepMotes);
+    this.deepMotes.fastForward(7000);
   }
 
   /**

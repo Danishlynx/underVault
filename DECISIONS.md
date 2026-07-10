@@ -615,3 +615,20 @@ candidates; flip them in the named data file, not in code.
     landscape 1.22->1.73, phone portrait ~unchanged (1.16->1.1). snap.ts
     gains --vw/--vh viewport overrides and auto-skips the D79 telling for
     game captures.
+
+81. The dark is a PLACE (operator: "so much empty space at any window
+    size"). Verdict split two ways: unexplored darkness is the game's
+    identity and stays - but it rendered as FLAT DEAD PIXELS, which on
+    big windows read as unfinished page, not buried cavern. Additions,
+    all render-only: (a) four vast, barely-there rock-mass silhouettes
+    (uv-cavern-mass radial blobs, alpha .08, gentle 14-20s drift, near-
+    full scrollFactor) ringing the world's rim - scaled INVERSE to camera
+    zoom because they are screen dressing (world-scaled they ballooned to
+    3000px clouds whose tails fogged the frame; two iterations died to
+    this). (b) A floor-wide field of cool bone-dim deep motes (alpha .10,
+    7s drift, pre-warmed) so no pixel of darkness is ever static - warm-
+    tinted motes fed an amber fog and were cooled. (c) The candle halo
+    tightened to hug the lit tiles (size factor .85->.7, alphas .55->.46):
+    its wide warm tail was glowing over pure void - light with nothing to
+    catch it reads as fog. One dead end removed: a floor-wide "sheen"
+    reusing the halo texture (baked-warm) washed everything amber - cut.
