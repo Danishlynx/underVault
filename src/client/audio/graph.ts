@@ -342,7 +342,7 @@ export class AudioGraph {
    */
   setDarkness(level: number): void {
     const l = Math.min(1, Math.max(0, level));
-    const target = l <= 0.4 ? 0 : ((l - 0.4) / 0.6) * 0.15;
+    const target = l <= 0.4 ? 0 : ((l - 0.4) / 0.6) * 0.075; // 50% down (operator: whisper too loud in the dark)
     const t = this.ctx.currentTime;
     this.whisper.gain.cancelScheduledValues(t);
     this.whisper.gain.setTargetAtTime(target, t, 0.4);
@@ -1865,6 +1865,7 @@ export class AudioGraph {
     return filt;
   }
 }
+
 
 
 
