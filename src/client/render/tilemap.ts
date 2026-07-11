@@ -1842,8 +1842,6 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
     cloak.bezierCurveTo(21, 54, 12, 54, 7, 50);
     cloak.bezierCurveTo(6.5, 40, 7.5, 30, 8, 22);
     cloak.bezierCurveTo(7, 10, 11, 5, 17, 4);
-    // the flame peek FIRST — behind the shoulder, mostly eaten by the body
-    flameAt(ctx, 31.5, 14.5, 3, C.ember, C.flame, C.flameHi);
     moldBody(ctx, cloak, 6, 4, 23, 50, shade(C.inkSoft, 1.05), shade(C.inkSoft, 1.6), shade(C.void, 1.3), C.flame, INK);
     ctx.save();
     ctx.clip(cloak);
@@ -1899,6 +1897,32 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
     ctx.beginPath();
     ctx.arc(17.5, 12.5, 6.6, -0.55, 0.75);
     ctx.stroke();
+    // the arm wraps around the leading side — sleeve emerging past the
+    // shoulder, wrapped hand, wax and flame at the SAME spot as the front
+    // view so the light FX never shifts between facings (operator: the
+    // floating flame had no hand in the away angles)
+    ctx.strokeStyle = shade(C.inkSoft, 1.25);
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(25.5, 28.5);
+    ctx.quadraticCurveTo(28.5, 27, 30, 24.5);
+    ctx.stroke();
+    ctx.fillStyle = shade(C.parchmentAged, 0.75);
+    ctx.beginPath();
+    ctx.arc(30.4, 24, 2, 0, Math.PI * 2);
+    ctx.fill();
+    const bwg = ctx.createLinearGradient(29, 15, 33, 15);
+    bwg.addColorStop(0, shade(C.parchment, 1.02));
+    bwg.addColorStop(1, shade(C.parchment, 0.72));
+    ctx.fillStyle = bwg;
+    ctx.fillRect(29, 15.5, 3.5, 8.5);
+    ctx.strokeStyle = shade(C.void, 1.4);
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(30.7, 15.5);
+    ctx.lineTo(30.7, 14);
+    ctx.stroke();
+    flameAt(ctx, 30.7, 14, 3.4, C.ember, C.flame, C.flameHi);
     hiEnd(playerBack);
   }
 
