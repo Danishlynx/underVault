@@ -393,7 +393,7 @@ export class DescentScene extends Phaser.Scene {
           onTelling: (done) => {
             // watching it from the menu counts as told for this session
             this.registry.set(STORY_KEY, true);
-            openStoryIntro(host, done);
+            openStoryIntro(host, done, this.audio);
           },
           onCodex: () => {
             openCodexSheet(host, this.ports.getCodex(), () => undefined);
@@ -410,13 +410,15 @@ export class DescentScene extends Phaser.Scene {
   private tellThenHall(host: HTMLElement): void {
     if (this.registry.get(STORY_KEY) !== true) {
       this.registry.set(STORY_KEY, true);
-      openStoryIntro(host, () => this.openHallProper(host));
+      openStoryIntro(host, () => this.openHallProper(host), this.audio);
       return;
     }
     this.openHallProper(host);
   }
 
   private openHallProper(host: HTMLElement): void {
+    // the vigil theme scored the menu and the telling; the hall is hushed
+    this.audio.stopMenuTheme();
     let closeHall: (() => void) | null = null;
     closeHall = openGuildhall(
       host,

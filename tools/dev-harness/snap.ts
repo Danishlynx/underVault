@@ -72,6 +72,28 @@ async function main(): Promise<void> {
     }
   }
 
+  // --slide N: pass the menu, then advance the telling to slide N (1-based)
+  // and screenshot it — the story-art review loop's eyes
+  const slideIdx = Number(arg("--slide", "0"));
+  if (slideIdx > 0) {
+    const begin = await page.$(".uv-menu-begin");
+    if (begin !== null) {
+      await begin.click();
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    for (let i = 1; i < slideIdx; i++) {
+      // tap the story root (above the caption, away from Skip/dots)
+      await page.mouse.click(Math.round(vw / 2), Math.round(vh * 0.3));
+      await new Promise((r) => setTimeout(r, 420));
+    }
+    await new Promise((r) => setTimeout(r, 1500)); // crossfade + caption settle
+    await page.screenshot({ path: OUT as `${string}.png` });
+    await browser.close();
+    console.log(`screenshot (slide ${slideIdx}): ${OUT}`);
+    console.log(logs.length > 0 ? logs.join("\n") : "(no console output)");
+    return;
+  }
+
   if (process.argv.includes("--hold-mid")) {
     // capture MID-hold (~260ms in): the kindling halo half-bloomed
     const seal = await page.$(".uv-hall .uv-seal-btn, .uv-hall button");

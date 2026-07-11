@@ -509,7 +509,8 @@ export function openMainMenu(
   return () => {
     if (closed) return;
     closed = true;
-    audio.stopMenuTheme();
+    // the vigil theme is NOT stopped here — it scores the telling that
+    // follows Begin; the Descent scene fades it when the hall opens (D90)
     window.cancelAnimationFrame(flameRaf);
     window.cancelAnimationFrame(resizeRaf);
     ro.disconnect();

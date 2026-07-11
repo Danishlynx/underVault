@@ -118,7 +118,11 @@ function injectStyles(): void {
   document.head.appendChild(style);
 }
 
-export function openStoryIntro(host: HTMLElement, onDone: () => void): () => void {
+export function openStoryIntro(
+  host: HTMLElement,
+  onDone: () => void,
+  audio?: { play(cue: "sheet"): void },
+): () => void {
   injectStyles();
   const root = el("div", "uv-story");
 
@@ -172,6 +176,7 @@ export function openStoryIntro(host: HTMLElement, onDone: () => void): () => voi
       return;
     }
     index = i;
+    if (i > 0) audio?.play("sheet"); // a page turns in the telling (D90)
     const slide = SLIDES[i]!;
     const back = 1 - front;
     paintSlide(canvases[back]!, slide);
