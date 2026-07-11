@@ -854,3 +854,21 @@ candidates; flip them in the named data file, not in code.
     the tune climbs home to A5. Crossfade per floor via setScoreBiome;
     the vigil melts into Tallow at the strike (same tune, thinner);
     music dies with the candle on DIED. Menu API unchanged.
+
+94. The biomes get their own INSTRUMENTS (operator: "I hear the same
+    music in all levels"). Diagnosis: the seven laments differed only
+    in notes/keys - identical pads, bells, reverb read as one piece to
+    any ear. Fix: per-biome instrumentation in ScoreDef (melVoice /
+    padStyle / bassPulse): Tallow+menu = breathing pads + music box;
+    Cellars = octave-down box, dark triangle pads under a low filter
+    ceiling; Drowned = watery box (wide drift, every partial SINKS as
+    it rings) over seasick heaving pads; Furnaces = NO bells - a
+    mournful lowpassed horn - with a 0.55 Hz forge-throb kneading the
+    bass; Choir = organ-stack pads (octave+twelfth ranks, no breath)
+    under her music-box tune; Deep unchanged (bass + far notes IS the
+    identity); Bottom = organ + shimmer, gold. Also this session:
+    in-run gains raised to presence (~0.15-0.18) after two timid bumps,
+    crossfade gap 1100->350ms, whisper bed halved, Tallow melody sings
+    2 of 3 passes. LESSON (tooling): PS5.1 Get/Set-Content mangled
+    UTF-8 comments (mojibake) - source rewrites go through the Edit
+    tool or Node scripts, never PowerShell string pipelines.
