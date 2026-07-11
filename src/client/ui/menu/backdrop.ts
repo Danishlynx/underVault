@@ -143,7 +143,7 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
     const a = -Math.PI + 0.5 + (i / 11) * (Math.PI - 1.0) + (rand() - 0.5) * 0.03;
     const r0 = R * 1.115;
     const r1 = r0 + R * 0.026 + rand() * R * 0.01;
-    ctx.strokeStyle = i % 4 === 0 ? shade(C.goldInk, 0.85, 0.18) : shade(C.boneDim, 0.85, 0.11);
+    ctx.strokeStyle = i % 4 === 0 ? shade(C.goldInk, 0.85, 0.14) : mix(C.void, C.boneDim, 0.5, 0.1);
     ctx.lineWidth = 1;
     line(gx + Math.cos(a) * r0, gy + Math.sin(a) * r0, gx + Math.cos(a) * r1, gy + Math.sin(a) * r1);
   }
@@ -431,12 +431,14 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   for (const [vx, vy, p] of vigils) if (p >= NEAR) paintVigil(vx, vy, p);
 
   // ── 8. the vault — ribbed stone closing the top, in two fog stops ────────
-  // Both masses span the full frame width and melt upward into the dark:
-  // no edge terminates mid-air.
+  // Both shells span the full frame width and melt upward into the dark.
+  // The far shell stays strictly ABOVE the near shell at every x — the
+  // fractions guarantee it at any aspect from 3:4 through 2.1:1 — with fog
+  // between them: the edges never cross, never kink, never meet in frame.
   const farEdge = (): void => {
-    ctx.moveTo(0, h * 0.115);
-    ctx.quadraticCurveTo(w * 0.3, h * 0.03, w * 0.55, h * 0.075);
-    ctx.quadraticCurveTo(w * 0.78, h * 0.11, w, h * 0.045);
+    ctx.moveTo(0, h * 0.1);
+    ctx.quadraticCurveTo(w * 0.3, h * 0.025, w * 0.55, h * 0.04);
+    ctx.quadraticCurveTo(w * 0.8, h * 0.05, w, h * 0.028);
   };
   ctx.fillStyle = mix(C.void, C.surface, 0.55);
   ctx.beginPath();
@@ -445,24 +447,30 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.lineTo(w, 0);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = mix(C.void, C.boneDim, 0.45, 0.12);
+  // its reflected-light hair dies long before the shells draw near
+  const farLit = ctx.createLinearGradient(0, 0, w, 0);
+  farLit.addColorStop(0, mix(C.void, C.boneDim, 0.45, 0.11));
+  farLit.addColorStop(0.45, mix(C.void, C.boneDim, 0.45, 0.04));
+  farLit.addColorStop(0.72, mix(C.void, C.boneDim, 0.45, 0));
+  farLit.addColorStop(1, mix(C.void, C.boneDim, 0.45, 0));
+  ctx.strokeStyle = farLit;
   ctx.lineWidth = 1;
   ctx.beginPath();
   farEdge();
   ctx.stroke();
-  // high haze — air between the vault stops
-  const highHaze = ctx.createLinearGradient(0, h * 0.05, 0, h * 0.2);
-  highHaze.addColorStop(0, mix(C.void, C.bone, 0.07, 0));
-  highHaze.addColorStop(0.5, mix(C.void, C.bone, 0.07, 0.09));
-  highHaze.addColorStop(1, mix(C.void, C.bone, 0.07, 0));
+  // high haze — air between the vault shells, sinking the far one
+  const highHaze = ctx.createLinearGradient(0, h * 0.02, 0, h * 0.16);
+  highHaze.addColorStop(0, mix(C.void, C.bone, 0.06, 0));
+  highHaze.addColorStop(0.5, mix(C.void, C.bone, 0.06, 0.08));
+  highHaze.addColorStop(1, mix(C.void, C.bone, 0.06, 0));
   ctx.fillStyle = highHaze;
-  ctx.fillRect(0, h * 0.05, w, h * 0.15);
-  // near vault — two bays springing from a lost pier, exiting both sides
+  ctx.fillRect(0, h * 0.02, w, h * 0.14);
+  // near vault — one continuous undulating shell, exiting both sides
   const nearEdge = (dy: number): void => {
-    ctx.moveTo(0, h * (0.24 + dy));
-    ctx.quadraticCurveTo(w * 0.13, h * (0.083 + dy), w * 0.3, h * (0.078 + dy));
-    ctx.quadraticCurveTo(w * 0.47, h * (0.075 + dy), w * 0.58, h * (0.16 + dy));
-    ctx.quadraticCurveTo(w * 0.8, h * (0.028 + dy), w, h * (0.062 + dy));
+    ctx.moveTo(0, h * (0.26 + dy));
+    ctx.quadraticCurveTo(w * 0.15, h * (0.082 + dy), w * 0.38, h * (0.088 + dy));
+    ctx.quadraticCurveTo(w * 0.58, h * (0.094 + dy), w * 0.74, h * (0.078 + dy));
+    ctx.quadraticCurveTo(w * 0.9, h * (0.062 + dy), w, h * (0.07 + dy));
   };
   const vaultMass = (): void => {
     ctx.beginPath();
@@ -501,39 +509,24 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   for (const t of [0.07, 0.17, 0.27, 0.4, 0.52, 0.68, 0.8, 0.92] as const) {
     const tx = w * t + (rand() - 0.5) * w * 0.012;
     // approximate edge height at tx, then tick upward between courses
-    const ty =
-      t < 0.3
-        ? h * (0.24 - t * 0.55)
-        : t < 0.58
-          ? h * (0.078 + (t - 0.3) * 0.29)
-          : h * (0.16 - (t - 0.58) * 0.23);
+    // (small error is safe — the clip swallows anything below the edge)
+    const ty = t < 0.15 ? h * (0.26 - t * 1.15) : t < 0.62 ? h * 0.09 : h * (0.09 - (t - 0.62) * 0.055);
     line(tx, ty - h * 0.01, tx + (rand() - 0.5) * s * 0.008, ty - h * 0.052);
   }
   ctx.restore();
-  // edge-light from below — strongest above the candle's glow
+  // edge-light from below — strongest above the candle's glow, gone by the
+  // right where the shells run closest
   const vaultLit = ctx.createLinearGradient(0, 0, w, 0);
   vaultLit.addColorStop(0, mix(C.void, C.boneDim, 0.5, 0.1));
-  vaultLit.addColorStop(0.2, mix(C.void, C.boneDim, 0.55, 0.24));
-  vaultLit.addColorStop(0.5, mix(C.void, C.boneDim, 0.5, 0.09));
-  vaultLit.addColorStop(1, mix(C.void, C.boneDim, 0.5, 0.14));
+  vaultLit.addColorStop(0.2, mix(C.void, C.boneDim, 0.55, 0.22));
+  vaultLit.addColorStop(0.55, mix(C.void, C.boneDim, 0.5, 0.07));
+  vaultLit.addColorStop(0.85, mix(C.void, C.boneDim, 0.5, 0.02));
+  vaultLit.addColorStop(1, mix(C.void, C.boneDim, 0.5, 0));
   ctx.strokeStyle = vaultLit;
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   nearEdge(0);
   ctx.stroke();
-  // the pier rib drops from the springing and dissolves — nothing hard
-  const pier = ctx.createLinearGradient(0, h * 0.155, 0, h * 0.245);
-  pier.addColorStop(0, shade(C.void, 0.5, 0.95));
-  pier.addColorStop(1, shade(C.void, 0.5, 0));
-  ctx.strokeStyle = pier;
-  ctx.lineWidth = Math.max(3, s * 0.008);
-  line(w * 0.58, h * 0.152, w * 0.577, h * 0.24);
-  const pierLit = ctx.createLinearGradient(0, h * 0.155, 0, h * 0.22);
-  pierLit.addColorStop(0, mix(C.void, C.boneDim, 0.45, 0.2));
-  pierLit.addColorStop(1, mix(C.void, C.boneDim, 0.45, 0));
-  ctx.strokeStyle = pierLit;
-  ctx.lineWidth = 1;
-  line(w * 0.578 + Math.max(1.5, s * 0.004), h * 0.158, w * 0.5755 + Math.max(1.5, s * 0.004), h * 0.218);
   // both vault stops melt upward into the crown darkness
   const melt = ctx.createLinearGradient(0, 0, 0, h * 0.12);
   melt.addColorStop(0, shade(C.void, 0.8, 0.6));
@@ -797,16 +790,19 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillStyle = pool;
   ctx.fillRect(-ch * 0.9, -ch * 0.9, ch * 1.8, ch * 1.8);
   ctx.restore();
-  // dust motes drifting in the candle's light — few, deliberate, amber-bound
-  for (let i = 0; i < 7; i++) {
-    const a = -Math.PI * (0.12 + rand() * 0.6);
-    const d = h * (0.05 + rand() * 0.16);
-    const mxp = glowX + Math.cos(a) * d * 1.2;
-    const myp = glowY + Math.sin(a) * d;
-    const fade = 1 - d / (h * 0.24);
-    ctx.fillStyle = mix(C.flame, C.bone, 0.45, 0.05 + 0.11 * fade * rand());
+  // dust motes drifting where the flame's light reaches — warm-tinted only
+  // (flame/ember hues, never pale-on-dark), hugging the glow in the lower-left
+  // quadrant. The crown dark above stays truly dark: we are under miles of
+  // stone, and a starless black is truer than a starry one.
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI * (0.06 + rand() * 0.52);
+    const d = h * (0.04 + rand() * 0.11);
+    const mxp = glowX + Math.cos(a) * d * 1.25;
+    const myp = Math.max(glowY - h * 0.1, glowY + Math.sin(a) * d);
+    const fade = Math.max(0, 1 - d / (h * 0.16));
+    ctx.fillStyle = mix(C.flame, C.ember, rand() * 0.5, 0.04 + 0.07 * fade * rand());
     ctx.beginPath();
-    ctx.arc(mxp, myp, Math.max(0.6, s * 0.0012 + rand() * s * 0.0011), 0, TAU);
+    ctx.arc(mxp, myp, Math.max(0.5, s * 0.001 + rand() * s * 0.0009), 0, TAU);
     ctx.fill();
   }
 

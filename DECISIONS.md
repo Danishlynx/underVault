@@ -760,3 +760,16 @@ candidates; flip them in the named data file, not in code.
     (z: glass 1, type column 2); beads thin out 80% over the menu
     column. Lesson kept from this pass: artist agents iterate with the
     snap harness - never paint blind again.
+
+87. The crown goes dark (operator, with an ultrawide window the test
+    matrix had missed: top band "looks out of place"). Two misreads
+    fixed: (a) STARFIELD - pale specks over the crown black read as
+    night sky in a place under miles of stone; artist clamped dust
+    motes to the candle's amber influence (warm-tinted, dimmer, never
+    in the crown) and glass.ts now skips most beads above y 0.32 and
+    near-extinguishes glints there; (b) CHEVRON - the two vault shells
+    met in a V-kink with a lit hairline peak; the crown is now one
+    continuous edge, far shell strictly above/behind with haze between,
+    light-hairs fading before the shells converge, verified 3:4 through
+    2.1:1. Standing rule added to the snap matrix: ALWAYS verify menu/
+    hero art at ultrawide (1920x930) alongside 16:9 and portrait.
