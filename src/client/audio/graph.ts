@@ -390,7 +390,8 @@ export class AudioGraph {
       this.buildThemeVoices();
       const t = this.ctx.currentTime;
       this.theme.gain.cancelScheduledValues(t);
-      this.theme.gain.setTargetAtTime(0.16, t + 0.1, 1.2);
+      // 0.20 = operator-tuned (+25% over the first mix — "hard to hear")
+      this.theme.gain.setTargetAtTime(0.2, t + 0.1, 1.2);
       this.scheduleThemeScore(350);
       this.scheduleThemeCrackle(1200 + Math.random() * 1400);
     };
