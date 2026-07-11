@@ -700,3 +700,26 @@ candidates; flip them in the named data file, not in code.
     light camera framing, tightened candle halo (D80/D81 amendments).
     Standing taste rule derived from this arc: the void stays pure -
     depth belongs to the WORLD (walls, props, light), not to the dark.
+
+84. The Main Menu - "The Vigil" (operator-directed: "a nice menu is one
+    of the greatest hooks... it should reflect the essence of the game,
+    tell the story, make a vibe with sound"; reference: Crysis 3). New
+    first screen of every session, before the telling: a painted hero
+    scene (src/client/ui/menu/backdrop.ts - the great unlit tallow
+    pillar on a sheared ledge, nine vigil-lights descending switchbacks
+    to the Great Gate, folio frame right+bottom) with a LIVE per-frame
+    rAF flame seated on its wick (additive radial layers + gust model;
+    verdigris root ties the First Flame to the Gate), CSS embers, a
+    breathing warm pool, and the wordmark over a quiet letterspaced
+    list: BEGIN THE DESCENT / THE TELLING (replays the intro) / THE
+    CODEX / SOUND toggle. Keyboard + pointer share one hot state. Flow:
+    Menu (once/session) -> telling (once) -> Antechamber; deaths return
+    straight to the hall, never the menu. AUDIO - flagged invariant-6
+    extension, operator-directed: the menu opens SILENT; the FIRST
+    pointer/key gesture on it unlocks the context and fades in a
+    synthesized vigil theme (organ pedal fifth, candle-room hush, far
+    bell every few breaths, wax crackle - AudioGraph start/stopMenuTheme
+    on a dedicated bus). A mute control sits in the menu list itself;
+    visibilitychange hard-mute still governs; the match-strike remains
+    the in-run ceremony. Harness: snap.ts clicks .uv-menu-begin before
+    the story skip for game captures; a bare snap captures the menu.

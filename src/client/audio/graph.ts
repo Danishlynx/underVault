@@ -132,10 +132,15 @@ export class AudioGraph {
   private readonly whisper: GainNode;
   private readonly heartbeat: GainNode;
   private readonly bed: GainNode; // per-biome room tone (D72)
+  private readonly theme: GainNode; // title-menu vigil theme (D84)
   private readonly noise: AudioBuffer;
   private bedSources: AudioScheduledSourceNode[] = [];
   private bedOthers: AudioNode[] = [];
   private bedBiome = -1;
+  private themeSources: AudioScheduledSourceNode[] = [];
+  private themeOthers: AudioNode[] = [];
+  private themeTimers: number[] = [];
+  private themeOn = false;
 
   private userMuted = false;
   private hidden: boolean;
@@ -179,6 +184,10 @@ export class AudioGraph {
     this.bed = this.ctx.createGain();
     this.bed.gain.value = 0;
     this.bed.connect(this.master);
+
+    this.theme = this.ctx.createGain();
+    this.theme.gain.value = 0;
+    this.theme.connect(this.master);
 
     // Shared source material for every noise-based voice.
     this.noise = this.makeNoiseBuffer(2);
@@ -353,6 +362,176 @@ export class AudioGraph {
       }
     }
     this.bed.gain.setTargetAtTime(level, t + 0.3, 1.0);
+  }
+
+  /**
+   * The title-menu theme (D84) — "the vigil". A patient liturgical hum:
+   * organ pedal holding a bare fifth, the hush of a room kept by one
+   * candle, a far bell every few breaths, sparse wax crackle. Fully
+   * synthesized like everything else. Startable only after a user gesture
+   * on the menu (operator-directed extension of invariant 6 — the
+   * match-strike remains the in-run ceremony); the menu keeps a mute
+   * control visible, and it obeys the same master/visibility mutes.
+   */
+  startMenuTheme(): void {
+    if (this.themeOn) return;
+    this.themeOn = true;
+    const begin = (): void => {
+      if (!this.themeOn || this.ctx.state !== "running") return;
+      this.buildThemeVoices();
+      const t = this.ctx.currentTime;
+      this.theme.gain.cancelScheduledValues(t);
+      this.theme.gain.setTargetAtTime(0.12, t + 0.1, 1.2);
+      this.scheduleThemeBell(2400 + Math.random() * 1800);
+      this.scheduleThemeCrackle(1200 + Math.random() * 1400);
+    };
+    if (this.ctx.state === "running") {
+      begin();
+      return;
+    }
+    const resumed = this.resumed;
+    if (resumed !== null) {
+      void resumed.then(begin, () => {
+        this.themeOn = false;
+      });
+      return;
+    }
+    // no unlock has happened — the menu must gesture-unlock first
+    this.themeOn = false;
+  }
+
+  /** Fade the vigil out (~1.5 s tail) and release its voices. */
+  stopMenuTheme(): void {
+    if (!this.themeOn) return;
+    this.themeOn = false;
+    for (const id of this.themeTimers) window.clearTimeout(id);
+    this.themeTimers = [];
+    const t = this.ctx.currentTime;
+    this.theme.gain.cancelScheduledValues(t);
+    this.theme.gain.setTargetAtTime(0, t, 0.35);
+    const src = this.themeSources;
+    const oth = this.themeOthers;
+    this.themeSources = [];
+    this.themeOthers = [];
+    window.setTimeout(() => {
+      for (const s of src) {
+        try {
+          s.stop();
+        } catch {
+          /* already stopped */
+        }
+        s.disconnect();
+      }
+      for (const n of oth) n.disconnect();
+    }, 2200);
+  }
+
+  /** The vigil's sustaining voices — everything routes into this.theme. */
+  private buildThemeVoices(): void {
+    const hold = (node: AudioScheduledSourceNode): void => {
+      node.start();
+      this.themeSources.push(node);
+    };
+    // the hush: a room's worth of still air, slowly breathing
+    const air = this.ctx.createBufferSource();
+    air.buffer = this.noise;
+    air.loop = true;
+    const airLp = this.ctx.createBiquadFilter();
+    airLp.type = "lowpass";
+    airLp.frequency.value = 220;
+    airLp.Q.value = 0.7;
+    const airG = this.ctx.createGain();
+    airG.gain.value = 0.55;
+    air.connect(airLp).connect(airG).connect(this.theme);
+    const airLfo = this.ctx.createOscillator();
+    airLfo.frequency.value = 0.06;
+    const airDepth = this.ctx.createGain();
+    airDepth.gain.value = 55;
+    airLfo.connect(airDepth);
+    airDepth.connect(airLp.frequency);
+    hold(air);
+    hold(airLfo);
+    this.themeOthers.push(airLp, airG, airDepth);
+
+    // the pedal: an organ holding a bare fifth under the mountain
+    const pedal = (type: OscillatorType, freq: number, gain: number): void => {
+      const o = this.ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = freq;
+      const g = this.ctx.createGain();
+      g.gain.value = gain;
+      o.connect(g).connect(this.theme);
+      hold(o);
+      this.themeOthers.push(g);
+    };
+    pedal("sine", 55, 0.3); // A1
+    pedal("sine", 82.41, 0.11); // E2 — the fifth
+    pedal("triangle", 110, 0.035); // faint octave color
+
+    // the shimmer: a thin high air that wanders, barely there
+    const shim = this.ctx.createBufferSource();
+    shim.buffer = this.noise;
+    shim.loop = true;
+    const shimBp = this.ctx.createBiquadFilter();
+    shimBp.type = "bandpass";
+    shimBp.frequency.value = 2400;
+    shimBp.Q.value = 6;
+    const shimG = this.ctx.createGain();
+    shimG.gain.value = 0.05;
+    shim.connect(shimBp).connect(shimG).connect(this.theme);
+    const shimLfo = this.ctx.createOscillator();
+    shimLfo.frequency.value = 0.11;
+    const shimDepth = this.ctx.createGain();
+    shimDepth.gain.value = 500;
+    shimLfo.connect(shimDepth);
+    shimDepth.connect(shimBp.frequency);
+    hold(shim);
+    hold(shimLfo);
+    this.themeOthers.push(shimBp, shimG, shimDepth);
+  }
+
+  /** A far bell every few breaths — single toll or a falling pair. */
+  private scheduleThemeBell(delay: number): void {
+    const id = window.setTimeout(() => {
+      if (!this.themeOn || this.ctx.state !== "running") return;
+      this.trim = 1;
+      if (Math.random() < 0.55) {
+        // one toll, heard through stone
+        this.tone({ type: "triangle", freq: 587.33, dur: 1.6, peak: 0.028, attack: 0.01 });
+        this.tone({ type: "sine", freq: 293.66, dur: 1.3, peak: 0.014, attack: 0.01 });
+      } else {
+        // a falling pair — solemn, unresolved
+        this.tone({ type: "triangle", freq: 523.25, dur: 1.3, peak: 0.024, attack: 0.01 });
+        this.tone({ type: "sine", freq: 261.63, dur: 1.1, peak: 0.012, attack: 0.01 });
+        this.tone({ type: "triangle", freq: 392, at: 0.62, dur: 1.5, peak: 0.02, attack: 0.01 });
+        this.tone({ type: "sine", freq: 196, at: 0.62, dur: 1.3, peak: 0.011, attack: 0.01 });
+      }
+      this.scheduleThemeBell(6500 + Math.random() * 3500);
+    }, delay);
+    this.themeTimers.push(id);
+  }
+
+  /** Sparse wax crackle — the candle on the menu is alive. */
+  private scheduleThemeCrackle(delay: number): void {
+    const id = window.setTimeout(() => {
+      if (!this.themeOn || this.ctx.state !== "running") return;
+      this.trim = 1;
+      this.burst({
+        dur: 0.02,
+        peak: 0.022,
+        filter: { type: "bandpass", freq: this.jitter(2500, 600), q: 2 },
+      });
+      if (Math.random() < 0.35) {
+        this.burst({
+          at: 0.07,
+          dur: 0.015,
+          peak: 0.016,
+          filter: { type: "bandpass", freq: this.jitter(3100, 500), q: 2 },
+        });
+      }
+      this.scheduleThemeCrackle(1600 + Math.random() * 2600);
+    }, delay);
+    this.themeTimers.push(id);
   }
 
   /** Slow ~55 bpm lub-dub, faded in/out over ~a beat. Subtle by design. */

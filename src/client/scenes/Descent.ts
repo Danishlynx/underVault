@@ -106,6 +106,7 @@ import {
   openWaystoneSheet,
 } from "../ui/sheets.js";
 import { openGuildhall } from "../ui/guildhall.js";
+import { openMainMenu } from "../ui/menu.js";
 import { openStoryIntro } from "../ui/story.js";
 import { openCodexSheet } from "../ui/codex.js";
 import { openSignComposer } from "../ui/signs.js";
@@ -119,6 +120,7 @@ const AUTOSTART_KEY = "uv-autostart";
 const GUIDES_KEY = "uv-guides"; // once-per-session lessons (memory only, inv. 3)
 const VIEW_KEY = "uv-view"; // D67 camera experiment (memory only, inv. 3)
 const STORY_KEY = "uv-story-told"; // the telling plays once per session (D79)
+const MENU_KEY = "uv-menu-shown"; // the Vigil fronts each session once (D84)
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
   "XXI", "XXII", "XXIII", "XXIV", "XXV"];
@@ -377,8 +379,39 @@ export class DescentScene extends Phaser.Scene {
     const host = this.host();
     if (host === null) return;
     this.overlayOpen = true;
-    // "The Last Wick" (D79): the telling plays once per session, before
-    // the first dawn at the hall — every mechanic gets its why
+    // "The Vigil" (D84): the main menu fronts the session — the game's
+    // face before its first word. Begin → the telling (once) → the hall.
+    // After a death the loop returns straight to the hall, never back here.
+    if (this.registry.get(MENU_KEY) !== true) {
+      this.registry.set(MENU_KEY, true);
+      let closeMenu: (() => void) | null = null;
+      closeMenu = openMainMenu(
+        host,
+        { day: this.ports.getGuildhall().day },
+        this.audio,
+        {
+          onBegin: () => {
+            closeMenu?.();
+            this.tellThenHall(host);
+          },
+          onTelling: (done) => {
+            // watching it from the menu counts as told for this session
+            this.registry.set(STORY_KEY, true);
+            openStoryIntro(host, done);
+          },
+          onCodex: () => {
+            openCodexSheet(host, this.ports.getCodex(), () => undefined);
+          },
+        },
+      );
+      return;
+    }
+    this.tellThenHall(host);
+  }
+
+  /** "The Last Wick" (D79): the telling plays once per session, before
+   *  the first dawn at the hall — every mechanic gets its why. */
+  private tellThenHall(host: HTMLElement): void {
     if (this.registry.get(STORY_KEY) !== true) {
       this.registry.set(STORY_KEY, true);
       openStoryIntro(host, () => this.openHallProper(host));

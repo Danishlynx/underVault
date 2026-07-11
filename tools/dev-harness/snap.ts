@@ -56,9 +56,15 @@ async function main(): Promise<void> {
   await page.goto(URL, { waitUntil: "networkidle2", timeout: 30000 });
   await new Promise((r) => setTimeout(r, WAIT));
 
-  // the intro telling plays once per session — skip it for game captures
-  // unless the story itself is the subject (no --strike/--keys/--hold-mid)
+  // the main menu (D84) fronts every session, and the telling plays once —
+  // pass through both for game captures unless the menu/story is itself the
+  // subject (no --strike/--keys/--hold-mid)
   if (process.argv.includes("--strike") || process.argv.includes("--hold-mid") || KEYS !== "") {
+    const begin = await page.$(".uv-menu-begin");
+    if (begin !== null) {
+      await begin.click();
+      await new Promise((r) => setTimeout(r, 600));
+    }
     const skip = await page.$(".uv-story-skip");
     if (skip !== null) {
       await skip.click();
