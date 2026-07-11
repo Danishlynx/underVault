@@ -868,11 +868,18 @@ export class DescentScene extends Phaser.Scene {
   }
 
   // ── Input ────────────────────────────────────────────────────────────────
+  /** Held direction keys, polled every frame (D92): OS key-repeat gives a
+   *  first-step hitch (step… pause… stream) — the clunk the operator felt.
+   *  Polling feeds the drain at its own 70 ms cadence instead. */
+  private heldDirs: { key: Phaser.Input.Keyboard.Key; d: number; op: number }[] = [];
+
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (kb !== null) {
       const move = (d: number, op: number): void => {
         this.facing = d;
+        // the body turns the INSTANT the key lands — not a tick later
+        this.playerView?.setFlipX(d === DIRS.W);
         this.enqueue(op);
       };
       kb.on("keydown-W", () => move(DIRS.N, Action.MOVE_N));
@@ -894,6 +901,18 @@ export class DescentScene extends Phaser.Scene {
       kb.on("keydown-B", () => this.openSigns()); // plant a sign
       kb.on("keydown-V", () => this.toggleView()); // scout ↔ delve camera (D67)
       kb.on("keydown-M", () => this.devTeleport()); // DEV-ONLY: deleted at M2
+
+      const KC = Phaser.Input.Keyboard.KeyCodes;
+      this.heldDirs = [
+        { key: kb.addKey(KC.W), d: DIRS.N, op: Action.MOVE_N },
+        { key: kb.addKey(KC.UP), d: DIRS.N, op: Action.MOVE_N },
+        { key: kb.addKey(KC.D), d: DIRS.E, op: Action.MOVE_E },
+        { key: kb.addKey(KC.RIGHT), d: DIRS.E, op: Action.MOVE_E },
+        { key: kb.addKey(KC.S), d: DIRS.S, op: Action.MOVE_S },
+        { key: kb.addKey(KC.DOWN), d: DIRS.S, op: Action.MOVE_S },
+        { key: kb.addKey(KC.A), d: DIRS.W, op: Action.MOVE_W },
+        { key: kb.addKey(KC.LEFT), d: DIRS.W, op: Action.MOVE_W },
+      ];
     }
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -1114,6 +1133,23 @@ export class DescentScene extends Phaser.Scene {
       this.hitStopUntil = 0;
       this.tweens.timeScale = 1;
       if (this.dust !== null) this.dust.timeScale = 1;
+    }
+
+    // held-direction streaming (D92): while a direction key is held and the
+    // queue is dry, keep feeding it — most recently pressed key wins, so
+    // rolling from W to D corners crisply without releasing
+    if (this.running && !this.overlayOpen && this.queue.length === 0) {
+      let best: { d: number; op: number; t: number } | null = null;
+      for (const h of this.heldDirs) {
+        if (h.key.isDown && (best === null || h.key.timeDown > best.t)) {
+          best = { d: h.d, op: h.op, t: h.key.timeDown };
+        }
+      }
+      if (best !== null) {
+        this.facing = best.d;
+        this.playerView?.setFlipX(best.d === DIRS.W);
+        this.enqueue(best.op);
+      }
     }
 
     if (this.queue.length > 0 && !this.overlayOpen && time - this.lastStep > 70 && time >= this.hitStopUntil) {
