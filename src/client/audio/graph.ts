@@ -528,7 +528,7 @@ export class AudioGraph {
    */
   private buildThemeReverb(): void {
     const conv = this.ctx.createConvolver();
-    conv.buffer = this.makeReverbIR(3.2, 1.1);
+    conv.buffer = this.makeReverbIR(4.0);
     const wet = this.ctx.createGain();
     wet.gain.value = 0.8;
     conv.connect(wet).connect(this.theme);
@@ -536,7 +536,7 @@ export class AudioGraph {
     this.themeOthers.push(conv, wet);
   }
 
-  private makeReverbIR(seconds: number, tau: number): AudioBuffer {
+  private makeReverbIR(seconds: number): AudioBuffer {
     const sr = this.ctx.sampleRate;
     const len = Math.max(1, Math.round(sr * seconds));
     const buf = this.ctx.createBuffer(2, len, sr);
@@ -548,9 +548,12 @@ export class AudioGraph {
         // one-pole lowpass whose cutoff falls along the tail
         const k = 0.55 * (1 - t / seconds) + 0.06;
         lp += (Math.random() * 2 - 1 - lp) * k;
-        // 20 ms fade-in stands in for pre-delay; keeps the dry hit distinct
-        const pre = t < 0.02 ? t / 0.02 : 1;
-        d[i] = lp * Math.exp(-t / tau) * pre;
+        // exact −60 dB at the last sample (research spec) — the old
+        // exp(−t/τ) form truncated at −25 dB, an audible cliff
+        const env = Math.pow(10, (-3 * i) / len);
+        // 40 ms squared fade-in stands in for pre-delay
+        const pre = t < 0.04 ? (t / 0.04) * (t / 0.04) : 1;
+        d[i] = lp * env * pre;
       }
     }
     return buf;
@@ -634,12 +637,20 @@ export class AudioGraph {
     const send = this.ctx.createGain();
     send.gain.value = sendLvl;
     if (this.themeConv !== null) panner.connect(send).connect(this.themeConv);
+    const drift = (Math.random() - 0.5) * 6; // ±3 cents — a hand-wound box
     const parts: [number, number, number, number][] = [
-      [1, 1, dur, 0], // fundamental
-      [1, 0.5, dur * 0.9, 3.5], // detuned double — the shimmer
-      [3.01, 0.2, dur * 0.5, 0], // music-box clink
-      [5.4, 0.05, dur * 0.28, 0], // glassy edge
+      [1, 1, dur, drift], // fundamental
+      [1, 0.5, dur * 0.9, drift + 3.5], // detuned double — the shimmer
+      [3.01, 0.2, dur * 0.5, drift], // music-box clink
+      [5.4, 0.05, dur * 0.28, drift], // glassy edge
     ];
+    // the strike: 5 ms of pin-on-comb before the ring (research spec)
+    this.burst({
+      at: atS,
+      dur: 0.005,
+      peak: peak * 0.2,
+      filter: { type: "bandpass", freq: 5000, q: 1 },
+    });
     // the fundamental (parts[0]) rings longest — it owns the bus teardown
     let longest: OscillatorNode | null = null;
     for (const [ratio, amp, dec, cents] of parts) {
@@ -683,6 +694,7 @@ export class AudioGraph {
     const id = window.setTimeout(() => {
       if (!this.themeOn || this.ctx.state !== "running") return;
       const BAR = 9.6;
+      this.trim = 1; // burst()/tone() scale by the last cue's trim otherwise
       const bar = this.themeCycle % 4;
       const pass = Math.floor(this.themeCycle / 4);
       const c = AudioGraph.THEME_CHORDS[bar]!;
