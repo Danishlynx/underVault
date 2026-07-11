@@ -876,20 +876,24 @@ export class DescentScene extends Phaser.Scene {
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (kb !== null) {
-      const move = (d: number, op: number): void => {
+      const move = (d: number, op: number, ev?: KeyboardEvent): void => {
+        // OS auto-repeat is IGNORED (D92 fix: it double-fed the queue with
+        // the held-key poller — one tap walked 2-3 steps). A press is ONE
+        // step; sustained walking belongs to the poller alone.
+        if (ev?.repeat === true) return;
         this.facing = d;
         // the body turns the INSTANT the key lands — not a tick later
         this.playerView?.setFlipX(d === DIRS.W);
         this.enqueue(op);
       };
-      kb.on("keydown-W", () => move(DIRS.N, Action.MOVE_N));
-      kb.on("keydown-UP", () => move(DIRS.N, Action.MOVE_N));
-      kb.on("keydown-D", () => move(DIRS.E, Action.MOVE_E));
-      kb.on("keydown-RIGHT", () => move(DIRS.E, Action.MOVE_E));
-      kb.on("keydown-S", () => move(DIRS.S, Action.MOVE_S));
-      kb.on("keydown-DOWN", () => move(DIRS.S, Action.MOVE_S));
-      kb.on("keydown-A", () => move(DIRS.W, Action.MOVE_W));
-      kb.on("keydown-LEFT", () => move(DIRS.W, Action.MOVE_W));
+      kb.on("keydown-W", (ev: KeyboardEvent) => move(DIRS.N, Action.MOVE_N, ev));
+      kb.on("keydown-UP", (ev: KeyboardEvent) => move(DIRS.N, Action.MOVE_N, ev));
+      kb.on("keydown-D", (ev: KeyboardEvent) => move(DIRS.E, Action.MOVE_E, ev));
+      kb.on("keydown-RIGHT", (ev: KeyboardEvent) => move(DIRS.E, Action.MOVE_E, ev));
+      kb.on("keydown-S", (ev: KeyboardEvent) => move(DIRS.S, Action.MOVE_S, ev));
+      kb.on("keydown-DOWN", (ev: KeyboardEvent) => move(DIRS.S, Action.MOVE_S, ev));
+      kb.on("keydown-A", (ev: KeyboardEvent) => move(DIRS.W, Action.MOVE_W, ev));
+      kb.on("keydown-LEFT", (ev: KeyboardEvent) => move(DIRS.W, Action.MOVE_W, ev));
       kb.on("keydown-SPACE", () => this.enqueue(Action.WAIT));
       kb.on("keydown-C", () => this.enqueue(Action.CUP));
       kb.on("keydown-E", () => this.enqueue(Action.INTERACT_N + this.facing));
@@ -1135,13 +1139,15 @@ export class DescentScene extends Phaser.Scene {
       if (this.dust !== null) this.dust.timeScale = 1;
     }
 
-    // held-direction streaming (D92): while a direction key is held and the
-    // queue is dry, keep feeding it — most recently pressed key wins, so
-    // rolling from W to D corners crisply without releasing
+    // held-direction streaming (D92): only once a key has been HELD past
+    // the repeat delay — a tap is exactly one step (the keydown event's),
+    // a deliberate hold streams at drain cadence. Most recent key wins,
+    // so rolling from W to D corners crisply without releasing.
+    const HOLD_REPEAT_MS = 200;
     if (this.running && !this.overlayOpen && this.queue.length === 0) {
       let best: { d: number; op: number; t: number } | null = null;
       for (const h of this.heldDirs) {
-        if (h.key.isDown && (best === null || h.key.timeDown > best.t)) {
+        if (h.key.isDown && time - h.key.timeDown > HOLD_REPEAT_MS && (best === null || h.key.timeDown > best.t)) {
           best = { d: h.d, op: h.op, t: h.key.timeDown };
         }
       }
