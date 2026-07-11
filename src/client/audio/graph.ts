@@ -168,11 +168,11 @@ const VIGIL: ScoreDef = {
 // â”€â”€ The floors (D93): one sadness per biome, quiet under the game â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const BIOME_SCORES: readonly ScoreDef[] = [
   { // Tallow Halls â€” the vigil's own lament, thinned: alone with a candle
-    gain: 0.133, barS: 10.4, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 2,
+    gain: 0.17, barS: 10.4, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 3,
     toll: { freq: 329.63, everyBars: 6 }, hush: { freq: 200, gain: 0.5 }, shimmer: false, crackle: false, bellSend: 0.8,
   },
   { // Root Cellars â€” D-minor lament, earth-heavy, the town far above
-    gain: 0.125, barS: 11.2,
+    gain: 0.16, barS: 11.2,
     chords: [
       { bass: 36.71, pad: [73.42, 110.0, 146.83, 164.81, 174.61] }, // Dm(add9)
       { bass: 32.7, pad: [65.41, 98.0, 130.81, 146.83, 196.0] }, // C(add9)
@@ -186,7 +186,7 @@ const BIOME_SCORES: readonly ScoreDef[] = [
     restEvery: 2, toll: { freq: 293.66, everyBars: 7 }, hush: { freq: 170, gain: 0.5 }, shimmer: false, crackle: false, bellSend: 0.9,
   },
   { // Drowned Stacks â€” E phrygian, the half-step sigh of despair
-    gain: 0.125, barS: 11.2,
+    gain: 0.16, barS: 11.2,
     chords: [
       { bass: 41.2, pad: [82.41, 123.47, 164.81, 196.0, 246.94] }, // Em
       { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 329.63] }, // Fmaj7 â€” the b2
@@ -200,7 +200,7 @@ const BIOME_SCORES: readonly ScoreDef[] = [
     restEvery: 2, toll: { freq: 329.63, everyBars: 6 }, hush: { freq: 260, gain: 0.55 }, shimmer: false, crackle: false, bellSend: 1.0,
   },
   { // Glassblack Furnaces â€” F minor, almost no song left, heat and dread
-    gain: 0.117, barS: 12.0,
+    gain: 0.15, barS: 12.0,
     chords: [
       { bass: 43.65, pad: [87.31, 130.81, 174.61, 207.65, 261.63] }, // Fm
       { bass: 34.65, pad: [69.3, 103.83, 138.59, 174.61, 207.65] }, // Db
@@ -211,11 +211,11 @@ const BIOME_SCORES: readonly ScoreDef[] = [
     restEvery: 3, toll: { freq: 174.61, everyBars: 8 }, hush: { freq: 120, gain: 0.55 }, shimmer: false, crackle: false, bellSend: 0.7,
   },
   { // Hollow Choir â€” broken love: HER tune returns, fullest of the floors
-    gain: 0.14, barS: 9.6, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 4,
+    gain: 0.18, barS: 9.6, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 4,
     toll: { freq: 440.0, everyBars: 5 }, hush: { freq: 300, gain: 0.4 }, shimmer: true, crackle: false, bellSend: 1.1,
   },
   { // Wickless Deep â€” loneliness itself: no chords, single far notes
-    gain: 0.117, barS: 12.8,
+    gain: 0.15, barS: 12.8,
     chords: [
       { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] },
     ],
@@ -223,7 +223,7 @@ const BIOME_SCORES: readonly ScoreDef[] = [
     restEvery: 2, toll: null, hush: { freq: 150, gain: 0.4 }, shimmer: false, crackle: false, bellSend: 1.3,
   },
   { // The Bottom â€” the lament turns: Am F C G, the tune climbs home to her
-    gain: 0.14, barS: 9.6,
+    gain: 0.18, barS: 9.6,
     chords: [
       { bass: 55.0, pad: [110.0, 164.81, 220.0, 246.94, 261.63] }, // Am(add9)
       { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 261.63] }, // F
@@ -510,7 +510,7 @@ export class AudioGraph {
     if (this.themeOn && this.scoreDef === def) return;
     if (this.themeOn) {
       this.stopMenuTheme();
-      const id = window.setTimeout(() => this.startScoreDef(def), 1100);
+      const id = window.setTimeout(() => this.startScoreDef(def), 350);
       this.themeTimers.push(id);
       return;
     }
@@ -1865,5 +1865,7 @@ export class AudioGraph {
     return filt;
   }
 }
+
+
 
 
