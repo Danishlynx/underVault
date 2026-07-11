@@ -125,6 +125,119 @@ interface FilterOpts {
 
 const SILENT = 0.0001; // exponentialRamp cannot reach 0; this is ≈ -80 dB
 
+/**
+ * A score (D93): one generative piece — chords over a lament bass, a
+ * music-box melody with rest passes, a rare toll, room hush. The menu's
+ * vigil and every biome's in-run music are all instances of this shape;
+ * the emotional brief (operator): loneliness, despair, broken love —
+ * Silksong-sad, never heavy. In-run gains sit far below the sfx/tells.
+ */
+interface ScoreDef {
+  gain: number;
+  barS: number;
+  chords: readonly { bass: number; pad: readonly number[] }[];
+  /** [bar, offset s, Hz, decay s] */
+  melody: readonly (readonly [number, number, number, number])[];
+  /** every Nth pass the melody rests (pass % restEvery === restEvery-1) */
+  restEvery: number;
+  toll: { freq: number; everyBars: number } | null;
+  hush: { freq: number; gain: number };
+  shimmer: boolean;
+  crackle: boolean;
+  bellSend: number;
+}
+
+// ── The vigil (menu) — A-minor lament, operator-tuned to 0.20 ─────────────
+const LAMENT_CHORDS: ScoreDef["chords"] = [
+  { bass: 55.0, pad: [110.0, 164.81, 220.0, 246.94, 261.63] }, // Am(add9)
+  { bass: 49.0, pad: [98.0, 146.83, 196.0, 246.94, 293.66] }, // G
+  { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 329.63] }, // Fmaj7
+  { bass: 41.2, pad: [82.41, 123.47, 164.81, 207.65, 246.94] }, // E
+];
+const CANDLEMAID_TUNE: ScoreDef["melody"] = [
+  [0, 0.5, 659.25, 3.4], [0, 2.8, 523.25, 3.0], [0, 4.6, 493.88, 2.6], [0, 6.0, 440.0, 4.2],
+  [1, 1.2, 493.88, 3.0], [1, 3.4, 587.33, 3.4], [1, 6.2, 493.88, 3.6],
+  [2, 0.8, 523.25, 3.2], [2, 3.2, 440.0, 3.0], [2, 6.4, 659.25, 4.0],
+  [3, 1.0, 493.88, 3.2], [3, 3.6, 415.3, 3.8], [3, 6.4, 329.63, 5.0],
+];
+const VIGIL: ScoreDef = {
+  gain: 0.2, barS: 9.6, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 3,
+  toll: { freq: 329.63, everyBars: 5 }, hush: { freq: 220, gain: 0.55 }, shimmer: true, crackle: true, bellSend: 0.8,
+};
+
+// ── The floors (D93): one sadness per biome, quiet under the game ─────────
+const BIOME_SCORES: readonly ScoreDef[] = [
+  { // Tallow Halls — the vigil's own lament, thinned: alone with a candle
+    gain: 0.085, barS: 10.4, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 2,
+    toll: { freq: 329.63, everyBars: 6 }, hush: { freq: 200, gain: 0.5 }, shimmer: false, crackle: false, bellSend: 0.8,
+  },
+  { // Root Cellars — D-minor lament, earth-heavy, the town far above
+    gain: 0.08, barS: 11.2,
+    chords: [
+      { bass: 36.71, pad: [73.42, 110.0, 146.83, 164.81, 174.61] }, // Dm(add9)
+      { bass: 32.7, pad: [65.41, 98.0, 130.81, 146.83, 196.0] }, // C(add9)
+      { bass: 29.14, pad: [58.27, 116.54, 146.83, 174.61, 220.0] }, // Bbmaj7
+      { bass: 27.5, pad: [55.0, 110.0, 164.81, 220.0, 261.63] }, // Am
+    ],
+    melody: [
+      [0, 1.0, 587.33, 3.4], [0, 4.2, 440.0, 3.2], [1, 2.0, 523.25, 3.0], [1, 6.0, 440.0, 3.6],
+      [2, 1.4, 466.16, 3.4], [2, 5.2, 349.23, 4.0], [3, 2.2, 440.0, 4.4],
+    ],
+    restEvery: 2, toll: { freq: 293.66, everyBars: 7 }, hush: { freq: 170, gain: 0.5 }, shimmer: false, crackle: false, bellSend: 0.9,
+  },
+  { // Drowned Stacks — E phrygian, the half-step sigh of despair
+    gain: 0.08, barS: 11.2,
+    chords: [
+      { bass: 41.2, pad: [82.41, 123.47, 164.81, 196.0, 246.94] }, // Em
+      { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 329.63] }, // Fmaj7 — the b2
+      { bass: 36.71, pad: [73.42, 110.0, 146.83, 220.0, 293.66] }, // Dm
+      { bass: 41.2, pad: [82.41, 123.47, 164.81, 196.0, 246.94] }, // Em
+    ],
+    melody: [
+      [0, 1.2, 659.25, 3.6], [0, 5.0, 698.46, 3.2], [1, 2.4, 659.25, 4.0],
+      [2, 1.8, 587.33, 3.4], [2, 5.6, 493.88, 3.6], [3, 3.0, 329.63, 5.0],
+    ],
+    restEvery: 2, toll: { freq: 329.63, everyBars: 6 }, hush: { freq: 260, gain: 0.55 }, shimmer: false, crackle: false, bellSend: 1.0,
+  },
+  { // Glassblack Furnaces — F minor, almost no song left, heat and dread
+    gain: 0.075, barS: 12.0,
+    chords: [
+      { bass: 43.65, pad: [87.31, 130.81, 174.61, 207.65, 261.63] }, // Fm
+      { bass: 34.65, pad: [69.3, 103.83, 138.59, 174.61, 207.65] }, // Db
+      { bass: 32.7, pad: [65.41, 98.0, 130.81, 155.56, 196.0] }, // Cm
+      { bass: 43.65, pad: [87.31, 130.81, 174.61, 207.65, 261.63] }, // Fm
+    ],
+    melody: [[1, 3.0, 415.3, 4.5], [3, 4.0, 349.23, 5.0]],
+    restEvery: 3, toll: { freq: 174.61, everyBars: 8 }, hush: { freq: 120, gain: 0.55 }, shimmer: false, crackle: false, bellSend: 0.7,
+  },
+  { // Hollow Choir — broken love: HER tune returns, fullest of the floors
+    gain: 0.09, barS: 9.6, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 4,
+    toll: { freq: 440.0, everyBars: 5 }, hush: { freq: 300, gain: 0.4 }, shimmer: true, crackle: false, bellSend: 1.1,
+  },
+  { // Wickless Deep — loneliness itself: no chords, single far notes
+    gain: 0.075, barS: 12.8,
+    chords: [
+      { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] },
+    ],
+    melody: [[0, 3.0, 880.0, 6.0], [1, 7.0, 659.25, 6.0], [2, 5.0, 440.0, 7.0], [3, 8.0, 493.88, 6.0]],
+    restEvery: 2, toll: null, hush: { freq: 150, gain: 0.4 }, shimmer: false, crackle: false, bellSend: 1.3,
+  },
+  { // The Bottom — the lament turns: Am F C G, the tune climbs home to her
+    gain: 0.09, barS: 9.6,
+    chords: [
+      { bass: 55.0, pad: [110.0, 164.81, 220.0, 246.94, 261.63] }, // Am(add9)
+      { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 261.63] }, // F
+      { bass: 65.41, pad: [130.81, 164.81, 196.0, 261.63, 329.63] }, // C
+      { bass: 49.0, pad: [98.0, 146.83, 196.0, 246.94, 293.66] }, // G
+    ],
+    melody: [
+      [0, 1.0, 659.25, 3.4], [0, 4.6, 523.25, 3.0], [1, 2.0, 587.33, 3.4], [1, 6.0, 523.25, 3.0],
+      [2, 1.5, 659.25, 3.6], [2, 5.0, 783.99, 4.0], [3, 2.0, 587.33, 3.4], [3, 6.0, 880.0, 5.0],
+    ],
+    restEvery: 3, toll: { freq: 440.0, everyBars: 5 }, hush: { freq: 220, gain: 0.45 }, shimmer: true, crackle: false, bellSend: 0.9,
+  },
+];
+
 export class AudioGraph {
   private readonly ctx: AudioContext;
   private readonly master: GainNode;
@@ -143,6 +256,7 @@ export class AudioGraph {
   private themeOn = false;
   private themeConv: ConvolverNode | null = null; // procedural cathedral (D84)
   private themeCycle = 0; // bar counter for the score
+  private scoreDef: ScoreDef | null = null; // which piece is playing (D93)
 
   private userMuted = false;
   private hidden: boolean;
@@ -382,18 +496,40 @@ export class AudioGraph {
    * same master/visibility mutes.
    */
   startMenuTheme(): void {
+    this.switchScore(VIGIL);
+  }
+
+  /** In-run music (D93): each biome plays its own lament, far beneath the
+   *  sfx and tells. Crossfades on descent like the room-tone beds. */
+  setScoreBiome(bi: number): void {
+    this.switchScore(BIOME_SCORES[Math.max(0, Math.min(BIOME_SCORES.length - 1, bi))]!);
+  }
+
+  /** Change pieces: same piece → keep playing; else fade out, start anew. */
+  private switchScore(def: ScoreDef): void {
+    if (this.themeOn && this.scoreDef === def) return;
+    if (this.themeOn) {
+      this.stopMenuTheme();
+      const id = window.setTimeout(() => this.startScoreDef(def), 1100);
+      this.themeTimers.push(id);
+      return;
+    }
+    this.startScoreDef(def);
+  }
+
+  private startScoreDef(def: ScoreDef): void {
     if (this.themeOn) return;
     this.themeOn = true;
+    this.scoreDef = def;
     const begin = (): void => {
-      if (!this.themeOn || this.ctx.state !== "running") return;
+      if (!this.themeOn || this.scoreDef !== def || this.ctx.state !== "running") return;
       this.buildThemeReverb();
-      this.buildThemeVoices();
+      this.buildThemeVoices(def);
       const t = this.ctx.currentTime;
       this.theme.gain.cancelScheduledValues(t);
-      // 0.20 = operator-tuned (+25% over the first mix — "hard to hear")
-      this.theme.gain.setTargetAtTime(0.2, t + 0.1, 1.2);
+      this.theme.gain.setTargetAtTime(def.gain, t + 0.1, 1.2);
       this.scheduleThemeScore(350);
-      this.scheduleThemeCrackle(1200 + Math.random() * 1400);
+      if (def.crackle) this.scheduleThemeCrackle(1200 + Math.random() * 1400);
     };
     if (this.ctx.state === "running") {
       begin();
@@ -414,6 +550,7 @@ export class AudioGraph {
   stopMenuTheme(): void {
     if (!this.themeOn) return;
     this.themeOn = false;
+    this.scoreDef = null;
     this.themeConv = null;
     this.themeCycle = 0;
     for (const id of this.themeTimers) window.clearTimeout(id);
@@ -438,8 +575,8 @@ export class AudioGraph {
     }, 2200);
   }
 
-  /** The vigil's sustaining voices — everything routes into this.theme. */
-  private buildThemeVoices(): void {
+  /** The score's sustaining voices — everything routes into this.theme. */
+  private buildThemeVoices(def: ScoreDef): void {
     const hold = (node: AudioScheduledSourceNode): void => {
       node.start();
       this.themeSources.push(node);
@@ -450,10 +587,10 @@ export class AudioGraph {
     air.loop = true;
     const airLp = this.ctx.createBiquadFilter();
     airLp.type = "lowpass";
-    airLp.frequency.value = 220;
+    airLp.frequency.value = def.hush.freq;
     airLp.Q.value = 0.7;
     const airG = this.ctx.createGain();
-    airG.gain.value = 0.55;
+    airG.gain.value = def.hush.gain;
     air.connect(airLp).connect(airG).connect(this.theme);
     const airLfo = this.ctx.createOscillator();
     airLfo.frequency.value = 0.06;
@@ -466,6 +603,7 @@ export class AudioGraph {
     this.themeOthers.push(airLp, airG, airDepth);
 
     // the shimmer: a thin high air that wanders, barely there
+    if (!def.shimmer) return;
     const shim = this.ctx.createBufferSource();
     shim.buffer = this.noise;
     shim.loop = true;
@@ -486,39 +624,6 @@ export class AudioGraph {
     hold(shimLfo);
     this.themeOthers.push(shimBp, shimG, shimDepth);
   }
-
-  /**
-   * The lament: A minor descending tetrachord — Am(add9), G, Fmaj7, E —
-   * the oldest "ancient and doomed" progression there is. One chord per
-   * ~9.6 s bar; voicings kept low and close (candle-lit, not orchestral).
-   */
-  private static readonly THEME_CHORDS: readonly { bass: number; pad: readonly number[] }[] = [
-    { bass: 55.0, pad: [110.0, 164.81, 220.0, 246.94, 261.63] }, // Am(add9): A2 E3 A3 B3 C4
-    { bass: 49.0, pad: [98.0, 146.83, 196.0, 246.94, 293.66] }, // G: G2 D3 G3 B3 D4
-    { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 329.63] }, // Fmaj7: F2 C3 F3 A3 E4
-    { bass: 41.2, pad: [82.41, 123.47, 164.81, 207.65, 246.94] }, // E: E2 B2 E3 G#3 B3
-  ];
-
-  /**
-   * The Candlemaid's tune — a two-phrase music-box melody over the
-   * lament, entry per bar: [bar, offset s, Hz, decay s]. Falls with the
-   * bass and lands on the Phrygian E — mournful, unresolved, inviting.
-   */
-  private static readonly THEME_MELODY: readonly [number, number, number, number][] = [
-    [0, 0.5, 659.25, 3.4], // E5 — the call
-    [0, 2.8, 523.25, 3.0], // C5
-    [0, 4.6, 493.88, 2.6], // B4
-    [0, 6.0, 440.0, 4.2], // A4
-    [1, 1.2, 493.88, 3.0], // B4
-    [1, 3.4, 587.33, 3.4], // D5 — the reach
-    [1, 6.2, 493.88, 3.6], // B4
-    [2, 0.8, 523.25, 3.2], // C5
-    [2, 3.2, 440.0, 3.0], // A4
-    [2, 6.4, 659.25, 4.0], // E5 over Fmaj7 — the ache
-    [3, 1.0, 493.88, 3.2], // B4
-    [3, 3.6, 415.3, 3.8], // G#4 — the leading tone
-    [3, 6.4, 329.63, 5.0], // E4 — she does not come back up
-  ];
 
   /**
    * Procedural cathedral: a stereo impulse response synthesized in place
@@ -685,40 +790,41 @@ export class AudioGraph {
   }
 
   /**
-   * The score: one bar per call — bass + five pad voices spread across
-   * the field, the tune when it isn't resting (every third pass it lies
-   * silent and lets the stone speak), a far toll through the reverb on
-   * an off-cycle so three minutes on this screen never feels looped.
+   * The score: one bar per call — bass + pad voices spread across the
+   * field, the tune when it isn't resting (rest passes let the stone
+   * speak), a far toll through the reverb on an off-cycle so minutes of
+   * listening never feel looped. Entirely driven by the active ScoreDef.
    */
   private scheduleThemeScore(delayMs: number): void {
     const id = window.setTimeout(() => {
-      if (!this.themeOn || this.ctx.state !== "running") return;
-      const BAR = 9.6;
+      const def = this.scoreDef;
+      if (!this.themeOn || def === null || this.ctx.state !== "running") return;
+      const BAR = def.barS;
       this.trim = 1; // burst()/tone() scale by the last cue's trim otherwise
-      const bar = this.themeCycle % 4;
-      const pass = Math.floor(this.themeCycle / 4);
-      const c = AudioGraph.THEME_CHORDS[bar]!;
+      const bar = this.themeCycle % def.chords.length;
+      const pass = Math.floor(this.themeCycle / def.chords.length);
+      const c = def.chords[bar]!;
       const t0 = this.ctx.currentTime + 0.05;
       this.themeBass(c.bass, t0, BAR);
       const spread = [-0.55, 0.35, -0.2, 0.5, -0.4];
       c.pad.forEach((f, i) => {
         this.themePadVoice(f, spread[i % spread.length]!, t0, BAR, 0.045);
       });
-      if (pass % 3 !== 2) {
-        for (const [b, at, f, dur] of AudioGraph.THEME_MELODY) {
+      if (pass % def.restEvery !== def.restEvery - 1) {
+        for (const [b, at, f, dur] of def.melody) {
           if (b !== bar) continue;
           this.themeBell(
             f,
             at + (Math.random() - 0.5) * 0.2, // rubato — a hand, not a clock
             0.055 + Math.random() * 0.015,
-            0.12 + Math.random() * 0.24, // the tune lives Gate-side
-            0.8,
+            0.12 + Math.random() * 0.24,
+            def.bellSend,
             dur,
           );
         }
       }
-      if (this.themeCycle % 5 === 2) {
-        this.themeBell(329.63, 2 + Math.random() * 4, 0.016, 0.45, 1.4, 6);
+      if (def.toll !== null && this.themeCycle % def.toll.everyBars === 2) {
+        this.themeBell(def.toll.freq, 2 + Math.random() * 4, 0.016, 0.45, 1.4, 6);
       }
       this.themeCycle++;
       this.scheduleThemeScore(BAR * 1000);

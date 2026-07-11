@@ -834,3 +834,23 @@ candidates; flip them in the named data file, not in code.
     Operator's tank-controls proposal (WASD turn + Up to walk) was
     argued down: doubles inputs, hostile to touch; directional art
     delivers the intent (a body that faces its direction) for free.
+
+93. Lessons of the Wick + the floors sing (operator: "teach one by one,
+    not bombard" + "music like Silksong - loneliness, despair, broken
+    love - different per level"). (a) TUTORIAL: contextual teaching
+    plaques (parchment, bottom-center, hud.lesson/clearLesson), ONE at
+    a time, each dismissed by DOING: move (fires as the match settles,
+    touch-aware copy, 3 steps to dismiss) -> burn meter -> interact
+    (fires beside a door, E dismisses) -> inspect (first visible
+    creature, long-press dismisses) -> bank (waystone seen) -> cup
+    (candle waning). Old monster/waystone toasts upgraded to plaques;
+    per-session via guides set, per-user at M2. (b) MUSIC: the vigil
+    theme generalized to a data-driven ScoreDef engine; SEVEN in-run
+    biome scores at ~0.08 gain (far under sfx/tells): Tallow = the
+    lament thinned; Cellars = D-minor lament, earth-heavy; Drowned = E
+    phrygian half-step sighs; Furnace = F-minor, almost songless;
+    Choir = HER tune returns fullest (broken love); Deep = no chords,
+    single far notes in huge reverb (loneliness); Bottom = Am-F-C-G,
+    the tune climbs home to A5. Crossfade per floor via setScoreBiome;
+    the vigil melts into Tallow at the strike (same tune, thinner);
+    music dies with the candle on DIED. Menu API unchanged.

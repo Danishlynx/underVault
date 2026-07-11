@@ -424,9 +424,10 @@ export class DescentScene extends Phaser.Scene {
   }
 
   private matchStrike(): void {
-    // 04 §4.2 — the audio unlock and the brand moment
+    // 04 §4.2 — the audio unlock and the brand moment. The vigil theme is
+    // NOT stopped here: floor 1's setScoreBiome crossfades it into the
+    // Tallow lament — the same tune, thinner, now underground (D93)
     this.overlayOpen = false;
-    this.audio.stopMenuTheme(); // the vigil fades under the strike
     this.audio.unlock();
     this.audio.play("match-strike");
     this.cameras.main.flash(MOTION.matchStrike, 245, 169, 63); // --flame bloom
@@ -715,6 +716,7 @@ export class DescentScene extends Phaser.Scene {
     this.applyViewport();
     this.makeAtmosphere(bi);
     this.audio.setBiome(bi); // the sound direction changes too (D72)
+    this.audio.setScoreBiome(bi); // and each biome sings its own lament (D93)
   }
 
   // (D83) the darkness-dressing program — ghost prisms, rim masses, deep
@@ -1443,6 +1445,7 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.DIED:
         this.hitStop(140);
+        this.audio.stopMenuTheme(); // the music dies with the candle (D93)
         break;
       case Ev.MONSTER_MELTED:
         this.hud.toast("It melts away into the tallow.", "discovery");
