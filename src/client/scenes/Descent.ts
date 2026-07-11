@@ -873,6 +873,15 @@ export class DescentScene extends Phaser.Scene {
    *  Polling feeds the drain at its own 70 ms cadence instead. */
   private heldDirs: { key: Phaser.Input.Keyboard.Key; d: number; op: number }[] = [];
 
+  /** Facing → body (D92): walking away (N/W) shows the hood's back, walking
+   *  toward (S/E) the candle-lit front; E/W mirror via flip. The iso screen
+   *  mapping — N up-right, E down-right, S down-left, W up-left. */
+  private applyFacing(): void {
+    const away = this.facing === DIRS.N || this.facing === DIRS.W;
+    this.playerView.setTexture(away ? "iso-player-back" : "iso-player");
+    this.playerView.setFlipX(this.facing === DIRS.W || this.facing === DIRS.S);
+  }
+
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (kb !== null) {
@@ -882,8 +891,7 @@ export class DescentScene extends Phaser.Scene {
         // step; sustained walking belongs to the poller alone.
         if (ev?.repeat === true) return;
         this.facing = d;
-        // the body turns the INSTANT the key lands — not a tick later
-        this.playerView?.setFlipX(d === DIRS.W);
+        this.applyFacing(); // the body turns the INSTANT the key lands
         this.enqueue(op);
       };
       kb.on("keydown-W", (ev: KeyboardEvent) => move(DIRS.N, Action.MOVE_N, ev));
@@ -1153,7 +1161,7 @@ export class DescentScene extends Phaser.Scene {
       }
       if (best !== null) {
         this.facing = best.d;
-        this.playerView?.setFlipX(best.d === DIRS.W);
+        this.applyFacing();
         this.enqueue(best.op);
       }
     }
@@ -1772,7 +1780,7 @@ export class DescentScene extends Phaser.Scene {
     // instead of flickering on insertion order (D73)
     this.glide(this.playerView, pc.sx, pc.sy + HALF_H - 2, depthOf(s.px, s.py, Layer.ENTITY) + 0.5, instant);
     this.glide(this.playerShadow, pc.sx, pc.sy + 4, depthOf(s.px, s.py, Layer.CORPSE), instant);
-    this.playerView.setFlipX(this.facing === DIRS.W);
+    this.applyFacing();
     this.playerView.setTint(
       s.candle === Candle.SNUFFED ? MEMORY_TINT : tintForLight(Math.min(light[pi]! + 0.25, 1)),
     );

@@ -819,3 +819,18 @@ candidates; flip them in the named data file, not in code.
     SS4.1 flagged per the conflict rule. M2 note: BEGIN must gain a
     spent-candle state ("dusk brings a new one") when the server
     enforces one-a-day.
+
+92. Movement feel + the delver turns (operator: "clunky... the face
+    does not move in all directions"). (a) Held-key streaming replaces
+    OS key-repeat: tap = exactly one step (repeat-guarded), holding
+    >200 ms streams at drain cadence, latest-pressed key wins for crisp
+    cornering. First cut double-fed the queue (tap walked 2-3 tiles) -
+    fixed same hour with the repeat guard + hold delay. (b) NEW
+    iso-player-back master: walking away (N, flipped W) shows the
+    hood's back with spine seam and the candle flame peeking past the
+    leading shoulder; toward (E, flipped S) shows the candle-lit front.
+    Body turns the instant input lands. Deviates from the decided
+    "billboard w/ E/W flip only" - presentation-only, flagged.
+    Operator's tank-controls proposal (WASD turn + Up to walk) was
+    argued down: doubles inputs, hostile to touch; directional art
+    delivers the intent (a body that faces its direction) for free.

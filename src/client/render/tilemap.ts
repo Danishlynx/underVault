@@ -1829,6 +1829,79 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
     hiEnd(player);
   }
 
+  // ── The delver from BEHIND (D92): walking away (N, flipped for W) the
+  // body actually turns — hood's back, no face, the candle's flame peeking
+  // past the leading shoulder so the light source never vanishes ─────────
+  const playerBack = T.createCanvas("iso-player-back", 36, 56);
+  if (playerBack !== null) {
+    const ctx = hiBegin(playerBack);
+    const cloak = new Path2D();
+    cloak.moveTo(17, 4);
+    cloak.bezierCurveTo(26, 5, 28, 14, 27, 23);
+    cloak.bezierCurveTo(28, 33, 29, 42, 28, 50);
+    cloak.bezierCurveTo(21, 54, 12, 54, 7, 50);
+    cloak.bezierCurveTo(6.5, 40, 7.5, 30, 8, 22);
+    cloak.bezierCurveTo(7, 10, 11, 5, 17, 4);
+    // the flame peek FIRST — behind the shoulder, mostly eaten by the body
+    flameAt(ctx, 31.5, 14.5, 3, C.ember, C.flame, C.flameHi);
+    moldBody(ctx, cloak, 6, 4, 23, 50, shade(C.inkSoft, 1.05), shade(C.inkSoft, 1.6), shade(C.void, 1.3), C.flame, INK);
+    ctx.save();
+    ctx.clip(cloak);
+    // center spine-seam of the cloak, seen from behind
+    ctx.strokeStyle = shade(C.void, 1.3, 0.6);
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(17.5, 9);
+    ctx.quadraticCurveTo(16.5, 30, 17.5, 50);
+    ctx.stroke();
+    // fold shadows, same weather as the front
+    for (const [x0, c1, c2] of [[11, 28, 45], [23, 30, 47]] as const) {
+      ctx.beginPath();
+      ctx.moveTo(x0, c1 - 6);
+      ctx.quadraticCurveTo(x0 - 1.5, c1 + 8, x0 + 0.5, c2);
+      ctx.stroke();
+    }
+    // frayed hem
+    ctx.strokeStyle = shade(C.void, 1.6, 0.7);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(8, 50);
+    for (let hx = 10; hx <= 28; hx += 3) ctx.lineTo(hx, 50 + (hx % 2 === 0 ? 2 : 0.5));
+    ctx.stroke();
+    // warm wrap-light along the leading edge — the candle is out front
+    ctx.strokeStyle = mix(C.inkSoft, C.flame, 0.5, 0.5);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(27.5, 12);
+    ctx.quadraticCurveTo(28.5, 30, 28, 48);
+    ctx.stroke();
+    ctx.restore();
+    // the back of the hood: a solid mound where the face would be
+    const hg = ctx.createRadialGradient(16, 12, 1, 17, 13, 8);
+    hg.addColorStop(0, shade(C.inkSoft, 1.35));
+    hg.addColorStop(1, shade(C.inkSoft, 0.95));
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.ellipse(17.5, 12.5, 6.2, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+    // hood crease + faint flame rim on its leading side
+    ctx.strokeStyle = shade(C.void, 1.2, 0.5);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(17.5, 6.5);
+    ctx.quadraticCurveTo(16.8, 12, 17.5, 18.5);
+    ctx.stroke();
+    ctx.strokeStyle = mix(C.inkSoft, C.flame, 0.45, 0.7);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(17.5, 12.5, 6.6, -0.55, 0.75);
+    ctx.stroke();
+    hiEnd(playerBack);
+  }
+
   // ── Utility sprites ──────────────────────────────────────────────────────
   const dia = T.createCanvas("iso-diamond", TILE_W, TILE_H);
   if (dia !== null) {
