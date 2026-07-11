@@ -798,3 +798,24 @@ candidates; flip them in the named data file, not in code.
     redrawn as a bezier teardrop rooted on the wick (was "two stacked
     orbs"), glass beads clustered where they have context. A stranger
     now calls the circle "a giant vault door" unprompted.
+
+90. The telling gets scored (operator: "music is needed there too"):
+    the vigil theme now plays through the story slides and fades only
+    at the strike; each slide advance whispers a page-turn. Slide-art
+    review pipeline built (snap --slide N + blind review vs caption +
+    per-slide artist repaints); town.ts repainted (2/5 -> 4/5, the Gate
+    now looms under the town). Six repaints pending session-limit reset.
+
+91. The hall screen is CUT from the path (operator: "the story tells a
+    lot anyway... we can start the game directly" - agreed; four
+    screens before gameplay was friction, fatal in a Reddit embed).
+    Flow now: Menu -> Begin -> telling (once/session) -> match-strike ->
+    Floor I. The menu returns after every run - it IS the antechamber.
+    The hall's soul survives: daily vitals as one engraved line + rumor
+    whisper on the menu (MenuVitals), the strike as the Begin
+    transition (audio ceremony intact, invariant 6 letter restored -
+    one gesture = strike), how-to via in-game lessons (D66).
+    guildhall.ts parked unused (like backdrops/). Deviation from 04
+    SS4.1 flagged per the conflict rule. M2 note: BEGIN must gain a
+    spent-candle state ("dusk brings a new one") when the server
+    enforces one-a-day.

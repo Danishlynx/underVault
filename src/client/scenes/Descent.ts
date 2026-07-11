@@ -105,7 +105,6 @@ import {
   openVictorySheet,
   openWaystoneSheet,
 } from "../ui/sheets.js";
-import { openGuildhall } from "../ui/guildhall.js";
 import { openMainMenu } from "../ui/menu.js";
 import { openStoryIntro } from "../ui/story.js";
 import { openCodexSheet } from "../ui/codex.js";
@@ -120,7 +119,6 @@ const AUTOSTART_KEY = "uv-autostart";
 const GUIDES_KEY = "uv-guides"; // once-per-session lessons (memory only, inv. 3)
 const VIEW_KEY = "uv-view"; // D67 camera experiment (memory only, inv. 3)
 const STORY_KEY = "uv-story-told"; // the telling plays once per session (D79)
-const MENU_KEY = "uv-menu-shown"; // the Vigil fronts each session once (D84)
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
   "XXI", "XXII", "XXIII", "XXIV", "XXV"];
@@ -379,69 +377,56 @@ export class DescentScene extends Phaser.Scene {
     const host = this.host();
     if (host === null) return;
     this.overlayOpen = true;
-    // "The Vigil" (D84): the main menu fronts the session — the game's
-    // face before its first word. Begin → the telling (once) → the hall.
-    // After a death the loop returns straight to the hall, never back here.
-    if (this.registry.get(MENU_KEY) !== true) {
-      this.registry.set(MENU_KEY, true);
-      let closeMenu: (() => void) | null = null;
-      closeMenu = openMainMenu(host, this.audio, {
-          onBegin: () => {
-            closeMenu?.();
-            this.tellThenHall(host);
-          },
-          onTelling: (done) => {
-            // watching it from the menu counts as told for this session
-            this.registry.set(STORY_KEY, true);
-            openStoryIntro(host, done, this.audio);
-          },
-          onCodex: () => {
-            openCodexSheet(host, this.ports.getCodex(), () => undefined);
-          },
-        },
-      );
-      return;
-    }
-    this.tellThenHall(host);
-  }
-
-  /** "The Last Wick" (D79): the telling plays once per session, before
-   *  the first dawn at the hall — every mechanic gets its why. */
-  private tellThenHall(host: HTMLElement): void {
-    if (this.registry.get(STORY_KEY) !== true) {
-      this.registry.set(STORY_KEY, true);
-      openStoryIntro(host, () => this.openHallProper(host), this.audio);
-      return;
-    }
-    this.openHallProper(host);
-  }
-
-  private openHallProper(host: HTMLElement): void {
-    // the vigil theme scored the menu and the telling; the hall is hushed
-    this.audio.stopMenuTheme();
-    let closeHall: (() => void) | null = null;
-    closeHall = openGuildhall(
+    // The menu IS the antechamber (D91, operator: "the story tells a lot
+    // anyway... start the game directly"). The hall screen is cut from
+    // the path; its soul survives: daily vitals on the menu, the strike
+    // as the Begin transition, the how-to as in-game lessons (D66).
+    // guildhall.ts is parked unused. The menu returns after every run.
+    const g = this.ports.getGuildhall();
+    let closeMenu: (() => void) | null = null;
+    closeMenu = openMainMenu(
       host,
-      this.ports.getGuildhall(),
-      () => {
-        closeHall?.();
-        this.overlayOpen = false;
-        this.matchStrike();
-      },
-      () => {
-        const h2 = this.host();
-        if (h2 !== null) {
-          // pre-unlock (day one's first visit) this drops silently — correct;
-          // after any match-strike the codex opens with a parchment whisper
+      this.audio,
+      {
+        onBegin: () => {
+          closeMenu?.();
+          this.tellThenStrike(host);
+        },
+        onTelling: (done) => {
+          // watching it from the menu counts as told for this session
+          this.registry.set(STORY_KEY, true);
+          openStoryIntro(host, done, this.audio);
+        },
+        onCodex: () => {
           this.audio.play("sheet");
-          openCodexSheet(h2, this.ports.getCodex(), () => undefined);
-        }
+          openCodexSheet(host, this.ports.getCodex(), () => undefined);
+        },
+      },
+      {
+        day: g.day,
+        gatePct: g.gatePct,
+        codexPct: g.codexPct,
+        fallenToday: g.fallenToday,
+        rumor: g.omenRumor,
       },
     );
   }
 
+  /** "The Last Wick" (D79): the telling plays once per session — then the
+   *  match strikes and the descent begins, no hall between (D91). */
+  private tellThenStrike(host: HTMLElement): void {
+    if (this.registry.get(STORY_KEY) !== true) {
+      this.registry.set(STORY_KEY, true);
+      openStoryIntro(host, () => this.matchStrike(), this.audio);
+      return;
+    }
+    this.matchStrike();
+  }
+
   private matchStrike(): void {
     // 04 §4.2 — the audio unlock and the brand moment
+    this.overlayOpen = false;
+    this.audio.stopMenuTheme(); // the vigil fades under the strike
     this.audio.unlock();
     this.audio.play("match-strike");
     this.cameras.main.flash(MOTION.matchStrike, 245, 169, 63); // --flame bloom

@@ -113,18 +113,9 @@ async function main(): Promise<void> {
   }
 
   if (process.argv.includes("--strike")) {
-    // press-and-hold the Guildhall seal 700ms (hold-to-confirm strike)
-    const seal = await page.$(".uv-hall .uv-seal-btn, .uv-hall button");
-    const box = seal !== null ? await seal.boundingBox() : null;
-    if (box !== null) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.down();
-      await new Promise((r) => setTimeout(r, 700));
-      await page.mouse.up();
-      await new Promise((r) => setTimeout(r, 2200));
-    } else {
-      console.log("[snap] no seal button found to strike");
-    }
+    // Begin IS the strike now (D91) — the menu/story pass-through above
+    // already lit it; wait out the match flash and the first floor paint
+    await new Promise((r) => setTimeout(r, 2600));
   }
 
   for (const k of KEYS) {

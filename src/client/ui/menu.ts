@@ -35,6 +35,16 @@ export interface MenuHandlers {
   onCodex: () => void;
 }
 
+/** The daily pulse — the soul of the retired hall screen (D91): one rumor
+ *  whisper and one engraved line of communal state. */
+export interface MenuVitals {
+  day: number;
+  gatePct: number;
+  codexPct: number;
+  fallenToday: number;
+  rumor: string;
+}
+
 // Private LCG (same law as the hall: never touch paint.ts crand()).
 function menuRand(seed: number): () => number {
   let s = seed >>> 0 || 0x51ab;
@@ -141,6 +151,20 @@ function injectStyles(): void {
 .uv-menu-items {
   margin-top: clamp(18px, 5vh, 44px);
   display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.uv-menu-rumor {
+  margin-top: clamp(14px, 3.5vh, 30px);
+  font-family: var(--font-display); font-style: italic;
+  font-size: var(--size-body-sm);
+  color: var(--bone); opacity: 0.85;
+  text-shadow: 0 1px 8px var(--void);
+}
+.uv-menu-vitals {
+  margin-top: 6px;
+  font-family: var(--font-body); font-size: 11px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--bone-dim);
+  text-shadow: 0 1px 6px var(--void);
 }
 .uv-menu-item {
   position: relative;
@@ -268,6 +292,7 @@ export function openMainMenu(
   host: HTMLElement,
   audio: MenuAudio,
   handlers: MenuHandlers,
+  vitals?: MenuVitals,
 ): () => void {
   ensureUvStyles();
   injectStyles();
@@ -321,6 +346,20 @@ export function openMainMenu(
   const codexBtn = mkItem("The Codex", false);
   const soundBtn = mkItem(`Sound — ${audio.muted ? "off" : "on"}`, false);
   col.appendChild(items);
+
+  // the daily pulse (D91) — two quiet lines, all that remains of the hall
+  let rumorEl: HTMLElement | null = null;
+  let vitalsEl: HTMLElement | null = null;
+  if (vitals !== undefined) {
+    rumorEl = el("div", "uv-menu-rumor uv-menu-stage", vitals.rumor);
+    vitalsEl = el(
+      "div",
+      "uv-menu-vitals uv-menu-stage",
+      `Day ${vitals.day} · the Gate strains ${vitals.gatePct}% · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`,
+    );
+    col.appendChild(rumorEl);
+    col.appendChild(vitalsEl);
+  }
   root.appendChild(col);
 
   // ── embers rise near the candle (positions set once geometry is known) ──
@@ -496,6 +535,8 @@ export function openMainMenu(
     [tagline, 950],
   ];
   list.forEach((b, bi) => staged.push([b, 1100 + bi * 90]));
+  if (rumorEl !== null) staged.push([rumorEl, 1520]);
+  if (vitalsEl !== null) staged.push([vitalsEl, 1580]);
   const reduced = REDUCED();
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
