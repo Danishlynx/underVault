@@ -1,23 +1,23 @@
-/**
- * The Undervault — fully synthesized WebAudio layer.
+﻿/**
+ * The Undervault â€” fully synthesized WebAudio layer.
  *
  * Invariant 4: zero external assets. Every sound here is built at runtime
  * from oscillators, procedurally filled noise buffers, biquad filters and
  * gain envelopes. Nothing is fetched, nothing is decoded.
  *
  * Invariant 6: the AudioContext is created suspended and `unlock()` must be
- * called ONLY from inside the match-strike gesture (04 §4: "audio context
+ * called ONLY from inside the match-strike gesture (04 Â§4: "audio context
  * resumes here"). `visibilitychange` hard-mutes while hidden and restores the
- * user's prior mute state on return. Nothing is persisted here — the mute
+ * user's prior mute state on return. Nothing is persisted here â€” the mute
  * preference lives in the `user:{uid}` hash server-side (invariant 3).
  *
- * Aesthetic (04 §5/§7): hushed manuscript-horror. Quiet, dry, woody, airy —
- * never chiptune-cheerful, never louder than a murmur. All peak gains ≤ 0.25
+ * Aesthetic (04 Â§5/Â§7): hushed manuscript-horror. Quiet, dry, woody, airy â€”
+ * never chiptune-cheerful, never louder than a murmur. All peak gains â‰¤ 0.25
  * and a gentle limiter sits before the destination as a safety net when cues
  * overlap.
  *
  * Note on Math.random: the determinism wall (invariant 1) applies to
- * `src/shared/sim` — this is pure client fx and never influences validated
+ * `src/shared/sim` â€” this is pure client fx and never influences validated
  * state, so free-running randomness is used for organic timbral variation.
  */
 
@@ -98,7 +98,7 @@ interface ToneOpts {
   attack?: number;
   /** Total envelope length in seconds (attack + decay). */
   dur: number;
-  /** Peak linear gain — keep ≤ 0.25 (project loudness ceiling). */
+  /** Peak linear gain â€” keep â‰¤ 0.25 (project loudness ceiling). */
   peak: number;
   detune?: number;
   filter?: FilterOpts;
@@ -110,7 +110,7 @@ interface BurstOpts {
   dur: number;
   peak: number;
   attack?: number;
-  /** playbackRate — recolors the noise (slower = darker). */
+  /** playbackRate â€” recolors the noise (slower = darker). */
   rate?: number;
   filter: FilterOpts;
 }
@@ -123,13 +123,13 @@ interface FilterOpts {
   q?: number;
 }
 
-const SILENT = 0.0001; // exponentialRamp cannot reach 0; this is ≈ -80 dB
+const SILENT = 0.0001; // exponentialRamp cannot reach 0; this is â‰ˆ -80 dB
 
 /**
- * A score (D93): one generative piece — chords over a lament bass, a
+ * A score (D93): one generative piece â€” chords over a lament bass, a
  * music-box melody with rest passes, a rare toll, room hush. The menu's
  * vigil and every biome's in-run music are all instances of this shape;
- * the emotional brief (operator): loneliness, despair, broken love —
+ * the emotional brief (operator): loneliness, despair, broken love â€”
  * Silksong-sad, never heavy. In-run gains sit far below the sfx/tells.
  */
 interface ScoreDef {
@@ -147,7 +147,7 @@ interface ScoreDef {
   bellSend: number;
 }
 
-// ── The vigil (menu) — A-minor lament, operator-tuned to 0.20 ─────────────
+// â”€â”€ The vigil (menu) â€” A-minor lament, operator-tuned to 0.20 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LAMENT_CHORDS: ScoreDef["chords"] = [
   { bass: 55.0, pad: [110.0, 164.81, 220.0, 246.94, 261.63] }, // Am(add9)
   { bass: 49.0, pad: [98.0, 146.83, 196.0, 246.94, 293.66] }, // G
@@ -165,14 +165,14 @@ const VIGIL: ScoreDef = {
   toll: { freq: 329.63, everyBars: 5 }, hush: { freq: 220, gain: 0.55 }, shimmer: true, crackle: true, bellSend: 0.8,
 };
 
-// ── The floors (D93): one sadness per biome, quiet under the game ─────────
+// â”€â”€ The floors (D93): one sadness per biome, quiet under the game â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const BIOME_SCORES: readonly ScoreDef[] = [
-  { // Tallow Halls — the vigil's own lament, thinned: alone with a candle
-    gain: 0.085, barS: 10.4, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 2,
+  { // Tallow Halls â€” the vigil's own lament, thinned: alone with a candle
+    gain: 0.102, barS: 10.4, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 2,
     toll: { freq: 329.63, everyBars: 6 }, hush: { freq: 200, gain: 0.5 }, shimmer: false, crackle: false, bellSend: 0.8,
   },
-  { // Root Cellars — D-minor lament, earth-heavy, the town far above
-    gain: 0.08, barS: 11.2,
+  { // Root Cellars â€” D-minor lament, earth-heavy, the town far above
+    gain: 0.096, barS: 11.2,
     chords: [
       { bass: 36.71, pad: [73.42, 110.0, 146.83, 164.81, 174.61] }, // Dm(add9)
       { bass: 32.7, pad: [65.41, 98.0, 130.81, 146.83, 196.0] }, // C(add9)
@@ -185,11 +185,11 @@ const BIOME_SCORES: readonly ScoreDef[] = [
     ],
     restEvery: 2, toll: { freq: 293.66, everyBars: 7 }, hush: { freq: 170, gain: 0.5 }, shimmer: false, crackle: false, bellSend: 0.9,
   },
-  { // Drowned Stacks — E phrygian, the half-step sigh of despair
-    gain: 0.08, barS: 11.2,
+  { // Drowned Stacks â€” E phrygian, the half-step sigh of despair
+    gain: 0.096, barS: 11.2,
     chords: [
       { bass: 41.2, pad: [82.41, 123.47, 164.81, 196.0, 246.94] }, // Em
-      { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 329.63] }, // Fmaj7 — the b2
+      { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 329.63] }, // Fmaj7 â€” the b2
       { bass: 36.71, pad: [73.42, 110.0, 146.83, 220.0, 293.66] }, // Dm
       { bass: 41.2, pad: [82.41, 123.47, 164.81, 196.0, 246.94] }, // Em
     ],
@@ -199,8 +199,8 @@ const BIOME_SCORES: readonly ScoreDef[] = [
     ],
     restEvery: 2, toll: { freq: 329.63, everyBars: 6 }, hush: { freq: 260, gain: 0.55 }, shimmer: false, crackle: false, bellSend: 1.0,
   },
-  { // Glassblack Furnaces — F minor, almost no song left, heat and dread
-    gain: 0.075, barS: 12.0,
+  { // Glassblack Furnaces â€” F minor, almost no song left, heat and dread
+    gain: 0.09, barS: 12.0,
     chords: [
       { bass: 43.65, pad: [87.31, 130.81, 174.61, 207.65, 261.63] }, // Fm
       { bass: 34.65, pad: [69.3, 103.83, 138.59, 174.61, 207.65] }, // Db
@@ -210,20 +210,20 @@ const BIOME_SCORES: readonly ScoreDef[] = [
     melody: [[1, 3.0, 415.3, 4.5], [3, 4.0, 349.23, 5.0]],
     restEvery: 3, toll: { freq: 174.61, everyBars: 8 }, hush: { freq: 120, gain: 0.55 }, shimmer: false, crackle: false, bellSend: 0.7,
   },
-  { // Hollow Choir — broken love: HER tune returns, fullest of the floors
-    gain: 0.09, barS: 9.6, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 4,
+  { // Hollow Choir â€” broken love: HER tune returns, fullest of the floors
+    gain: 0.108, barS: 9.6, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 4,
     toll: { freq: 440.0, everyBars: 5 }, hush: { freq: 300, gain: 0.4 }, shimmer: true, crackle: false, bellSend: 1.1,
   },
-  { // Wickless Deep — loneliness itself: no chords, single far notes
-    gain: 0.075, barS: 12.8,
+  { // Wickless Deep â€” loneliness itself: no chords, single far notes
+    gain: 0.09, barS: 12.8,
     chords: [
       { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] }, { bass: 55.0, pad: [] },
     ],
     melody: [[0, 3.0, 880.0, 6.0], [1, 7.0, 659.25, 6.0], [2, 5.0, 440.0, 7.0], [3, 8.0, 493.88, 6.0]],
     restEvery: 2, toll: null, hush: { freq: 150, gain: 0.4 }, shimmer: false, crackle: false, bellSend: 1.3,
   },
-  { // The Bottom — the lament turns: Am F C G, the tune climbs home to her
-    gain: 0.09, barS: 9.6,
+  { // The Bottom â€” the lament turns: Am F C G, the tune climbs home to her
+    gain: 0.108, barS: 9.6,
     chords: [
       { bass: 55.0, pad: [110.0, 164.81, 220.0, 246.94, 261.63] }, // Am(add9)
       { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 261.63] }, // F
@@ -260,7 +260,7 @@ export class AudioGraph {
 
   private userMuted = false;
   private hidden: boolean;
-  /** In-flight ctx.resume() from unlock() — see play()'s race note. */
+  /** In-flight ctx.resume() from unlock() â€” see play()'s race note. */
   private resumed: Promise<void> | null = null;
   /** Per-call peak scalar (playNow's `quiet` reuse) read by tone()/burst(). */
   private trim = 1;
@@ -274,7 +274,7 @@ export class AudioGraph {
       void this.ctx.suspend();
     }
 
-    // master → limiter → destination. The limiter is a safety net only;
+    // master â†’ limiter â†’ destination. The limiter is a safety net only;
     // individual voices stay quiet enough that it rarely engages.
     this.master = this.ctx.createGain();
     const limiter = this.ctx.createDynamicsCompressor();
@@ -323,7 +323,7 @@ export class AudioGraph {
   unlock(): void {
     this.resumed = this.ctx.resume();
     this.resumed.catch(() => {
-      // blocked or interrupted — the context stays locked, cues stay dropped
+      // blocked or interrupted â€” the context stays locked, cues stay dropped
     });
   }
 
@@ -350,7 +350,7 @@ export class AudioGraph {
 
   /**
    * The sound direction changes per biome (D72): each biome gets its own
-   * synthesized room tone — warm hush in the Tallow Halls, earth-weight in
+   * synthesized room tone â€” warm hush in the Tallow Halls, earth-weight in
    * the Cellars, submerged wash in the Drowned Stacks, furnace roar below,
    * a hollow organ hum in the Choir, a thin subsonic ring in the Deep, a
    * gold two-tone at the Bottom. Crossfades over ~2s on descent. Quiet by
@@ -378,7 +378,7 @@ export class AudioGraph {
       for (const n of oldOther) n.disconnect();
     }, 2600);
 
-    // voice builders — everything routes into this.bed
+    // voice builders â€” everything routes into this.bed
     const looped = (): AudioBufferSourceNode => {
       const src = this.ctx.createBufferSource();
       src.buffer = this.noise;
@@ -450,7 +450,7 @@ export class AudioGraph {
       case 4: {
         // the Hollow Choir: two pipes still sounding, wind over stone
         drone("sine", 110, 0.5);
-        drone("sine", 165.2, 0.3); // a fifth, slightly wide — hollow beat
+        drone("sine", 165.2, 0.3); // a fifth, slightly wide â€” hollow beat
         noiseVoice("highpass", 900, 0.7, 0.12);
         level = 0.045;
         break;
@@ -482,16 +482,16 @@ export class AudioGraph {
 
   /**
    * The title-menu theme (D84, recomposed on operator verdict "one mono
-   * bell") — "the vigil". A real composed piece, still 100% synthesized:
-   * a descending LAMENT BASS in A minor (A–G–F–E, one chord per ~9.6 s
+   * bell") â€” "the vigil". A real composed piece, still 100% synthesized:
+   * a descending LAMENT BASS in A minor (Aâ€“Gâ€“Fâ€“E, one chord per ~9.6 s
    * bar, add9/maj7 voicings, ten detuned pad oscillators spread across
    * the stereo field), the Candlemaid's music-box tune above it (in-key,
    * resting every third pass so the loop breathes), a rare far toll, the
-   * candle-room hush, wax crackle — all sent through a procedurally
+   * candle-room hush, wax crackle â€” all sent through a procedurally
    * generated stereo convolution reverb (no samples: the impulse response
    * is synthesized noise with exponential decay and progressive damping).
    * Startable only after a user gesture on the menu (operator-directed
-   * extension of invariant 6 — the match-strike remains the in-run
+   * extension of invariant 6 â€” the match-strike remains the in-run
    * ceremony); the menu keeps a mute control visible, and it obeys the
    * same master/visibility mutes.
    */
@@ -505,7 +505,7 @@ export class AudioGraph {
     this.switchScore(BIOME_SCORES[Math.max(0, Math.min(BIOME_SCORES.length - 1, bi))]!);
   }
 
-  /** Change pieces: same piece → keep playing; else fade out, start anew. */
+  /** Change pieces: same piece â†’ keep playing; else fade out, start anew. */
   private switchScore(def: ScoreDef): void {
     if (this.themeOn && this.scoreDef === def) return;
     if (this.themeOn) {
@@ -542,7 +542,7 @@ export class AudioGraph {
       });
       return;
     }
-    // no unlock has happened — the menu must gesture-unlock first
+    // no unlock has happened â€” the menu must gesture-unlock first
     this.themeOn = false;
   }
 
@@ -575,7 +575,7 @@ export class AudioGraph {
     }, 2200);
   }
 
-  /** The score's sustaining voices — everything routes into this.theme. */
+  /** The score's sustaining voices â€” everything routes into this.theme. */
   private buildThemeVoices(def: ScoreDef): void {
     const hold = (node: AudioScheduledSourceNode): void => {
       node.start();
@@ -627,7 +627,7 @@ export class AudioGraph {
 
   /**
    * Procedural cathedral: a stereo impulse response synthesized in place
-   * (decorrelated noise, exponential decay, highs damped progressively —
+   * (decorrelated noise, exponential decay, highs damped progressively â€”
    * the deeper into the tail, the more stone it has passed through).
    * Zero samples fetched; invariant 4 holds.
    */
@@ -653,8 +653,8 @@ export class AudioGraph {
         // one-pole lowpass whose cutoff falls along the tail
         const k = 0.55 * (1 - t / seconds) + 0.06;
         lp += (Math.random() * 2 - 1 - lp) * k;
-        // exact −60 dB at the last sample (research spec) — the old
-        // exp(−t/τ) form truncated at −25 dB, an audible cliff
+        // exact âˆ’60 dB at the last sample (research spec) â€” the old
+        // exp(âˆ’t/Ï„) form truncated at âˆ’25 dB, an audible cliff
         const env = Math.pow(10, (-3 * i) / len);
         // 40 ms squared fade-in stands in for pre-delay
         const pre = t < 0.04 ? (t / 0.04) * (t / 0.04) : 1;
@@ -711,7 +711,7 @@ export class AudioGraph {
     };
   }
 
-  /** The lament bass — dry, centered, felt in the floor. */
+  /** The lament bass â€” dry, centered, felt in the floor. */
   private themeBass(freq: number, t0: number, holdS: number): void {
     const osc = this.ctx.createOscillator();
     osc.type = "sine";
@@ -742,10 +742,10 @@ export class AudioGraph {
     const send = this.ctx.createGain();
     send.gain.value = sendLvl;
     if (this.themeConv !== null) panner.connect(send).connect(this.themeConv);
-    const drift = (Math.random() - 0.5) * 6; // ±3 cents — a hand-wound box
+    const drift = (Math.random() - 0.5) * 6; // Â±3 cents â€” a hand-wound box
     const parts: [number, number, number, number][] = [
       [1, 1, dur, drift], // fundamental
-      [1, 0.5, dur * 0.9, drift + 3.5], // detuned double — the shimmer
+      [1, 0.5, dur * 0.9, drift + 3.5], // detuned double â€” the shimmer
       [3.01, 0.2, dur * 0.5, drift], // music-box clink
       [5.4, 0.05, dur * 0.28, drift], // glassy edge
     ];
@@ -756,7 +756,7 @@ export class AudioGraph {
       peak: peak * 0.2,
       filter: { type: "bandpass", freq: 5000, q: 1 },
     });
-    // the fundamental (parts[0]) rings longest — it owns the bus teardown
+    // the fundamental (parts[0]) rings longest â€” it owns the bus teardown
     let longest: OscillatorNode | null = null;
     for (const [ratio, amp, dec, cents] of parts) {
       const osc = this.ctx.createOscillator();
@@ -790,7 +790,7 @@ export class AudioGraph {
   }
 
   /**
-   * The score: one bar per call — bass + pad voices spread across the
+   * The score: one bar per call â€” bass + pad voices spread across the
    * field, the tune when it isn't resting (rest passes let the stone
    * speak), a far toll through the reverb on an off-cycle so minutes of
    * listening never feel looped. Entirely driven by the active ScoreDef.
@@ -815,7 +815,7 @@ export class AudioGraph {
           if (b !== bar) continue;
           this.themeBell(
             f,
-            at + (Math.random() - 0.5) * 0.2, // rubato — a hand, not a clock
+            at + (Math.random() - 0.5) * 0.2, // rubato â€” a hand, not a clock
             0.055 + Math.random() * 0.015,
             0.12 + Math.random() * 0.24,
             def.bellSend,
@@ -832,7 +832,7 @@ export class AudioGraph {
     this.themeTimers.push(id);
   }
 
-  /** Sparse wax crackle — the candle on the menu is alive. */
+  /** Sparse wax crackle â€” the candle on the menu is alive. */
   private scheduleThemeCrackle(delay: number): void {
     const id = window.setTimeout(() => {
       if (!this.themeOn || this.ctx.state !== "running") return;
@@ -863,12 +863,12 @@ export class AudioGraph {
   }
 
   /**
-   * `quiet` replays a cue at reduced level (distant/soft variants — tells,
+   * `quiet` replays a cue at reduced level (distant/soft variants â€” tells,
    * off-screen thuds) without duplicating synth code: tone()/burst() scale
    * their peaks by `this.trim` for the duration of the synchronous switch.
    *
    * Race note: unlock() and the first cue arrive inside the SAME gesture
-   * (match-strike), but ctx.resume() is async — the state is still
+   * (match-strike), but ctx.resume() is async â€” the state is still
    * "suspended" when play("match-strike") lands, and the signature cue used
    * to drop. If a resume is in flight we replay the cue once it settles.
    * Before any unlock() `resumed` is null, so nothing can sound early
@@ -886,20 +886,20 @@ export class AudioGraph {
           if (this.ctx.state === "running") this.playNow(cue, quiet);
         },
         () => {
-          /* resume failed — stay silent */
+          /* resume failed â€” stay silent */
         },
       );
     }
-    // no resume in flight: locked or interrupted — drop silently
+    // no resume in flight: locked or interrupted â€” drop silently
   }
 
   private playNow(cue: Cue, quiet: boolean): void {
     this.trim = quiet ? 0.35 : 1;
 
     switch (cue) {
-      // ── movement ────────────────────────────────────────────────────────
+      // â”€â”€ movement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "step-stone": {
-        // dry tick — a boot heel on flagstone
+        // dry tick â€” a boot heel on flagstone
         this.burst({
           dur: 0.055,
           peak: 0.07,
@@ -909,7 +909,7 @@ export class AudioGraph {
         return;
       }
       case "step-moss": {
-        // damp press — low, breathy
+        // damp press â€” low, breathy
         this.burst({
           dur: 0.09,
           peak: 0.05,
@@ -931,13 +931,13 @@ export class AudioGraph {
         return;
       }
       case "bump": {
-        // dull thud against a wall — pitch drop plus a knuckle of noise
+        // dull thud against a wall â€” pitch drop plus a knuckle of noise
         this.tone({ type: "sine", freq: 95, freqEnd: 55, dur: 0.12, peak: 0.12, attack: 0.003 });
         this.burst({ dur: 0.03, peak: 0.04, filter: { type: "bandpass", freq: 700, q: 1 } });
         return;
       }
 
-      // ── doors & interaction ─────────────────────────────────────────────
+      // â”€â”€ doors & interaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "door": {
         // hinge groan: resonant lowpassed saw creeping upward + wood grain noise
         this.tone({
@@ -979,7 +979,7 @@ export class AudioGraph {
         return;
       }
       case "pickup": {
-        // muted dyad — parchment-quiet acknowledgement, not a coin fanfare
+        // muted dyad â€” parchment-quiet acknowledgement, not a coin fanfare
         this.tone({
           type: "triangle",
           freq: 660,
@@ -1000,7 +1000,7 @@ export class AudioGraph {
         return;
       }
 
-      // ── violence ────────────────────────────────────────────────────────
+      // â”€â”€ violence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "bite": {
         // snap: bright noise click into a hard down-chirp
         this.burst({ dur: 0.04, peak: 0.11, filter: { type: "bandpass", freq: 2400, q: 1.4 } });
@@ -1033,7 +1033,7 @@ export class AudioGraph {
         return;
       }
 
-      // ── the candle ──────────────────────────────────────────────────────
+      // â”€â”€ the candle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "snuff": {
         // breath of air closing over the wick, faint dying sizzle
         this.burst({
@@ -1062,7 +1062,7 @@ export class AudioGraph {
         return;
       }
       case "cup": {
-        // palm closing around the flame — the world muffles for an instant
+        // palm closing around the flame â€” the world muffles for an instant
         this.burst({
           dur: 0.16,
           peak: 0.05,
@@ -1073,9 +1073,9 @@ export class AudioGraph {
         return;
       }
 
-      // ── verdigris moments ───────────────────────────────────────────────
+      // â”€â”€ verdigris moments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "discovery": {
-        // small pentatonic chime, rising — knowledge inked
+        // small pentatonic chime, rising â€” knowledge inked
         for (const [i, f] of [523.25, 587.33, 659.25, 783.99].entries()) {
           this.tone({
             type: "triangle",
@@ -1106,10 +1106,10 @@ export class AudioGraph {
         return;
       }
 
-      // ── ceremony ────────────────────────────────────────────────────────
+      // â”€â”€ ceremony â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "death": {
         // ~1.5 s descending drone: two detuned saws under a closing lowpass,
-        // sub sine sinking beneath — the candle gutters out
+        // sub sine sinking beneath â€” the candle gutters out
         this.tone({
           type: "sawtooth",
           freq: 108,
@@ -1146,8 +1146,8 @@ export class AudioGraph {
         return;
       }
       case "match-strike": {
-        // ~1.2 s: two dry scrapes → ignition pop → warm bloom with settling
-        // crackles. This underscores the audio-unlock brand moment (04 §4.1).
+        // ~1.2 s: two dry scrapes â†’ ignition pop â†’ warm bloom with settling
+        // crackles. This underscores the audio-unlock brand moment (04 Â§4.1).
         this.burst({
           dur: 0.16,
           peak: 0.1,
@@ -1180,7 +1180,7 @@ export class AudioGraph {
         return;
       }
 
-      // ── hazards & tells ─────────────────────────────────────────────────
+      // â”€â”€ hazards & tells â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "fire": {
         // low whoosh bed with sparse bright crackles
         this.burst({ dur: 0.45, peak: 0.06, attack: 0.06, filter: { type: "lowpass", freq: 520 } });
@@ -1206,7 +1206,7 @@ export class AudioGraph {
         return;
       }
       case "squeak": {
-        // paired rising chirps — something small in the dark
+        // paired rising chirps â€” something small in the dark
         this.tone({ type: "sine", freq: 2300, freqEnd: 3300, glide: 0.05, dur: 0.07, peak: 0.06, attack: 0.004 });
         this.tone({
           type: "sine",
@@ -1240,7 +1240,7 @@ export class AudioGraph {
         return;
       }
       case "click3": {
-        // three woodblock knocks — the Chandler tell. Fast-decay sine body
+        // three woodblock knocks â€” the Chandler tell. Fast-decay sine body
         // plus a splinter of noise; middle knock sits lower, third rises.
         for (const [i, f] of [1150, 1050, 1250].entries()) {
           const at = i * 0.13;
@@ -1255,7 +1255,7 @@ export class AudioGraph {
         return;
       }
       case "scream": {
-        // descending sawtooth wail, doubled slightly off-pitch — kept at a
+        // descending sawtooth wail, doubled slightly off-pitch â€” kept at a
         // murmur; the horror is in the shape, not the volume
         this.tone({
           type: "sawtooth",
@@ -1304,7 +1304,7 @@ export class AudioGraph {
         return;
       }
       case "growl": {
-        // low wobbling saw — needs its own frequency LFO, built inline
+        // low wobbling saw â€” needs its own frequency LFO, built inline
         const t0 = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         osc.type = "sawtooth";
@@ -1339,10 +1339,10 @@ export class AudioGraph {
         return;
       }
 
-      // ── resolves & ceremonies ───────────────────────────────────────────
+      // â”€â”€ resolves & ceremonies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "victory": {
         // the Bottom, reached: three ascending sines with slow attacks under
-        // a late soft shimmer — golden, restrained, never a fanfare
+        // a late soft shimmer â€” golden, restrained, never a fanfare
         for (const [i, f] of [220, 330, 440].entries()) {
           this.tone({ type: "sine", freq: f, at: i * 0.28, attack: 0.16, dur: 1.15, peak: 0.07 });
         }
@@ -1357,9 +1357,9 @@ export class AudioGraph {
         return;
       }
 
-      // ── shrines & stones ────────────────────────────────────────────────
+      // â”€â”€ shrines & stones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "waystone": {
-        // verdigris shimmer — the stone wakes to take your truths
+        // verdigris shimmer â€” the stone wakes to take your truths
         this.tone({ type: "triangle", freq: 740, dur: 0.5, peak: 0.045, attack: 0.03 });
         this.tone({ type: "triangle", freq: 1108, at: 0.08, dur: 0.55, peak: 0.035, attack: 0.05, detune: 6 });
         this.burst({
@@ -1384,13 +1384,13 @@ export class AudioGraph {
         return;
       }
       case "chime": {
-        // bright glassy ping, slow decay — the Font acknowledges
+        // bright glassy ping, slow decay â€” the Font acknowledges
         this.tone({ type: "sine", freq: 1568, dur: 0.9, peak: 0.05, attack: 0.004 });
         this.tone({ type: "sine", freq: 2349, dur: 0.6, peak: 0.02, attack: 0.004 });
         return;
       }
       case "pool": {
-        // watery shimmer — the surface remembers someone
+        // watery shimmer â€” the surface remembers someone
         this.burst({
           dur: 0.55,
           peak: 0.035,
@@ -1402,25 +1402,25 @@ export class AudioGraph {
         return;
       }
       case "shard": {
-        // stone hum — the waystone answers from afar
+        // stone hum â€” the waystone answers from afar
         this.tone({ type: "triangle", freq: 220, dur: 0.6, peak: 0.05, attack: 0.08, detune: 4 });
         this.tone({ type: "sine", freq: 440, at: 0.1, dur: 0.5, peak: 0.03, attack: 0.1 });
         return;
       }
       case "ritual": {
-        // low pulse — the sigil drinks the offered dark
+        // low pulse â€” the sigil drinks the offered dark
         this.tone({ type: "sine", freq: 70, freqEnd: 55, dur: 0.4, peak: 0.09, attack: 0.05 });
         this.tone({ type: "triangle", freq: 140, at: 0.02, dur: 0.3, peak: 0.03, attack: 0.06 });
         return;
       }
       case "plate": {
-        // stone click — something under the floor takes note
+        // stone click â€” something under the floor takes note
         this.tone({ type: "sine", freq: 210, freqEnd: 160, dur: 0.08, peak: 0.08, attack: 0.002 });
         this.burst({ dur: 0.025, peak: 0.045, filter: { type: "bandpass", freq: 1500, q: 1.4 } });
         return;
       }
 
-      // ── creatures & consequences ────────────────────────────────────────
+      // â”€â”€ creatures & consequences â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "monster-die": {
         // soft thud plus a last exhale (quiet variant = melting into tallow)
         this.tone({ type: "sine", freq: 120, freqEnd: 60, dur: 0.16, peak: 0.09, attack: 0.003 });
@@ -1435,7 +1435,7 @@ export class AudioGraph {
         return;
       }
       case "split": {
-        // wet squelch — one body becomes two
+        // wet squelch â€” one body becomes two
         this.burst({
           dur: 0.14,
           peak: 0.08,
@@ -1453,7 +1453,7 @@ export class AudioGraph {
         return;
       }
       case "ignite": {
-        // whoomp — the air catches all at once
+        // whoomp â€” the air catches all at once
         this.burst({
           dur: 0.3,
           peak: 0.11,
@@ -1465,7 +1465,7 @@ export class AudioGraph {
         return;
       }
       case "stolen": {
-        // sharp descending sting — it's gone
+        // sharp descending sting â€” it's gone
         this.tone({
           type: "square",
           freq: 880,
@@ -1480,7 +1480,7 @@ export class AudioGraph {
         return;
       }
       case "locked": {
-        // iron rattle — the door refuses
+        // iron rattle â€” the door refuses
         for (const [i, f] of [640, 590, 655].entries()) {
           this.tone({
             type: "square",
@@ -1496,15 +1496,15 @@ export class AudioGraph {
         return;
       }
       case "thump": {
-        // dull hands-full thump — the lid drops back on its hoard
+        // dull hands-full thump â€” the lid drops back on its hoard
         this.tone({ type: "sine", freq: 140, freqEnd: 85, dur: 0.12, peak: 0.08, attack: 0.003 });
         this.burst({ dur: 0.05, peak: 0.03, rate: 0.7, filter: { type: "lowpass", freq: 600 } });
         return;
       }
 
-      // ── tools ───────────────────────────────────────────────────────────
+      // â”€â”€ tools â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "salt": {
-        // granular scatter — a handful of grains across stone
+        // granular scatter â€” a handful of grains across stone
         for (let i = 0; i < 5; i++) {
           this.burst({
             at: i * 0.022 + Math.random() * 0.012,
@@ -1535,28 +1535,28 @@ export class AudioGraph {
         return;
       }
       case "sign": {
-        // two wooden knocks — the plank goes in
+        // two wooden knocks â€” the plank goes in
         this.tone({ type: "sine", freq: 320, freqEnd: 240, dur: 0.07, peak: 0.09, attack: 0.002 });
         this.burst({ dur: 0.03, peak: 0.04, filter: { type: "bandpass", freq: 1100, q: 1 } });
         this.tone({ type: "sine", freq: 290, freqEnd: 220, at: 0.12, dur: 0.06, peak: 0.055, attack: 0.002 });
         return;
       }
       case "mirror": {
-        // glassy upward sweep — the shard drinks the light
+        // glassy upward sweep â€” the shard drinks the light
         this.tone({ type: "sine", freq: 1200, freqEnd: 2400, glide: 0.3, dur: 0.35, peak: 0.04, attack: 0.03 });
         this.burst({ dur: 0.3, peak: 0.02, attack: 0.06, filter: { type: "highpass", freq: 4800 } });
         return;
       }
       case "vial": {
-        // liquid plink-plink — glowmoss decanted
+        // liquid plink-plink â€” glowmoss decanted
         this.tone({ type: "sine", freq: 900, freqEnd: 1350, glide: 0.06, dur: 0.12, peak: 0.055, attack: 0.003 });
         this.tone({ type: "sine", freq: 1180, freqEnd: 1600, glide: 0.05, at: 0.09, dur: 0.1, peak: 0.035, attack: 0.003 });
         return;
       }
 
-      // ── interface murmurs ───────────────────────────────────────────────
+      // â”€â”€ interface murmurs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "sheet": {
-        // soft parchment whisper — a page turns
+        // soft parchment whisper â€” a page turns
         this.burst({
           dur: 0.18,
           peak: 0.035,
@@ -1567,7 +1567,7 @@ export class AudioGraph {
         return;
       }
       case "reject": {
-        // tiny dull no — nothing happened
+        // tiny dull no â€” nothing happened
         this.tone({
           type: "sine",
           freq: 220,
@@ -1580,12 +1580,12 @@ export class AudioGraph {
         return;
       }
       case "inspect": {
-        // faint tick — attention narrows on a tile
+        // faint tick â€” attention narrows on a tile
         this.burst({ dur: 0.02, peak: 0.03, filter: { type: "bandpass", freq: 2100, q: 2 } });
         return;
       }
       case "guttering": {
-        // the flame shrinks a tier — waxy sputter, felt more than heard
+        // the flame shrinks a tier â€” waxy sputter, felt more than heard
         this.burst({
           dur: 0.12,
           peak: 0.03,
@@ -1597,7 +1597,7 @@ export class AudioGraph {
         return;
       }
 
-      // ── distant tells (01 §8 — very quiet by design) ────────────────────
+      // â”€â”€ distant tells (01 Â§8 â€” very quiet by design) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       case "squelch-soft": {
         // something gelatinous shifts its weight nearby
         this.burst({
@@ -1610,7 +1610,7 @@ export class AudioGraph {
         return;
       }
       case "drip": {
-        // a low watery breath — something waterlogged inhales
+        // a low watery breath â€” something waterlogged inhales
         this.tone({ type: "sine", freq: 520, freqEnd: 300, dur: 0.09, peak: 0.035, attack: 0.003 });
         this.burst({
           at: 0.06,
@@ -1623,13 +1623,13 @@ export class AudioGraph {
         return;
       }
       case "bell-far": {
-        // a bell heard through stone — the Bellhung sways somewhere close
+        // a bell heard through stone â€” the Bellhung sways somewhere close
         this.tone({ type: "triangle", freq: 1046.5, dur: 0.5, peak: 0.02, attack: 0.01 });
         this.tone({ type: "sine", freq: 523.25, dur: 0.45, peak: 0.012, attack: 0.01 });
         return;
       }
       case "moan": {
-        // a choral vowel with no choir left behind it — distant, hollow
+        // a choral vowel with no choir left behind it â€” distant, hollow
         this.tone({
           type: "sawtooth",
           freq: 175,
@@ -1682,15 +1682,15 @@ export class AudioGraph {
     }
   }
 
-  // ── internals ─────────────────────────────────────────────────────────────
+  // â”€â”€ internals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  /** Effective master gain: user mute OR page hidden ⇒ 0, else 1. */
+  /** Effective master gain: user mute OR page hidden â‡’ 0, else 1. */
   private applyMasterGain(): void {
     const t = this.ctx.currentTime;
     const g = this.master.gain;
     g.cancelScheduledValues(t);
     if (this.userMuted || this.hidden) {
-      g.setValueAtTime(0, t); // hard mute — immediate
+      g.setValueAtTime(0, t); // hard mute â€” immediate
     } else {
       g.setTargetAtTime(1, t, 0.015); // click-free restore
     }
@@ -1711,7 +1711,7 @@ export class AudioGraph {
   }
 
   /**
-   * Whisper bed: looping noise through two slowly wandering bandpasses — a
+   * Whisper bed: looping noise through two slowly wandering bandpasses â€” a
    * dull mid "breath" layer and a narrow sibilant layer. Bus gain is 0 until
    * setDarkness() raises it, so this idles silently.
    */
@@ -1748,7 +1748,7 @@ export class AudioGraph {
     sibTrim.gain.value = 0.35;
     sibilant.connect(sibBp).connect(sibTrim).connect(this.whisper);
 
-    // Started while suspended — they begin producing on unlock().
+    // Started while suspended â€” they begin producing on unlock().
     breath.start();
     breathLfo.start();
     sibilant.start();
@@ -1761,7 +1761,7 @@ export class AudioGraph {
    */
   private buildHeartbeatLoop(): void {
     const sr = this.ctx.sampleRate;
-    const period = 60 / 55; // ≈ 1.09 s
+    const period = 60 / 55; // â‰ˆ 1.09 s
     const buf = this.ctx.createBuffer(1, Math.round(sr * period), sr);
     const data = buf.getChannelData(0);
     const thump = (start: number, amp: number): void => {
@@ -1865,3 +1865,4 @@ export class AudioGraph {
     return filt;
   }
 }
+
