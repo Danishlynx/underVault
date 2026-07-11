@@ -385,11 +385,7 @@ export class DescentScene extends Phaser.Scene {
     if (this.registry.get(MENU_KEY) !== true) {
       this.registry.set(MENU_KEY, true);
       let closeMenu: (() => void) | null = null;
-      closeMenu = openMainMenu(
-        host,
-        { day: this.ports.getGuildhall().day },
-        this.audio,
-        {
+      closeMenu = openMainMenu(host, this.audio, {
           onBegin: () => {
             closeMenu?.();
             this.tellThenHall(host);

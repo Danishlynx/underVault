@@ -17,10 +17,6 @@ import { COLOR_CSS } from "../../../design/tokens/tokens.js";
 import { shade, mix } from "../render/paint.js";
 import { paintMenuBackdrop, type MenuGeom } from "./menu/backdrop.js";
 
-export interface MenuModel {
-  day: number;
-}
-
 /** Structural slice of AudioGraph the menu needs (keeps this file decoupled). */
 export interface MenuAudio {
   unlock(): void;
@@ -126,13 +122,6 @@ function injectStyles(): void {
   color: var(--bone);
   text-shadow: 0 1px 10px var(--void);
 }
-.uv-menu-day {
-  margin-top: 4px;
-  font-family: var(--font-body); font-size: var(--size-body-sm);
-  letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--bone-dim);
-  text-shadow: 0 1px 8px var(--void);
-}
 .uv-menu-items {
   margin-top: clamp(18px, 5vh, 44px);
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -171,13 +160,6 @@ function injectStyles(): void {
   letter-spacing: 0.2em;
   color: var(--parchment);
   margin-bottom: 8px;
-}
-.uv-menu-foot {
-  position: absolute; left: 0; right: 0; bottom: 14px;
-  text-align: center;
-  font-family: var(--font-body); font-size: var(--size-body-sm);
-  color: var(--bone-dim); opacity: 0.8;
-  text-shadow: 0 1px 6px var(--void);
 }
 /* entry stagger: elements rise into place once mounted */
 .uv-menu-stage { opacity: 0; transform: translateY(8px);
@@ -237,7 +219,6 @@ function drawFlame(
 
 export function openMainMenu(
   host: HTMLElement,
-  model: MenuModel,
   audio: MenuAudio,
   handlers: MenuHandlers,
 ): () => void {
@@ -264,17 +245,13 @@ export function openMainMenu(
   const eyebrow = el("div", "uv-menu-eyebrow uv-menu-stage", "One door · one candle · one day");
   const title = el("h1", "uv-menu-title uv-menu-stage", "The Undervault");
   const rule = el("div", "uv-menu-rule uv-menu-stage", "◆");
+  // one whisper only — the day/lore lines belonged to the hall, not here
+  // (operator: "too many text makes it messy")
   const tagline = el("div", "uv-menu-tagline uv-menu-stage", "She is still down there.");
-  const dayLine = el(
-    "div",
-    "uv-menu-day uv-menu-stage",
-    `Day ${model.day} — the laws have shifted`,
-  );
   col.appendChild(eyebrow);
   col.appendChild(title);
   col.appendChild(rule);
   col.appendChild(tagline);
-  col.appendChild(dayLine);
 
   const items = el("div", "uv-menu-items");
   const mkItem = (label: string, primary: boolean): HTMLButtonElement => {
@@ -290,13 +267,6 @@ export function openMainMenu(
   const soundBtn = mkItem(`Sound — ${audio.muted ? "off" : "on"}`, false);
   col.appendChild(items);
   root.appendChild(col);
-
-  const foot = el(
-    "div",
-    "uv-menu-foot uv-menu-stage",
-    "One candle per delver. What you learn outlives you.",
-  );
-  root.appendChild(foot);
 
   // ── embers rise near the candle (positions set once geometry is known) ──
   const embers: HTMLElement[] = [];
@@ -459,10 +429,8 @@ export function openMainMenu(
     [eyebrow, 750],
     [rule, 800],
     [tagline, 950],
-    [dayLine, 1050],
-    [foot, 1500],
   ];
-  list.forEach((b, bi) => staged.push([b, 1150 + bi * 90]));
+  list.forEach((b, bi) => staged.push([b, 1100 + bi * 90]));
   const reduced = REDUCED();
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
