@@ -456,14 +456,17 @@ export class DescentScene extends Phaser.Scene {
     this.redraw(true);
     armBloomValve(this, this.cameras.main, this.fx); // sample fps IN-run (D77)
     this.hud.toast("The match catches. The Vault is listening.", "info");
-    // the first lesson, once the flavor line has had its moment (D66)
-    this.time.delayedCall(2800, () => {
-      if (this.running) {
-        this.guide(
-          "charge",
-          "Find the stairs and descend. The candle burns as you act — when it dies, you die.",
-        );
-      }
+    // the first lesson lands as soon as the flash settles (D93): the very
+    // first thing a new delver needs is "press this to move"
+    this.time.delayedCall(900, () => {
+      if (!this.running) return;
+      const touch = this.sys.game.device.input.touch && !this.sys.game.device.os.desktop;
+      this.teach(
+        "move",
+        touch
+          ? "Tap a floor tile to walk. Tap yourself to wait."
+          : "W A S D or Arrows — walk. Hold a key to keep walking.",
+      );
     });
   }
 
@@ -476,29 +479,74 @@ export class DescentScene extends Phaser.Scene {
     this.hud.toast(text, "info");
   }
 
+  // ── Lessons of the Wick (D93): the teaching plaques — contextual, one at
+  // a time, each dismissed by DOING the thing it teaches (operator: "teach
+  // people what is what one by one, not bombard in one go") ────────────────
+  private lessonKey: string | null = null;
+  private lessonMoves = 0;
+  private lessonTimer: Phaser.Time.TimerEvent | null = null;
+
+  private teach(key: string, text: string, timedMs = 0): void {
+    if (this.guides.has(key) || this.lessonKey !== null) return;
+    this.guides.add(key);
+    this.lessonKey = key;
+    this.lessonMoves = 0;
+    this.hud.lesson(text);
+    this.lessonTimer?.remove();
+    this.lessonTimer = timedMs > 0 ? this.time.delayedCall(timedMs, () => this.lessonDone(key)) : null;
+  }
+
+  private lessonDone(key: string): void {
+    if (this.lessonKey !== key) return;
+    this.lessonKey = null;
+    this.lessonTimer?.remove();
+    this.lessonTimer = null;
+    this.hud.clearLesson();
+    // the burn truth follows straight after the first steps
+    if (key === "move") {
+      this.time.delayedCall(700, () =>
+        this.teach("burn", "Every act burns the candle. The meter on the left is your life.", 6500),
+      );
+    }
+  }
+
   private runGuides(): void {
     const s = this.state;
     if (s === null || s.status !== Status.ALIVE) return;
-    if (!this.guides.has("monster")) {
-      for (const e of s.entities) {
-        if (e.kind !== EntityKind.CORPSE && this.visibleMask[e.y * s.w + e.x]! === 1) {
-          this.guide("monster", "Something lives down here. Its habits are hidden laws — salt, bells, light. Test them.");
+    // a door within reach → the interact lesson (do-to-dismiss)
+    if (!this.guides.has("interact")) {
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
+        const t = s.tiles[(s.py + dy) * s.w + (s.px + dx)];
+        if (t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK || t === Tile.DOOR_IRON) {
+          this.teach("interact", "A door. Face it and press E — or tap it — to interact.");
           break;
         }
       }
     }
-    if (!this.guides.has("waystone") || !this.guides.has("stairs")) {
+    if (!this.guides.has("inspect")) {
+      for (const e of s.entities) {
+        if (e.kind !== EntityKind.CORPSE && this.visibleMask[e.y * s.w + e.x]! === 1) {
+          this.teach(
+            "inspect",
+            "Something lives down here. Hold a long-press on it to inspect — every creature keeps hidden laws.",
+            9000,
+          );
+          break;
+        }
+      }
+    }
+    if (!this.guides.has("bank") || !this.guides.has("stairs")) {
       for (let i = 0; i < s.tiles.length; i++) {
         if (this.visibleMask[i]! !== 1) continue;
         if (s.tiles[i] === Tile.WAYSTONE) {
-          this.guide("waystone", "A waystone. Truths banked here enter the Codex — and outlive you.");
+          this.teach("bank", "A waystone. Stand on it and press E — truths banked there outlive you.", 9000);
         } else if (s.tiles[i] === Tile.STAIRS_DOWN) {
           this.guide("stairs", "The stairs down. Deeper floors keep deeper secrets.");
         }
       }
     }
     if (s.wax > 0 && s.wax < 150) {
-      this.guide("lowwax", "The candle wanes. Wax drippings feed it — or make for the way out.");
+      this.teach("cup", "The candle wanes. C cups the flame — hidden, and it burns slower. Drippings refill it.", 8000);
     }
   }
 
@@ -1003,6 +1051,7 @@ export class DescentScene extends Phaser.Scene {
   private inspect(tx: number, ty: number): void {
     const s = this.state;
     if (s === null) return;
+    this.lessonDone("inspect"); // doing dismisses the lesson (D93)
     this.audio.play("inspect"); // the long-press lands — a faint tick
     const i = ty * s.w + tx;
     const floorRoman = ROMAN[s.floor] ?? String(s.floor);
@@ -1185,6 +1234,15 @@ export class DescentScene extends Phaser.Scene {
   private step(stepIn: Step): void {
     const s0 = this.state;
     if (s0 === null) return;
+    // lessons are dismissed by DOING (D93)
+    const lop = stepIn.op;
+    if (this.lessonKey === "move" && (lop === Action.MOVE_N || lop === Action.MOVE_E || lop === Action.MOVE_S || lop === Action.MOVE_W)) {
+      if (++this.lessonMoves >= 3) this.lessonDone("move");
+    } else if ((this.lessonKey === "interact" || this.lessonKey === "bank") && lop >= Action.INTERACT_N && lop < Action.INTERACT_N + 4) {
+      this.lessonDone(this.lessonKey);
+    } else if (this.lessonKey === "cup" && lop === Action.CUP) {
+      this.lessonDone("cup");
+    }
     const before = this.meaningfulLearned();
     // Ev.TIER_CHANGED only carries the NEW radius — remember the old one so
     // handleEvent can tell a guttering-down from a brightening-up

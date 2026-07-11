@@ -361,6 +361,51 @@ export class Hud {
     if (this.objectiveText.text !== text) this.objectiveText.setText(text);
   }
 
+  // ── Lessons of the Wick (D93): the teaching plaque — parchment against
+  // the dark, ONE at a time, dismissed by DOING the thing it teaches ──────
+  private lessonBits: (Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text)[] = [];
+
+  lesson(text: string): void {
+    this.clearLesson();
+    const s = this.scene;
+    const t = s.add
+      .text(0, 0, text, {
+        fontFamily: SANS,
+        fontSize: "15px",
+        color: "#2a2520",
+        align: "center",
+        wordWrap: { width: Math.min(430, this.w - 72) },
+      })
+      .setOrigin(0.5);
+    t.setResolution(Math.min(window.devicePixelRatio || 1, 3));
+    const w = t.width + 30;
+    const h = t.height + 22;
+    const x = this.w >> 1;
+    const y = this.h - HUD.bottomBarH - h / 2 - 20;
+    const bg = s.add.rectangle(x, y, w, h, COLOR.parchment, 0.96).setStrokeStyle(1, COLOR.ink, 0.95);
+    const outer = s.add.rectangle(x, y, w + 8, h + 8, COLOR.parchment, 0).setStrokeStyle(1, COLOR.ink, 0.45);
+    t.setPosition(x, y);
+    this.fixed(outer);
+    this.fixed(bg);
+    this.fixed(t);
+    t.depth = 1001; // text above its parchment
+    this.lessonBits = [outer, bg, t];
+    for (const o of this.lessonBits) {
+      const target = o === bg ? 0.96 : 1;
+      o.setAlpha(0);
+      s.tweens.add({ targets: o, alpha: target, y: "-=6", duration: 220, ease: "Sine.easeOut" });
+    }
+  }
+
+  clearLesson(): void {
+    const bits = this.lessonBits;
+    if (bits.length === 0) return;
+    this.lessonBits = [];
+    for (const o of bits) {
+      this.scene.tweens.add({ targets: o, alpha: 0, duration: 200, onComplete: () => o.destroy() });
+    }
+  }
+
   toast(text: string, kind: "info" | "discovery" | "warning" | "death"): void {
     const color = kind === "discovery" ? "#4fb39a" : kind === "warning" ? "#c9701e" : kind === "death" ? "#a33b2e" : "#b7ae9c";
     const t = this.scene.add
