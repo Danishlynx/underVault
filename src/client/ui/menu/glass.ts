@@ -83,10 +83,15 @@ export function paintGlassOverlay(
   // a warmer breath where the flame meets the glass
   sheen(lightX + m * 0.06, -0.34, m * 0.16, mix(C.flameHi, C.parchment, 0.5), 0.022);
 
-  // ── 3. wipe streaks — old cleaning smears, mostly near the edges ──────
+  // ── 3. wipe streaks — old cleaning smears near (never ON) the edges:
+  // a streak flush with the frame reads as a second frame rule ──────────
   for (let i = 0; i < 9; i++) {
     const edgeBias = rand() < 0.7;
-    const x = edgeBias ? (rand() < 0.5 ? rand() * w * 0.22 : w - rand() * w * 0.22) : rand() * w;
+    const x = edgeBias
+      ? rand() < 0.5
+        ? w * (0.06 + rand() * 0.18)
+        : w * (0.94 - rand() * 0.18)
+      : rand() * w;
     const sw = 5 + rand() * 16;
     const sh = h * (0.25 + rand() * 0.5);
     const y0 = rand() * (h - sh);
@@ -104,9 +109,14 @@ export function paintGlassOverlay(
     const x = rand() * w;
     const y = rand() * h;
     if (inColumn(x, y, w, h) && rand() < 0.8) continue;
-    // the crown stays DARK (operator: pale points up there read as stars
-    // — we are under miles of stone); most beads skip the top band
-    if (y < h * 0.32 && rand() < 0.65) continue;
+    // the crown stays DARK — no beads at all in the top band (audit:
+    // any bright point over black up there sky-reads as a star)
+    if (y < h * 0.3) continue;
+    // beads cluster where they have context — near the frame edges and
+    // the lower pane, over grime and folio, not floating in open void
+    // (audit: an isolated bead in darkness read as "a tenth vigil light")
+    const nearEdge = x < w * 0.2 || x > w * 0.8 || y > h * 0.78;
+    if (!nearEdge && rand() < 0.75) continue;
     const big = rand() < 0.14;
     const r = 0.8 + rand() * 2 + (big ? 1.5 + rand() * 2.5 : 0);
     const dx = lightX - x;
@@ -115,11 +125,12 @@ export function paintGlassOverlay(
     const lx = dx / dist;
     const ly = dy / dist;
 
-    // a few heavy beads have let go — the run-line comes first, underneath
-    if (big && rand() < 0.5) {
-      const run = r * (5 + rand() * 12);
+    // a few heavy beads have let go — runs only inside the candle's
+    // glow context, where a wet streak has something to catch
+    if (big && rand() < 0.5 && y > h * 0.5 && x < w * 0.45) {
+      const run = r * (4 + rand() * 6);
       const g = ctx.createLinearGradient(x, y, x + r * 0.3, y + run);
-      g.addColorStop(0, shade(C.parchment, 1, 0.05));
+      g.addColorStop(0, shade(C.parchment, 1, 0.04));
       g.addColorStop(1, shade(C.parchment, 1, 0));
       ctx.strokeStyle = g;
       ctx.lineWidth = Math.max(0.6, r * 0.35);
@@ -130,7 +141,7 @@ export function paintGlassOverlay(
     }
 
     // lens body — a breath lighter than whatever is behind it
-    ctx.fillStyle = shade(C.surface, 1.6, 0.09 + rand() * 0.05);
+    ctx.fillStyle = shade(C.surface, 1.6, 0.12 + rand() * 0.06);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -140,23 +151,23 @@ export function paintGlassOverlay(
     ctx.beginPath();
     ctx.arc(x, y, r * 0.82, Math.atan2(-ly, -lx) - 1.1, Math.atan2(-ly, -lx) + 1.1);
     ctx.stroke();
-    // the glint, facing the flame — near-extinguished in the crown band,
-    // where any bright point over black sky-reads as a star
-    const topDim = y < h * 0.32 ? 0.12 : 1;
+    // the glint, facing the flame — modest, so no bead impersonates a
+    // vigil light in the dark
     const glintWarm = dist < m * 0.42;
     ctx.fillStyle = glintWarm
-      ? shade(C.flameHi, 1, (0.35 + rand() * 0.3) * topDim)
-      : shade(C.parchment, 1, (0.22 + rand() * 0.2) * topDim);
+      ? shade(C.flameHi, 1, 0.22 + rand() * 0.16)
+      : shade(C.parchment, 1, 0.16 + rand() * 0.14);
     ctx.beginPath();
     ctx.arc(x + lx * r * 0.38, y + ly * r * 0.38, Math.max(0.5, r * 0.26), 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // ── 5. hairline scratches — the pane has been wiped for generations ───
+  // ── 5. hairline scratches — the pane has been wiped for generations.
+  // Lower half only: a lone stroke in the crown dark reads as a stray. ──
   for (let i = 0; i < 4; i++) {
     const x0 = rand() * w;
-    const y0 = rand() * h;
-    const len = m * (0.15 + rand() * 0.3);
+    const y0 = h * (0.45 + rand() * 0.5);
+    const len = m * (0.12 + rand() * 0.22);
     const a = rand() * Math.PI;
     ctx.strokeStyle = shade(C.boneDim, 1, 0.03 + rand() * 0.03);
     ctx.lineWidth = 0.6;

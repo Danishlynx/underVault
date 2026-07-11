@@ -196,10 +196,11 @@ const REDUCED = (): boolean =>
 
 /**
  * The live flame: a small rAF canvas whose wick tip sits exactly on the
- * backdrop's returned geometry. Composed of additive radial layers —
- * halo, ember base, flame body, bright tip, cream core, and a verdigris
- * root (the First Flame remembers the Gate). Sway = two incommensurate
- * sines + an occasional gust.
+ * backdrop's returned geometry. One TEARDROP rooted on the wick (the
+ * blind panel read the old layered blobs as "two stacked glowing balls,
+ * not a flame") — a bezier flame body with a vertical heat gradient, a
+ * hot inner core, and a single attached glow. Sway leans the tip; the
+ * root never leaves the wick.
  */
 function drawFlame(
   ctx: CanvasRenderingContext2D,
@@ -215,22 +216,51 @@ function drawFlame(
   const wickX = w / 2;
   const wickY = h - fH * 0.35; // seat: room below the anchor for base glow
   const F = fH * 1.05 * flick;
-  const s = sway * F * 0.16;
+  const s = sway * F * 0.14; // lateral lean, applied strongest at the tip
   ctx.globalCompositeOperation = "lighter";
-  const blob = (cx: number, cy: number, r: number, color: string, a: number): void => {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, r));
-    g.addColorStop(0, shade(color, 1, a));
-    g.addColorStop(1, shade(color, 1, 0));
-    ctx.fillStyle = g;
-    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+  // one glow, attached — centered on the flame's belly, not floating above
+  const gx = wickX + s * 0.35;
+  const gy = wickY - F * 0.42;
+  const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, F * 0.95);
+  glow.addColorStop(0, shade(C.flame, 1, 0.18));
+  glow.addColorStop(1, shade(C.flame, 1, 0));
+  ctx.fillStyle = glow;
+  ctx.fillRect(gx - F, gy - F, F * 2, F * 2);
+
+  // the flame body: a teardrop whose root sits ON the wick
+  const tear = (height: number, width: number, lean: number, fill: CanvasGradient): void => {
+    const tipX = wickX + lean;
+    const tipY = wickY - height;
+    const wobble = Math.sin(t * 11.3) * width * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(wickX, wickY + F * 0.02);
+    ctx.bezierCurveTo(
+      wickX - width, wickY - height * 0.3,
+      wickX - width * 0.42 + lean * 0.6 + wobble, wickY - height * 0.74,
+      tipX, tipY,
+    );
+    ctx.bezierCurveTo(
+      wickX + width * 0.42 + lean * 0.6 + wobble, wickY - height * 0.74,
+      wickX + width, wickY - height * 0.3,
+      wickX, wickY + F * 0.02,
+    );
+    ctx.fillStyle = fill;
+    ctx.fill();
   };
-  // every radius stays inside the canvas — a clipped halo reads as a box
-  blob(wickX + s * 0.4, wickY - F * 0.45, F * 0.85, C.flame, 0.15); // halo
-  blob(wickX + s * 0.3, wickY - F * 0.28, F * 0.4, C.ember, 0.5); // base
-  blob(wickX + s * 0.6, wickY - F * 0.5, F * 0.33, C.flame, 0.8); // body
-  blob(wickX + s + Math.sin(t * 11.3) * F * 0.03, wickY - F * 0.76, F * 0.19, C.flameHi, 0.9); // tip
-  blob(wickX + s * 0.5, wickY - F * 0.34, F * 0.12, mix(C.flameHi, C.parchment, 0.6), 0.95); // core
-  blob(wickX, wickY - F * 0.04, F * 0.07, C.verdigris, 0.3); // root
+  const body = ctx.createLinearGradient(wickX, wickY + 2, wickX, wickY - F);
+  body.addColorStop(0, shade(C.ember, 1, 0.7));
+  body.addColorStop(0.42, shade(C.flame, 1, 0.9));
+  body.addColorStop(1, shade(C.flameHi, 1, 0.92));
+  tear(F, F * 0.32, s, body);
+
+  // hot core — a smaller teardrop inside, cream-bright at the heart
+  const core = ctx.createLinearGradient(wickX, wickY, wickX, wickY - F * 0.62);
+  core.addColorStop(0, shade(C.flame, 1, 0.5));
+  core.addColorStop(0.5, shade(C.flameHi, 1, 0.9));
+  core.addColorStop(1, mix(C.flameHi, C.parchment, 0.6, 0.95));
+  tear(F * 0.62, F * 0.16, s * 0.8, core);
+
   ctx.globalCompositeOperation = "source-over";
 }
 
