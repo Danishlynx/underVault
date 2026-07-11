@@ -784,3 +784,17 @@ candidates; flip them in the named data file, not in code.
     ground is legible only by its edge, and a lone long edge always
     reads as a cut/tear; "too far up to see" says colossal better than
     any drawn ceiling. Reaffirms D83: the void stays pure.
+
+89. Menu art passes the blind test (final pass). Method now standard:
+    a blind legibility panel (context-free viewers describe the art;
+    misreads = failures) + adversarial light/space audits. Result: the
+    Gate rebuilt as a READABLE colossal door (disc mass in a socket,
+    carved relief rings, concentric hub w/ gilt emblem - operator
+    caught an off-center hub, fixed to single-origin geometry - fog
+    overlapping the rim for scale, verdigris seam as a legible light-
+    leak), candle light logic un-inverted (warm pool + contact shadow,
+    saucer deleted), ground connected end-to-end (ledge-rubble-spur-
+    stairs-Gate-foot fog), all nine vigils seated on treads, live flame
+    redrawn as a bezier teardrop rooted on the wick (was "two stacked
+    orbs"), glass beads clustered where they have context. A stranger
+    now calls the circle "a giant vault door" unprompted.
