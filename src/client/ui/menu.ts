@@ -16,6 +16,7 @@ import { el, ensureUvStyles } from "./dom.js";
 import { COLOR_CSS } from "../../../design/tokens/tokens.js";
 import { shade, mix } from "../render/paint.js";
 import { paintMenuBackdrop, type MenuGeom } from "./menu/backdrop.js";
+import { paintGlassOverlay } from "./menu/glass.js";
 
 /** Structural slice of AudioGraph the menu needs (keeps this file decoupled). */
 export interface MenuAudio {
@@ -57,6 +58,20 @@ function injectStyles(): void {
 }
 .uv-menu-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .uv-menu-flame { position: absolute; pointer-events: none; }
+.uv-menu-glass {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 1;
+}
+.uv-menu-sheen {
+  position: absolute; top: -12%; left: -25%; width: 60%; height: 124%;
+  pointer-events: none; z-index: 1; mix-blend-mode: screen;
+  background: linear-gradient(100deg, transparent 32%, ${shade(C.parchment, 1, 0.045)} 50%, transparent 68%);
+  animation: uv-menu-sheendrift 46s ease-in-out infinite alternate;
+}
+@keyframes uv-menu-sheendrift {
+  from { transform: translateX(0); }
+  to { transform: translateX(160%); }
+}
 .uv-menu-glow {
   position: absolute; pointer-events: none; border-radius: 50%;
   mix-blend-mode: screen;
@@ -80,6 +95,7 @@ function injectStyles(): void {
 .uv-menu-col {
   position: absolute; left: 50%; top: 0; bottom: 0;
   transform: translateX(-50%);
+  z-index: 2; /* the type reads OVER the pane */
   width: min(560px, 92%);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -168,6 +184,7 @@ function injectStyles(): void {
 @media (prefers-reduced-motion: reduce) {
   .uv-menu-ember { display: none; }
   .uv-menu-glow { animation: none; opacity: 0.6; }
+  .uv-menu-sheen { animation: none; opacity: 0.5; }
   .uv-menu-stage { transition-duration: calc(var(--dur-ceremonial) / 2); transform: none; }
 }
 `;
@@ -239,6 +256,14 @@ export function openMainMenu(
   const flame = document.createElement("canvas");
   flame.className = "uv-menu-flame uv-menu-stage";
   root.appendChild(flame);
+
+  // the pane (D86): glass between the viewer and the vigil — above the
+  // scene and the flame, below the type
+  const pane = document.createElement("canvas");
+  pane.className = "uv-menu-glass uv-menu-stage";
+  root.appendChild(pane);
+  const sheenDrift = el("div", "uv-menu-sheen uv-menu-stage");
+  root.appendChild(sheenDrift);
 
   // ── type column ───────────────────────────────────────────────────────
   const col = el("div", "uv-menu-col");
@@ -315,6 +340,14 @@ export function openMainMenu(
     glow.style.left = `${Math.round(geom.flameX * w - gr)}px`;
     glow.style.top = `${Math.round(geom.flameY * h - gr * 1.06)}px`;
     glow.style.background = `radial-gradient(circle, ${shade(C.flame, 1, 0.16)} 0%, ${shade(C.ember, 1, 0.07)} 42%, transparent 68%)`;
+    // the pane covers the full frame; repainted with the backdrop
+    pane.width = Math.round(w * dpr);
+    pane.height = Math.round(h * dpr);
+    const pctx = pane.getContext("2d");
+    if (pctx !== null) {
+      pctx.scale(dpr, dpr);
+      paintGlassOverlay(pctx, w, h, geom);
+    }
     if (REDUCED() && fctx !== null) drawFlame(fctx, cw, ch, fH, 0.4, 0, 1);
   };
   layout();
@@ -425,6 +458,8 @@ export function openMainMenu(
     [bg, 0],
     [glow, 350],
     [flame, 350],
+    [pane, 420],
+    [sheenDrift, 420],
     [title, 500],
     [eyebrow, 750],
     [rule, 800],

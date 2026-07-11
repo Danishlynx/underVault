@@ -740,3 +740,23 @@ candidates; flip them in the named data file, not in code.
     out-of-key bell dyads and static organ pedal are gone. New dev
     harness: tools/dev-harness/audio-smoke.ts (gesture-wake + 3 bars +
     stop handoff under headless, asserts no WebAudio exceptions).
+
+86. Menu backdrop REPAIR + the glass pane (operator: background "feels
+    slightly broken... do some glass effect like Crysis - the background
+    art in menu is the ultimate hook"). Repair pass by the original
+    artist, this time WITH eyes (snap harness while painting): vault
+    masses rebuilt as ribbed stone melting into the crown dark (no edge
+    terminates mid-air), ledge tear became three lit strata beds + a
+    fallen slab, switchback flights grounded on a rocky spur carrying
+    the nine vigil-lights, the Gate filled with fog-lit carved relief
+    and the artifact hairline replaced by a confined verdigris breath.
+    Wick-anchor geom byte-identical. NEW src/client/ui/menu/glass.ts -
+    the Crysis pane in our fiction (the vigil seen through the
+    Guildhall's old window): candle-lit beads of damp (glints face the
+    flame; warm within reach, pale beyond), run-lines under heavy beads,
+    corner grime + frost, wipe streaks, hairline scratches, and a slow
+    CSS sheen drifting across the pane (~46 s, reduced-motion static).
+    Painted once per resize above scene + live flame, below the type
+    (z: glass 1, type column 2); beads thin out 80% over the menu
+    column. Lesson kept from this pass: artist agents iterate with the
+    snap harness - never paint blind again.

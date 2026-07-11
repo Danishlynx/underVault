@@ -5,17 +5,20 @@
  * match is struck. A great tallow pillar-candle — ancient, drip-skirted,
  * UNLIT, bare charred wick — keeps watch on a worn stone ledge in the
  * lower-left third. Beyond it the frame falls away into a colossal buried
- * dark: switchback steps thread the gulf, carrying a sparse constellation of
- * other delvers' vigil-lights that fade with distance, and far center-right
- * the Great Gate looms half-swallowed by fog — rim rings, ridge spokes,
- * rivets, one verdigris whisper down its sleeping seam. Heavy vault ribs
- * close the top of frame; gold-ink folio corners close the right and bottom.
+ * dark: a rocky spur carries switchback steps and a sparse constellation of
+ * other delvers' vigil-lights fading with distance, and far center-right the
+ * Great Gate looms half-swallowed by fog — carved rim rings, ridge spokes,
+ * rivets, one verdigris breath at its sleeping seam. Ribbed stone vaulting
+ * closes the top of frame in two fog stops; gold-ink folio corners close the
+ * right and bottom.
  *
  * Painted in the guildhall idiom: flat woodcut masses, fog-stop depth, token
- * colors via shade()/mix() only, a private seeded LCG for jitter, no speckle.
- * A shade more luminous than gameplay — this is a poster, not fog-of-war —
- * but the two-hue law holds: amber only around candle-points, verdigris only
- * at the Gate seam, everything else cool void and surface stone.
+ * colors via shade()/mix() only, a private seeded LCG for jitter. A shade
+ * more luminous than gameplay — this is a poster, not fog-of-war — but the
+ * two-hue law holds: amber only around candle-points, verdigris only at the
+ * Gate seam, everything else cool void and surface stone. Every mass edge
+ * either exits the frame or dissolves into atmosphere — nothing terminates
+ * mid-air.
  *
  * The caller has DPR-scaled and cleared the context. The engine overlays a
  * live animated flame at the wick tip; paintMenuBackdrop returns that anchor
@@ -23,7 +26,8 @@
  * The warm "response light" on the candle and ledge is painted here, as if
  * the flame were already burning — the overlay alone cannot light the wax.
  * The center-left column (x 0.28–0.62, y 0.30–0.75) stays calm and dark:
- * the DOM menu renders there.
+ * the DOM menu renders there. A separate glass overlay module paints above
+ * this backdrop — no glass effects here.
  */
 
 import { COLOR_CSS } from "../../../../design/tokens/tokens.js";
@@ -55,12 +59,13 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   const ink = shade(C.void, 0.7, 0.9);
 
   // ── geometry ─────────────────────────────────────────────────────────────
-  // The Gate, far center-right; its crown may vanish under the vault in wide
+  // The Gate, far center-right; its crown hides behind the vault in wide
   // frames (colossal), its foot always drowns in the fog stops.
   const gx = w * 0.72;
   const gy = h * 0.4;
   const R = Math.min(s * 0.34, w * 0.24, h * 0.4);
-  // The candle, lower-left third, standing on the ledge.
+  // The candle, lower-left third, standing on the ledge. (Wick anchor is
+  // load-bearing — the live flame sits on it. Do not move.)
   const ledgeY = h * 0.865;
   const cx = w * 0.205;
   const cw = Math.min(h * 0.085, w * 0.1); // thick — nearly a pillar
@@ -79,13 +84,6 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
-    ctx.stroke();
-  };
-  const ring = (r: number, lw: number, color: string): void => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lw;
-    ctx.beginPath();
-    ctx.arc(gx, gy, r, 0, TAU);
     ctx.stroke();
   };
 
@@ -108,90 +106,138 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   horizon.addColorStop(1, mix(C.void, C.surface2, 0.6, 0));
   ctx.fillStyle = horizon;
   ctx.fillRect(0, h * 0.44, w, h * 0.24);
+  // the wall the Gate is set in — a soft presence, so the carvings sit on
+  // stone rather than on air
+  const wallGlow = ctx.createRadialGradient(gx, gy, R * 0.2, gx, gy, R * 1.75);
+  wallGlow.addColorStop(0, mix(C.void, C.surface, 0.52, 0.5));
+  wallGlow.addColorStop(0.7, mix(C.void, C.surface, 0.45, 0.22));
+  wallGlow.addColorStop(1, mix(C.void, C.surface, 0.45, 0));
+  ctx.fillStyle = wallGlow;
+  ctx.fillRect(gx - R * 1.8, gy - R * 1.8, R * 3.6, R * 3.6);
 
-  // ── 3. THE GREAT GATE — fog stop 2, the candlemaid's door, sleeping ──────
-  // carved surround, distance-faded
-  ring(R * 1.07, R * 0.045, mix(C.void, C.surface2, 0.62, 0.4));
-  ring(R * 1.1, 1, shade(C.void, 0.78, 0.35));
-  ring(R * 1.045, 1, shade(C.surface2, 1.2, 0.2));
+  // ── 3. THE GREAT GATE — fog stop 2, carved relief, sleeping ──────────────
+  // Every ring is a groove: a shadow pass and a lit pass offset vertically,
+  // so the stone reads as cut — never a lone stroke over void.
+  const relief = (r: number, lw: number, litA: number, darkA: number): void => {
+    ctx.strokeStyle = shade(C.void, 0.55, darkA);
+    ctx.lineWidth = lw + 1;
+    ctx.beginPath();
+    ctx.arc(gx, gy + lw * 0.8, r, 0, TAU);
+    ctx.stroke();
+    ctx.strokeStyle = mix(C.void, C.bone, 0.32, litA);
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.arc(gx, gy - lw * 0.8, r, 0, TAU);
+    ctx.stroke();
+  };
+  // carved stone surround
+  ctx.strokeStyle = mix(C.void, C.surface2, 0.62, 0.35);
+  ctx.lineWidth = R * 0.045;
+  ctx.beginPath();
+  ctx.arc(gx, gy, R * 1.07, 0, TAU);
+  ctx.stroke();
+  relief(R * 1.09, 1.2, 0.16, 0.3);
+  relief(R * 1.05, 1, 0.12, 0.25);
   // glyph ticks along the upper arc — every fourth keeps a whisper of gilt
   for (let i = 0; i < 12; i++) {
     const a = -Math.PI + 0.5 + (i / 11) * (Math.PI - 1.0) + (rand() - 0.5) * 0.03;
     const r0 = R * 1.115;
     const r1 = r0 + R * 0.026 + rand() * R * 0.01;
-    ctx.strokeStyle = i % 4 === 0 ? shade(C.goldInk, 0.85, 0.2) : shade(C.boneDim, 0.85, 0.12);
+    ctx.strokeStyle = i % 4 === 0 ? shade(C.goldInk, 0.85, 0.18) : shade(C.boneDim, 0.85, 0.11);
     ctx.lineWidth = 1;
     line(gx + Math.cos(a) * r0, gy + Math.sin(a) * r0, gx + Math.cos(a) * r1, gy + Math.sin(a) * r1);
   }
-  // the disc — cool, barely lighter than the dark it is set in
-  const disc = ctx.createRadialGradient(gx - R * 0.25, gy - R * 0.3, R * 0.08, gx, gy, R);
-  disc.addColorStop(0, mix(C.void, C.surface2, 0.75));
-  disc.addColorStop(0.55, mix(C.void, C.surface2, 0.5));
-  disc.addColorStop(1, mix(C.void, C.surface, 0.4));
+  // the disc — fog-lit stone, barely above the dark but unmistakably solid
+  const disc = ctx.createRadialGradient(gx - R * 0.3, gy - R * 0.35, R * 0.1, gx, gy, R);
+  disc.addColorStop(0, mix(C.void, C.surface2, 1));
+  disc.addColorStop(0.5, mix(C.void, C.surface2, 0.68));
+  disc.addColorStop(1, mix(C.void, C.surface, 0.42));
   ctx.fillStyle = disc;
   ctx.beginPath();
   ctx.arc(gx, gy, R, 0, TAU);
   ctx.fill();
-  // rim rings
-  ring(R - 2, 2, shade(C.surface2, 1.3, 0.45));
-  ring(R - R * 0.05, 1, shade(C.surface2, 1.3, 0.25));
-  ring(R * 0.68, 1, shade(C.surface2, 1.3, 0.22));
-  ring(R * 0.4, 1, shade(C.surface2, 1.3, 0.16));
-  // ridge spokes and rivets — cool; the vigil-lights are too far to kiss them
+  // rim rings, carved
+  relief(R - 3, 1.5, 0.34, 0.5);
+  relief(R * 0.94, 1, 0.2, 0.38);
+  relief(R * 0.68, 1, 0.17, 0.32);
+  relief(R * 0.4, 1, 0.13, 0.26);
+  // ridge spokes and rivets — quiet; the vigil-lights are too far to kiss them
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * TAU + (rand() - 0.5) * 0.03;
-    ctx.strokeStyle = shade(C.surface2, 0.82, 0.22);
+    ctx.strokeStyle = shade(C.surface2, 0.78, 0.2);
     ctx.lineWidth = 1;
     line(
       gx + Math.cos(a) * R * 0.7,
       gy + Math.sin(a) * R * 0.7,
-      gx + Math.cos(a) * R * 0.95,
-      gy + Math.sin(a) * R * 0.95,
+      gx + Math.cos(a) * R * 0.93,
+      gy + Math.sin(a) * R * 0.93,
     );
-    ctx.fillStyle = mix(C.void, C.surface2, 1, 0.3);
+    const rx = gx + Math.cos(a + 0.13) * R * 0.85;
+    const ry = gy + Math.sin(a + 0.13) * R * 0.85;
+    const rr = Math.max(1.2, R * 0.012) + rand() * 0.8;
+    ctx.fillStyle = shade(C.void, 0.6, 0.5);
     ctx.beginPath();
-    ctx.arc(
-      gx + Math.cos(a + 0.13) * R * 0.85,
-      gy + Math.sin(a + 0.13) * R * 0.85,
-      Math.max(1.2, R * 0.012) + rand() * 0.8,
-      0,
-      TAU,
-    );
+    ctx.arc(rx + rr * 0.35, ry + rr * 0.5, rr, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = mix(C.void, C.surface2, 1, 0.55);
+    ctx.beginPath();
+    ctx.arc(rx, ry, rr, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = mix(C.void, C.bone, 0.3, 0.3);
+    ctx.beginPath();
+    ctx.arc(rx - rr * 0.3, ry - rr * 0.35, rr * 0.45, 0, TAU);
     ctx.fill();
   }
-  // the central emblem ring — a gilt memory
-  ctx.strokeStyle = mix(C.goldInk, C.void, 0.45, 0.22);
-  ctx.lineWidth = 1.4;
+  // the central emblem — a gilt memory, carved like the rest
+  ctx.strokeStyle = shade(C.void, 0.55, 0.32);
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.arc(gx, gy, R * 0.22, 0, TAU);
+  ctx.arc(gx, gy + 1, R * 0.22, 0, TAU);
   ctx.stroke();
-  // the seam, closed and sleeping — one verdigris whisper, strongest mid-disc
-  const seamTop = gy - R * 0.92;
-  const seamBot = gy + R * 0.55;
-  const seam = ctx.createLinearGradient(0, seamTop, 0, seamBot);
-  seam.addColorStop(0, mix(C.void, C.verdigrisDim, 0.7, 0));
-  seam.addColorStop(0.45, mix(C.void, C.verdigrisDim, 0.75, 0.34));
-  seam.addColorStop(1, mix(C.void, C.verdigrisDim, 0.7, 0));
-  ctx.strokeStyle = seam;
-  ctx.lineWidth = Math.max(2.5, R * 0.018);
-  line(gx, seamTop, gx, seamBot);
+  ctx.strokeStyle = mix(C.goldInk, C.void, 0.45, 0.26);
   ctx.lineWidth = 1;
-  line(gx, seamTop, gx, seamBot);
-  // patina drips beside the seam
-  ctx.strokeStyle = shade(C.verdigrisDim, 0.95, 0.1);
-  for (let i = 0; i < 4; i++) {
-    const dx = gx + (rand() < 0.5 ? -1 : 1) * (R * 0.03 + rand() * R * 0.09);
-    const dy = gy - R * 0.4 + rand() * R * 0.7;
-    line(dx, dy, dx, dy + R * (0.05 + rand() * 0.08));
+  ctx.beginPath();
+  ctx.arc(gx, gy - 0.8, R * 0.22, 0, TAU);
+  ctx.stroke();
+  // the seam, closed and sleeping — a shadow joint mid-disc, then one
+  // verdigris breath confined to it (a glow, never a line across the ring)
+  const joint = ctx.createLinearGradient(0, gy - R * 0.5, 0, gy + R * 0.3);
+  joint.addColorStop(0, shade(C.void, 0.5, 0));
+  joint.addColorStop(0.5, shade(C.void, 0.5, 0.45));
+  joint.addColorStop(1, shade(C.void, 0.5, 0));
+  ctx.strokeStyle = joint;
+  ctx.lineWidth = Math.max(1.5, R * 0.01);
+  line(gx, gy - R * 0.5, gx, gy + R * 0.3);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.translate(gx, gy - R * 0.08);
+  ctx.scale(1, 2.5);
+  const breath = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.14);
+  breath.addColorStop(0, mix(C.verdigrisDim, C.verdigris, 0.3, 0.09));
+  breath.addColorStop(1, mix(C.verdigrisDim, C.verdigris, 0.3, 0));
+  ctx.fillStyle = breath;
+  ctx.fillRect(-R * 0.15, -R * 0.15, R * 0.3, R * 0.3);
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.05);
+  core.addColorStop(0, mix(C.verdigrisDim, C.verdigris, 0.45, 0.12));
+  core.addColorStop(1, mix(C.verdigrisDim, C.verdigris, 0.45, 0));
+  ctx.fillStyle = core;
+  ctx.fillRect(-R * 0.06, -R * 0.06, R * 0.12, R * 0.12);
+  ctx.restore();
+  // patina weep below the joint
+  ctx.strokeStyle = shade(C.verdigrisDim, 0.9, 0.08);
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    const dx = gx + (rand() - 0.5) * R * 0.08;
+    const dy = gy + R * (0.05 + rand() * 0.15);
+    line(dx, dy, dx, dy + R * (0.04 + rand() * 0.06));
   }
-
-  // ── 4. fog stops — the Gate's foot and the far steps drown here ──────────
-  const fog = ctx.createLinearGradient(0, h * 0.5, 0, h * 0.8);
-  fog.addColorStop(0, mix(C.void, C.bone, 0.09, 0));
-  fog.addColorStop(0.45, mix(C.void, C.bone, 0.09, 0.16));
-  fog.addColorStop(1, mix(C.void, C.bone, 0.09, 0));
-  ctx.fillStyle = fog;
-  ctx.fillRect(0, h * 0.5, w, h * 0.3);
+  // the Gate sinks — base-colored air rises over its lower half, so no carve
+  // terminates mid-void
+  const sink = ctx.createLinearGradient(0, gy + R * 0.1, 0, gy + R * 0.95);
+  sink.addColorStop(0, mix(C.void, C.surface, 0.3, 0));
+  sink.addColorStop(1, mix(C.void, C.surface, 0.3, 0.92));
+  ctx.fillStyle = sink;
+  ctx.fillRect(gx - R * 1.25, gy + R * 0.1, R * 2.5, R * 0.9);
   // the nearest vigil-lights at the Gate's foot lend its low rim one ember kiss
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -202,6 +248,14 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillRect(w * 0.77 - s * 0.15, h * 0.66 - s * 0.15, s * 0.3, s * 0.3);
   ctx.restore();
 
+  // ── 4. fog stops — the Gate's foot and the far distance drown here ───────
+  const fog = ctx.createLinearGradient(0, h * 0.5, 0, h * 0.8);
+  fog.addColorStop(0, mix(C.void, C.bone, 0.09, 0));
+  fog.addColorStop(0.45, mix(C.void, C.bone, 0.09, 0.16));
+  fog.addColorStop(1, mix(C.void, C.bone, 0.09, 0));
+  ctx.fillStyle = fog;
+  ctx.fillRect(0, h * 0.5, w, h * 0.3);
+
   // ── 5. the gulf — the ground falls away below the fog ────────────────────
   const gulf = ctx.createLinearGradient(0, h * 0.74, 0, h);
   gulf.addColorStop(0, shade(C.void, 0.6, 0));
@@ -209,9 +263,54 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillStyle = gulf;
   ctx.fillRect(0, h * 0.74, w, h * 0.26);
 
-  // ── 6. the descent — switchback flights threading the dark ───────────────
+  // ── 6. the spur — continuous ground carrying the descent ─────────────────
+  // A rocky tongue reaching from the sheared ledge toward the Gate's foot;
+  // the switchback steps are carved into its back, and its far end dissolves
+  // into the fog (gradient to nothing — no hard termination).
+  const spurEdge = (): void => {
+    ctx.moveTo(w * 0.418, h * 0.93);
+    ctx.quadraticCurveTo(w * 0.46, h * 0.868, w * 0.508, h * 0.818);
+    ctx.quadraticCurveTo(w * 0.565, h * 0.777, w * 0.638, h * 0.758);
+    ctx.quadraticCurveTo(w * 0.72, h * 0.732, w * 0.8, h * 0.687);
+    ctx.quadraticCurveTo(w * 0.845, h * 0.664, w * 0.885, h * 0.66);
+  };
+  const spurFade = ctx.createLinearGradient(w * 0.43, 0, w * 0.88, 0);
+  spurFade.addColorStop(0, mix(C.void, C.surface, 0.48, 0.95));
+  spurFade.addColorStop(0.55, mix(C.void, C.surface, 0.42, 0.6));
+  spurFade.addColorStop(1, mix(C.void, C.surface, 0.4, 0));
+  ctx.fillStyle = spurFade;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.408, h);
+  ctx.lineTo(w * 0.418, h * 0.93);
+  spurEdge();
+  ctx.lineTo(w * 0.9, h);
+  ctx.closePath();
+  ctx.fill();
+  // its back catches a hair of the vigils' light, dying toward the Gate
+  const spurLit = ctx.createLinearGradient(w * 0.43, 0, w * 0.84, 0);
+  spurLit.addColorStop(0, mix(C.void, C.boneDim, 0.5, 0.16));
+  spurLit.addColorStop(1, mix(C.void, C.boneDim, 0.5, 0));
+  ctx.strokeStyle = spurLit;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  spurEdge();
+  ctx.stroke();
+  // a fallen slab at the stair's foot, half-buried in the gulf
+  ctx.fillStyle = mix(C.void, C.surface, 0.4, 0.9);
+  ctx.beginPath();
+  ctx.moveTo(w * 0.452, h * 0.952);
+  ctx.lineTo(w * 0.505, h * 0.938);
+  ctx.lineTo(w * 0.512, h * 0.956);
+  ctx.lineTo(w * 0.458, h * 0.97);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = mix(C.void, C.boneDim, 0.45, 0.12);
+  ctx.lineWidth = 1;
+  line(w * 0.452, h * 0.952, w * 0.505, h * 0.938);
+
+  // ── 7. the descent — switchback flights carved into the spur ─────────────
   // Descending away from the viewer: each flight sits higher in frame,
-  // smaller and fainter, until the fog takes the thread at the Gate's foot.
+  // smaller and fainter. A veil of air separates the far runs from the near.
   // Everything stays below y 0.75 or right of x 0.62 — the menu column.
   const drawFlight = (
     x0: number,
@@ -247,48 +346,45 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
     ctx.stroke();
     ctx.globalAlpha = 1;
   };
-  const flights: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
+  type Flight = readonly [number, number, number, number, number, number];
+  const flights: readonly Flight[] = [
     // [x0, y0, x1, y1, treads, presence] — near to far
-    [0.398, 0.938, 0.548, 0.848, 8, 1],
-    [0.602, 0.846, 0.512, 0.794, 6, 0.75],
-    [0.496, 0.792, 0.636, 0.748, 6, 0.55],
-    [0.652, 0.744, 0.706, 0.708, 5, 0.34],
-    [0.712, 0.704, 0.75, 0.676, 4, 0.18],
+    [0.435, 0.925, 0.56, 0.845, 8, 1],
+    [0.61, 0.84, 0.518, 0.796, 6, 0.75],
+    [0.5, 0.794, 0.638, 0.75, 6, 0.55],
+    [0.654, 0.746, 0.708, 0.71, 5, 0.34],
+    [0.714, 0.706, 0.752, 0.68, 4, 0.18],
   ];
-  for (const [fx0, fy0, fx1, fy1, n, p] of flights) {
-    drawFlight(w * fx0, h * fy0, w * fx1, h * fy1, n, p);
-  }
-  // landings at the switchbacks
-  const landings: ReadonlyArray<readonly [number, number, number, number]> = [
-    [0.548, 0.848, 0.056, 0.85],
-    [0.474, 0.794, 0.04, 0.62],
-    [0.636, 0.748, 0.034, 0.42],
+  type Landing = readonly [number, number, number, number];
+  const landings: readonly Landing[] = [
+    [0.56, 0.845, 0.05, 0.85],
+    [0.478, 0.796, 0.04, 0.62],
+    [0.638, 0.75, 0.034, 0.42],
   ];
-  for (const [lx, ly, lw, p] of landings) {
+  type Vigil = readonly [number, number, number];
+  const vigils: readonly Vigil[] = [
+    // [x, y, presence] — standing on the spur's treads and landings
+    [0.478, 0.898, 1],
+    [0.585, 0.842, 0.8],
+    [0.492, 0.792, 0.6],
+    [0.6, 0.76, 0.48],
+    [0.655, 0.742, 0.4],
+    [0.695, 0.716, 0.3],
+    [0.73, 0.698, 0.22],
+    [0.758, 0.678, 0.14],
+    [0.8, 0.655, 0.09],
+  ];
+  const paintLanding = (lx: number, ly: number, lw2: number, p: number): void => {
     const th = Math.max(2.5, s * 0.01) * (0.5 + p * 0.5);
     ctx.globalAlpha = p;
     ctx.fillStyle = shade(C.void, 0.82, 0.95);
-    ctx.fillRect(w * lx, h * ly, w * lw, th);
+    ctx.fillRect(w * lx, h * ly, w * lw2, th);
     ctx.strokeStyle = mix(C.void, C.bone, 0.4, 0.34);
     ctx.lineWidth = Math.max(0.8, s * 0.0016);
-    line(w * lx, h * ly, w * (lx + lw), h * ly);
+    line(w * lx, h * ly, w * (lx + lw2), h * ly);
     ctx.globalAlpha = 1;
-  }
-
-  // ── 7. the constellation — other delvers' vigils, fading with distance ───
-  const vigils: ReadonlyArray<readonly [number, number, number]> = [
-    // [x, y, presence] — placed on treads and landings, none in the menu box
-    [0.436, 0.912, 1],
-    [0.576, 0.845, 0.8],
-    [0.488, 0.79, 0.6],
-    [0.6, 0.758, 0.48],
-    [0.654, 0.744, 0.4],
-    [0.694, 0.712, 0.3],
-    [0.728, 0.694, 0.22],
-    [0.756, 0.664, 0.14],
-    [0.8, 0.648, 0.09],
-  ];
-  for (const [vx, vy, p] of vigils) {
+  };
+  const paintVigil = (vx: number, vy: number, p: number): void => {
     const x = w * vx + (rand() - 0.5) * s * 0.008;
     const y = h * vy + (rand() - 0.5) * s * 0.004;
     const stubH = p > 0.45 ? Math.max(2, s * 0.007 * p) : 0;
@@ -312,63 +408,160 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
     ctx.beginPath();
     ctx.arc(x, dotY - 0.5, Math.max(0.7, s * (0.0016 + 0.0022 * p)), 0, TAU);
     ctx.fill();
-  }
-
-  // ── 8. the vault — heavy dark stone closing the top of frame ─────────────
-  // far membrane, hazy
-  ctx.fillStyle = mix(C.void, C.surface, 0.5);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(0, h * 0.2);
-  ctx.quadraticCurveTo(w * 0.26, h * 0.045, w * 0.52, h * 0.115);
-  ctx.quadraticCurveTo(w * 0.76, h * 0.02, w, h * 0.075);
-  ctx.lineTo(w, 0);
-  ctx.closePath();
-  ctx.fill();
-  // near rib mass — darkest cutout, its boss hanging at the rib junction
-  const vaultEdge = (): void => {
-    ctx.moveTo(0, h * 0.3);
-    ctx.quadraticCurveTo(w * 0.15, h * 0.115, w * 0.355, h * 0.155);
-    ctx.lineTo(w * 0.375, h * 0.19);
-    ctx.lineTo(w * 0.395, h * 0.152);
-    ctx.quadraticCurveTo(w * 0.62, h * 0.028, w, h * 0.125);
   };
-  ctx.fillStyle = shade(C.void, 0.55);
+  const NEAR = 0.5;
+  // far pass first…
+  for (const [fx0, fy0, fx1, fy1, n, p] of flights) {
+    if (p < NEAR) drawFlight(w * fx0, h * fy0, w * fx1, h * fy1, n, p);
+  }
+  for (const [lx, ly, lw2, p] of landings) if (p < NEAR) paintLanding(lx, ly, lw2, p);
+  for (const [vx, vy, p] of vigils) if (p < NEAR) paintVigil(vx, vy, p);
+  // …then a breath of air between mid-ground and Gate…
+  const veil = ctx.createLinearGradient(0, h * 0.54, 0, h * 0.74);
+  veil.addColorStop(0, mix(C.void, C.bone, 0.08, 0));
+  veil.addColorStop(0.5, mix(C.void, C.bone, 0.08, 0.1));
+  veil.addColorStop(1, mix(C.void, C.bone, 0.08, 0));
+  ctx.fillStyle = veil;
+  ctx.fillRect(0, h * 0.54, w, h * 0.2);
+  // …then the near runs, in front of the veil
+  for (const [fx0, fy0, fx1, fy1, n, p] of flights) {
+    if (p >= NEAR) drawFlight(w * fx0, h * fy0, w * fx1, h * fy1, n, p);
+  }
+  for (const [lx, ly, lw2, p] of landings) if (p >= NEAR) paintLanding(lx, ly, lw2, p);
+  for (const [vx, vy, p] of vigils) if (p >= NEAR) paintVigil(vx, vy, p);
+
+  // ── 8. the vault — ribbed stone closing the top, in two fog stops ────────
+  // Both masses span the full frame width and melt upward into the dark:
+  // no edge terminates mid-air.
+  const farEdge = (): void => {
+    ctx.moveTo(0, h * 0.115);
+    ctx.quadraticCurveTo(w * 0.3, h * 0.03, w * 0.55, h * 0.075);
+    ctx.quadraticCurveTo(w * 0.78, h * 0.11, w, h * 0.045);
+  };
+  ctx.fillStyle = mix(C.void, C.surface, 0.55);
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  vaultEdge();
+  farEdge();
   ctx.lineTo(w, 0);
   ctx.closePath();
   ctx.fill();
-  // a breath of edge light along the near ribs, and a few mortar ticks
-  ctx.strokeStyle = mix(C.void, C.boneDim, 0.55, 0.2);
+  ctx.strokeStyle = mix(C.void, C.boneDim, 0.45, 0.12);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  farEdge();
+  ctx.stroke();
+  // high haze — air between the vault stops
+  const highHaze = ctx.createLinearGradient(0, h * 0.05, 0, h * 0.2);
+  highHaze.addColorStop(0, mix(C.void, C.bone, 0.07, 0));
+  highHaze.addColorStop(0.5, mix(C.void, C.bone, 0.07, 0.09));
+  highHaze.addColorStop(1, mix(C.void, C.bone, 0.07, 0));
+  ctx.fillStyle = highHaze;
+  ctx.fillRect(0, h * 0.05, w, h * 0.15);
+  // near vault — two bays springing from a lost pier, exiting both sides
+  const nearEdge = (dy: number): void => {
+    ctx.moveTo(0, h * (0.24 + dy));
+    ctx.quadraticCurveTo(w * 0.13, h * (0.083 + dy), w * 0.3, h * (0.078 + dy));
+    ctx.quadraticCurveTo(w * 0.47, h * (0.075 + dy), w * 0.58, h * (0.16 + dy));
+    ctx.quadraticCurveTo(w * 0.8, h * (0.028 + dy), w, h * (0.062 + dy));
+  };
+  const vaultMass = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    nearEdge(0);
+    ctx.lineTo(w, 0);
+    ctx.closePath();
+  };
+  vaultMass();
+  ctx.fillStyle = shade(C.void, 0.55);
+  ctx.fill();
+  // interior of the shell, clipped to the mass: a soft band of reflected
+  // light along the arc, then rib courses fading upward
+  ctx.save();
+  vaultMass();
+  ctx.clip();
+  ctx.strokeStyle = mix(C.void, C.surface2, 0.85, 0.16);
+  ctx.lineWidth = Math.max(8, s * 0.026);
+  ctx.beginPath();
+  nearEdge(0);
+  ctx.stroke();
+  for (const [off, a] of [
+    [-0.032, 0.3],
+    [-0.066, 0.19],
+    [-0.102, 0.1],
+  ] as const) {
+    ctx.strokeStyle = mix(C.void, C.surface2, 1, a);
+    ctx.lineWidth = Math.max(1, s * 0.0024);
+    ctx.beginPath();
+    nearEdge(off);
+    ctx.stroke();
+  }
+  // coffer ticks between the courses
+  ctx.strokeStyle = mix(C.void, C.surface2, 0.95, 0.18);
+  ctx.lineWidth = 1;
+  for (const t of [0.07, 0.17, 0.27, 0.4, 0.52, 0.68, 0.8, 0.92] as const) {
+    const tx = w * t + (rand() - 0.5) * w * 0.012;
+    // approximate edge height at tx, then tick upward between courses
+    const ty =
+      t < 0.3
+        ? h * (0.24 - t * 0.55)
+        : t < 0.58
+          ? h * (0.078 + (t - 0.3) * 0.29)
+          : h * (0.16 - (t - 0.58) * 0.23);
+    line(tx, ty - h * 0.01, tx + (rand() - 0.5) * s * 0.008, ty - h * 0.052);
+  }
+  ctx.restore();
+  // edge-light from below — strongest above the candle's glow
+  const vaultLit = ctx.createLinearGradient(0, 0, w, 0);
+  vaultLit.addColorStop(0, mix(C.void, C.boneDim, 0.5, 0.1));
+  vaultLit.addColorStop(0.2, mix(C.void, C.boneDim, 0.55, 0.24));
+  vaultLit.addColorStop(0.5, mix(C.void, C.boneDim, 0.5, 0.09));
+  vaultLit.addColorStop(1, mix(C.void, C.boneDim, 0.5, 0.14));
+  ctx.strokeStyle = vaultLit;
   ctx.lineWidth = 1.2;
   ctx.beginPath();
-  vaultEdge();
+  nearEdge(0);
   ctx.stroke();
-  ctx.strokeStyle = mix(C.void, C.boneDim, 0.5, 0.12);
+  // the pier rib drops from the springing and dissolves — nothing hard
+  const pier = ctx.createLinearGradient(0, h * 0.155, 0, h * 0.245);
+  pier.addColorStop(0, shade(C.void, 0.5, 0.95));
+  pier.addColorStop(1, shade(C.void, 0.5, 0));
+  ctx.strokeStyle = pier;
+  ctx.lineWidth = Math.max(3, s * 0.008);
+  line(w * 0.58, h * 0.152, w * 0.577, h * 0.24);
+  const pierLit = ctx.createLinearGradient(0, h * 0.155, 0, h * 0.22);
+  pierLit.addColorStop(0, mix(C.void, C.boneDim, 0.45, 0.2));
+  pierLit.addColorStop(1, mix(C.void, C.boneDim, 0.45, 0));
+  ctx.strokeStyle = pierLit;
   ctx.lineWidth = 1;
-  for (const t of [0.12, 0.24, 0.52, 0.7, 0.86] as const) {
-    const tx = w * t;
-    const ty = t < 0.36 ? h * (0.3 - t * 0.52) : h * (0.155 - (t - 0.36) * 0.1);
-    line(tx, ty, tx + (rand() - 0.5) * s * 0.01, ty - s * (0.012 + rand() * 0.01));
-  }
+  line(w * 0.578 + Math.max(1.5, s * 0.004), h * 0.158, w * 0.5755 + Math.max(1.5, s * 0.004), h * 0.218);
+  // both vault stops melt upward into the crown darkness
+  const melt = ctx.createLinearGradient(0, 0, 0, h * 0.12);
+  melt.addColorStop(0, shade(C.void, 0.8, 0.6));
+  melt.addColorStop(1, shade(C.void, 0.8, 0));
+  ctx.fillStyle = melt;
+  ctx.fillRect(0, 0, w, h * 0.12);
 
-  // ── 9. the ledge — worn stone, sheared off where the descent begins ──────
+  // ── 9. the ledge — worn stone, sheared off in broken strata ──────────────
   const crest: Array<{ x: number; y: number }> = [];
   const LSTEPS = 14;
   for (let i = 0; i <= LSTEPS; i++) {
     crest.push({ x: (i / LSTEPS) * breakX, y: ledgeY + (rand() - 0.5) * s * 0.005 });
   }
+  // strata profile: three beds, each recessed under the one above, the last
+  // running off the bottom of frame
+  const bedA = ledgeY + h * 0.024;
+  const bedB = ledgeY + h * 0.056;
+  const bedC = ledgeY + h * 0.092;
   const ledgePath = (): void => {
     ctx.beginPath();
     ctx.moveTo(0, crest[0]?.y ?? ledgeY);
     for (const p of crest) ctx.lineTo(p.x, p.y);
-    // the broken corner — a stepped fracture falling into the gulf
-    ctx.lineTo(breakX + w * 0.012, ledgeY + h * 0.018);
-    ctx.lineTo(breakX - w * 0.006, ledgeY + h * 0.032);
-    ctx.lineTo(breakX + w * 0.018, ledgeY + h * 0.06);
-    ctx.lineTo(breakX - w * 0.02, h);
+    ctx.lineTo(breakX + w * 0.007, bedA); // bed A face, lipping out
+    ctx.lineTo(breakX - w * 0.011, bedA + h * 0.003); // recess
+    ctx.lineTo(breakX - w * 0.005, bedB); // bed B face
+    ctx.lineTo(breakX - w * 0.024, bedB + h * 0.003); // recess
+    ctx.lineTo(breakX - w * 0.017, bedC); // bed C face
+    ctx.lineTo(breakX - w * 0.03, h); // exits the frame bottom
     ctx.lineTo(0, h);
     ctx.closePath();
   };
@@ -379,6 +572,35 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ledgePath();
   ctx.fillStyle = ledgeG;
   ctx.fill();
+  // the shear reads as strata: value steps down the broken face
+  ctx.save();
+  ledgePath();
+  ctx.clip();
+  const strata: ReadonlyArray<readonly [number, number, string, number]> = [
+    // [yTop, yBot, fill, edge-light alpha]
+    [ledgeY, bedA, mix(C.void, C.surface2, 0.72, 0.85), 0],
+    [bedA, bedB, mix(C.void, C.surface2, 0.5, 0.85), 0.18],
+    [bedB, bedC, mix(C.void, C.surface, 0.34, 0.85), 0.1],
+  ];
+  for (const [y0, y1, fill, litA] of strata) {
+    ctx.fillStyle = fill;
+    ctx.fillRect(breakX - w * 0.075, y0, w * 0.085, y1 - y0);
+    if (litA > 0) {
+      // each bed's top edge catches the gulf light, dying leftward
+      const bedLit = ctx.createLinearGradient(breakX - w * 0.075, 0, breakX + w * 0.008, 0);
+      bedLit.addColorStop(0, mix(C.void, C.boneDim, 0.5, 0));
+      bedLit.addColorStop(1, mix(C.void, C.boneDim, 0.5, litA));
+      ctx.strokeStyle = bedLit;
+      ctx.lineWidth = 1;
+      line(breakX - w * 0.075, y0 + 0.5, breakX + w * 0.008, y0 + 0.5);
+    }
+  }
+  // shadow tucked under each overhang
+  ctx.strokeStyle = shade(C.void, 0.5, 0.5);
+  ctx.lineWidth = Math.max(1, s * 0.0022);
+  line(breakX - w * 0.011, bedA + h * 0.004, breakX + w * 0.006, bedA + h * 0.001);
+  line(breakX - w * 0.024, bedB + h * 0.004, breakX - w * 0.006, bedB + h * 0.001);
+  ctx.restore();
   // crest edge: cool line full length, then a warm overlay near the candle
   ctx.strokeStyle = mix(C.void, C.boneDim, 0.5, 0.3);
   ctx.lineWidth = 1;
@@ -388,19 +610,19 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.stroke();
   ctx.strokeStyle = mix(C.flame, C.bone, 0.5, 0.28);
   line(cx - cw * 1.4, ledgeY, cx + cw * 1.7, ledgeY);
-  // face joints and one crack running from the fracture
+  // face joints and one crack reaching in from the shear
   ctx.strokeStyle = shade(C.surface2, 1.15, 0.14);
   const courseY = ledgeY + h * 0.05;
-  line(0, courseY, breakX * 0.96, courseY + (rand() - 0.5) * s * 0.008);
+  line(0, courseY, breakX * 0.88, courseY + (rand() - 0.5) * s * 0.008);
   for (let i = 0; i < 5; i++) {
-    const jx = rand() * breakX * 0.9;
+    const jx = rand() * breakX * 0.82;
     line(jx, rand() < 0.5 ? ledgeY + 2 : courseY, jx, rand() < 0.5 ? courseY : h * 0.97);
   }
-  ctx.strokeStyle = shade(C.void, 0.6, 0.5);
+  ctx.strokeStyle = shade(C.void, 0.6, 0.45);
   ctx.beginPath();
-  ctx.moveTo(breakX - w * 0.004, ledgeY + h * 0.03);
-  ctx.lineTo(breakX - w * 0.045, ledgeY + h * 0.055 + rand() * s * 0.01);
-  ctx.lineTo(breakX - w * 0.06, ledgeY + h * 0.09);
+  ctx.moveTo(breakX - w * 0.008, bedA);
+  ctx.lineTo(breakX - w * 0.05, bedA + h * 0.02 + rand() * s * 0.01);
+  ctx.lineTo(breakX - w * 0.068, bedB + h * 0.02);
   ctx.stroke();
 
   // ── 10. THE CANDLE — thick, ancient, drip-skirted, waiting ───────────────
@@ -575,6 +797,18 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillStyle = pool;
   ctx.fillRect(-ch * 0.9, -ch * 0.9, ch * 1.8, ch * 1.8);
   ctx.restore();
+  // dust motes drifting in the candle's light — few, deliberate, amber-bound
+  for (let i = 0; i < 7; i++) {
+    const a = -Math.PI * (0.12 + rand() * 0.6);
+    const d = h * (0.05 + rand() * 0.16);
+    const mxp = glowX + Math.cos(a) * d * 1.2;
+    const myp = glowY + Math.sin(a) * d;
+    const fade = 1 - d / (h * 0.24);
+    ctx.fillStyle = mix(C.flame, C.bone, 0.45, 0.05 + 0.11 * fade * rand());
+    ctx.beginPath();
+    ctx.arc(mxp, myp, Math.max(0.6, s * 0.0012 + rand() * s * 0.0011), 0, TAU);
+    ctx.fill();
+  }
 
   // ── 12. settle the frame — calm the menu column, crush top and bottom ────
   ctx.save();
