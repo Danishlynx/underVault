@@ -141,6 +141,8 @@ export class AudioGraph {
   private themeOthers: AudioNode[] = [];
   private themeTimers: number[] = [];
   private themeOn = false;
+  private themeConv: ConvolverNode | null = null; // procedural cathedral (D84)
+  private themeCycle = 0; // bar counter for the score
 
   private userMuted = false;
   private hidden: boolean;
@@ -365,24 +367,31 @@ export class AudioGraph {
   }
 
   /**
-   * The title-menu theme (D84) — "the vigil". A patient liturgical hum:
-   * organ pedal holding a bare fifth, the hush of a room kept by one
-   * candle, a far bell every few breaths, sparse wax crackle. Fully
-   * synthesized like everything else. Startable only after a user gesture
-   * on the menu (operator-directed extension of invariant 6 — the
-   * match-strike remains the in-run ceremony); the menu keeps a mute
-   * control visible, and it obeys the same master/visibility mutes.
+   * The title-menu theme (D84, recomposed on operator verdict "one mono
+   * bell") — "the vigil". A real composed piece, still 100% synthesized:
+   * a descending LAMENT BASS in A minor (A–G–F–E, one chord per ~9.6 s
+   * bar, add9/maj7 voicings, ten detuned pad oscillators spread across
+   * the stereo field), the Candlemaid's music-box tune above it (in-key,
+   * resting every third pass so the loop breathes), a rare far toll, the
+   * candle-room hush, wax crackle — all sent through a procedurally
+   * generated stereo convolution reverb (no samples: the impulse response
+   * is synthesized noise with exponential decay and progressive damping).
+   * Startable only after a user gesture on the menu (operator-directed
+   * extension of invariant 6 — the match-strike remains the in-run
+   * ceremony); the menu keeps a mute control visible, and it obeys the
+   * same master/visibility mutes.
    */
   startMenuTheme(): void {
     if (this.themeOn) return;
     this.themeOn = true;
     const begin = (): void => {
       if (!this.themeOn || this.ctx.state !== "running") return;
+      this.buildThemeReverb();
       this.buildThemeVoices();
       const t = this.ctx.currentTime;
       this.theme.gain.cancelScheduledValues(t);
-      this.theme.gain.setTargetAtTime(0.12, t + 0.1, 1.2);
-      this.scheduleThemeBell(2400 + Math.random() * 1800);
+      this.theme.gain.setTargetAtTime(0.16, t + 0.1, 1.2);
+      this.scheduleThemeScore(350);
       this.scheduleThemeCrackle(1200 + Math.random() * 1400);
     };
     if (this.ctx.state === "running") {
@@ -404,6 +413,8 @@ export class AudioGraph {
   stopMenuTheme(): void {
     if (!this.themeOn) return;
     this.themeOn = false;
+    this.themeConv = null;
+    this.themeCycle = 0;
     for (const id of this.themeTimers) window.clearTimeout(id);
     this.themeTimers = [];
     const t = this.ctx.currentTime;
@@ -453,21 +464,6 @@ export class AudioGraph {
     hold(airLfo);
     this.themeOthers.push(airLp, airG, airDepth);
 
-    // the pedal: an organ holding a bare fifth under the mountain
-    const pedal = (type: OscillatorType, freq: number, gain: number): void => {
-      const o = this.ctx.createOscillator();
-      o.type = type;
-      o.frequency.value = freq;
-      const g = this.ctx.createGain();
-      g.gain.value = gain;
-      o.connect(g).connect(this.theme);
-      hold(o);
-      this.themeOthers.push(g);
-    };
-    pedal("sine", 55, 0.3); // A1
-    pedal("sine", 82.41, 0.11); // E2 — the fifth
-    pedal("triangle", 110, 0.035); // faint octave color
-
     // the shimmer: a thin high air that wanders, barely there
     const shim = this.ctx.createBufferSource();
     shim.buffer = this.noise;
@@ -490,24 +486,230 @@ export class AudioGraph {
     this.themeOthers.push(shimBp, shimG, shimDepth);
   }
 
-  /** A far bell every few breaths — single toll or a falling pair. */
-  private scheduleThemeBell(delay: number): void {
+  /**
+   * The lament: A minor descending tetrachord — Am(add9), G, Fmaj7, E —
+   * the oldest "ancient and doomed" progression there is. One chord per
+   * ~9.6 s bar; voicings kept low and close (candle-lit, not orchestral).
+   */
+  private static readonly THEME_CHORDS: readonly { bass: number; pad: readonly number[] }[] = [
+    { bass: 55.0, pad: [110.0, 164.81, 220.0, 246.94, 261.63] }, // Am(add9): A2 E3 A3 B3 C4
+    { bass: 49.0, pad: [98.0, 146.83, 196.0, 246.94, 293.66] }, // G: G2 D3 G3 B3 D4
+    { bass: 43.65, pad: [87.31, 130.81, 174.61, 220.0, 329.63] }, // Fmaj7: F2 C3 F3 A3 E4
+    { bass: 41.2, pad: [82.41, 123.47, 164.81, 207.65, 246.94] }, // E: E2 B2 E3 G#3 B3
+  ];
+
+  /**
+   * The Candlemaid's tune — a two-phrase music-box melody over the
+   * lament, entry per bar: [bar, offset s, Hz, decay s]. Falls with the
+   * bass and lands on the Phrygian E — mournful, unresolved, inviting.
+   */
+  private static readonly THEME_MELODY: readonly [number, number, number, number][] = [
+    [0, 0.5, 659.25, 3.4], // E5 — the call
+    [0, 2.8, 523.25, 3.0], // C5
+    [0, 4.6, 493.88, 2.6], // B4
+    [0, 6.0, 440.0, 4.2], // A4
+    [1, 1.2, 493.88, 3.0], // B4
+    [1, 3.4, 587.33, 3.4], // D5 — the reach
+    [1, 6.2, 493.88, 3.6], // B4
+    [2, 0.8, 523.25, 3.2], // C5
+    [2, 3.2, 440.0, 3.0], // A4
+    [2, 6.4, 659.25, 4.0], // E5 over Fmaj7 — the ache
+    [3, 1.0, 493.88, 3.2], // B4
+    [3, 3.6, 415.3, 3.8], // G#4 — the leading tone
+    [3, 6.4, 329.63, 5.0], // E4 — she does not come back up
+  ];
+
+  /**
+   * Procedural cathedral: a stereo impulse response synthesized in place
+   * (decorrelated noise, exponential decay, highs damped progressively —
+   * the deeper into the tail, the more stone it has passed through).
+   * Zero samples fetched; invariant 4 holds.
+   */
+  private buildThemeReverb(): void {
+    const conv = this.ctx.createConvolver();
+    conv.buffer = this.makeReverbIR(3.2, 1.1);
+    const wet = this.ctx.createGain();
+    wet.gain.value = 0.8;
+    conv.connect(wet).connect(this.theme);
+    this.themeConv = conv;
+    this.themeOthers.push(conv, wet);
+  }
+
+  private makeReverbIR(seconds: number, tau: number): AudioBuffer {
+    const sr = this.ctx.sampleRate;
+    const len = Math.max(1, Math.round(sr * seconds));
+    const buf = this.ctx.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const t = i / sr;
+        // one-pole lowpass whose cutoff falls along the tail
+        const k = 0.55 * (1 - t / seconds) + 0.06;
+        lp += (Math.random() * 2 - 1 - lp) * k;
+        // 20 ms fade-in stands in for pre-delay; keeps the dry hit distinct
+        const pre = t < 0.02 ? t / 0.02 : 1;
+        d[i] = lp * Math.exp(-t / tau) * pre;
+      }
+    }
+    return buf;
+  }
+
+  /** One pad voice: detuned sine+triangle pair through a lowpass, panned,
+   *  breathing on its own slow LFO, split dry/reverb. Self-cleaning. */
+  private themePadVoice(freq: number, pan: number, t0: number, holdS: number, peak: number): void {
+    const oscA = this.ctx.createOscillator();
+    oscA.type = "sine";
+    oscA.frequency.value = freq;
+    const oscB = this.ctx.createOscillator();
+    oscB.type = "triangle";
+    oscB.frequency.value = freq;
+    oscB.detune.value = 4 + Math.random() * 4;
+    const trimB = this.ctx.createGain();
+    trimB.gain.value = 0.35;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = Math.min(1400, freq * 6);
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(SILENT, t0);
+    env.gain.linearRampToValueAtTime(peak, t0 + 2.6);
+    env.gain.setValueAtTime(peak, t0 + holdS);
+    env.gain.exponentialRampToValueAtTime(SILENT, t0 + holdS + 3.6);
+    const breath = this.ctx.createOscillator();
+    breath.frequency.value = 0.08 + Math.random() * 0.06;
+    const breathDepth = this.ctx.createGain();
+    breathDepth.gain.value = peak * 0.16;
+    breath.connect(breathDepth);
+    breathDepth.connect(env.gain);
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = pan;
+    const send = this.ctx.createGain();
+    send.gain.value = 0.4;
+    oscA.connect(lp);
+    oscB.connect(trimB).connect(lp);
+    lp.connect(env).connect(panner);
+    panner.connect(this.theme);
+    if (this.themeConv !== null) panner.connect(send).connect(this.themeConv);
+    const tEnd = t0 + holdS + 3.7;
+    oscA.start(t0);
+    oscB.start(t0);
+    breath.start(t0);
+    oscA.stop(tEnd);
+    oscB.stop(tEnd);
+    breath.stop(tEnd);
+    oscA.onended = () => {
+      for (const n of [oscA, oscB, trimB, lp, env, breath, breathDepth, panner, send]) n.disconnect();
+    };
+  }
+
+  /** The lament bass — dry, centered, felt in the floor. */
+  private themeBass(freq: number, t0: number, holdS: number): void {
+    const osc = this.ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(SILENT, t0);
+    env.gain.linearRampToValueAtTime(0.075, t0 + 2.2);
+    env.gain.setValueAtTime(0.075, t0 + holdS);
+    env.gain.exponentialRampToValueAtTime(SILENT, t0 + holdS + 3.0);
+    osc.connect(env).connect(this.theme);
+    osc.start(t0);
+    osc.stop(t0 + holdS + 3.1);
+    osc.onended = () => {
+      osc.disconnect();
+      env.disconnect();
+    };
+  }
+
+  /** A music-box bell: fundamental + detuned double + inharmonic partials
+   *  (3.01f, 5.4f), panned, mostly living inside the reverb. */
+  private themeBell(freq: number, atS: number, peak: number, pan: number, sendLvl: number, dur: number): void {
+    const t0 = this.ctx.currentTime + atS;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = pan;
+    const dry = this.ctx.createGain();
+    dry.gain.value = 0.5;
+    panner.connect(dry).connect(this.theme);
+    const send = this.ctx.createGain();
+    send.gain.value = sendLvl;
+    if (this.themeConv !== null) panner.connect(send).connect(this.themeConv);
+    const parts: [number, number, number, number][] = [
+      [1, 1, dur, 0], // fundamental
+      [1, 0.5, dur * 0.9, 3.5], // detuned double — the shimmer
+      [3.01, 0.2, dur * 0.5, 0], // music-box clink
+      [5.4, 0.05, dur * 0.28, 0], // glassy edge
+    ];
+    // the fundamental (parts[0]) rings longest — it owns the bus teardown
+    let longest: OscillatorNode | null = null;
+    for (const [ratio, amp, dec, cents] of parts) {
+      const osc = this.ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq * ratio;
+      osc.detune.value = cents;
+      const env = this.ctx.createGain();
+      env.gain.setValueAtTime(SILENT, t0);
+      env.gain.linearRampToValueAtTime(peak * amp, t0 + 0.004);
+      env.gain.exponentialRampToValueAtTime(SILENT, t0 + dec);
+      osc.connect(env).connect(panner);
+      osc.start(t0);
+      osc.stop(t0 + dec + 0.05);
+      const localEnv = env;
+      osc.onended = () => {
+        osc.disconnect();
+        localEnv.disconnect();
+      };
+      if (longest === null) longest = osc;
+    }
+    if (longest !== null) {
+      const own = longest;
+      const prev = own.onended;
+      own.onended = (ev) => {
+        if (prev !== null) prev.call(own, ev);
+        panner.disconnect();
+        dry.disconnect();
+        send.disconnect();
+      };
+    }
+  }
+
+  /**
+   * The score: one bar per call — bass + five pad voices spread across
+   * the field, the tune when it isn't resting (every third pass it lies
+   * silent and lets the stone speak), a far toll through the reverb on
+   * an off-cycle so three minutes on this screen never feels looped.
+   */
+  private scheduleThemeScore(delayMs: number): void {
     const id = window.setTimeout(() => {
       if (!this.themeOn || this.ctx.state !== "running") return;
-      this.trim = 1;
-      if (Math.random() < 0.55) {
-        // one toll, heard through stone
-        this.tone({ type: "triangle", freq: 587.33, dur: 1.6, peak: 0.028, attack: 0.01 });
-        this.tone({ type: "sine", freq: 293.66, dur: 1.3, peak: 0.014, attack: 0.01 });
-      } else {
-        // a falling pair — solemn, unresolved
-        this.tone({ type: "triangle", freq: 523.25, dur: 1.3, peak: 0.024, attack: 0.01 });
-        this.tone({ type: "sine", freq: 261.63, dur: 1.1, peak: 0.012, attack: 0.01 });
-        this.tone({ type: "triangle", freq: 392, at: 0.62, dur: 1.5, peak: 0.02, attack: 0.01 });
-        this.tone({ type: "sine", freq: 196, at: 0.62, dur: 1.3, peak: 0.011, attack: 0.01 });
+      const BAR = 9.6;
+      const bar = this.themeCycle % 4;
+      const pass = Math.floor(this.themeCycle / 4);
+      const c = AudioGraph.THEME_CHORDS[bar]!;
+      const t0 = this.ctx.currentTime + 0.05;
+      this.themeBass(c.bass, t0, BAR);
+      const spread = [-0.55, 0.35, -0.2, 0.5, -0.4];
+      c.pad.forEach((f, i) => {
+        this.themePadVoice(f, spread[i % spread.length]!, t0, BAR, 0.045);
+      });
+      if (pass % 3 !== 2) {
+        for (const [b, at, f, dur] of AudioGraph.THEME_MELODY) {
+          if (b !== bar) continue;
+          this.themeBell(
+            f,
+            at + (Math.random() - 0.5) * 0.2, // rubato — a hand, not a clock
+            0.055 + Math.random() * 0.015,
+            0.12 + Math.random() * 0.24, // the tune lives Gate-side
+            0.8,
+            dur,
+          );
+        }
       }
-      this.scheduleThemeBell(6500 + Math.random() * 3500);
-    }, delay);
+      if (this.themeCycle % 5 === 2) {
+        this.themeBell(329.63, 2 + Math.random() * 4, 0.016, 0.45, 1.4, 6);
+      }
+      this.themeCycle++;
+      this.scheduleThemeScore(BAR * 1000);
+    }, delayMs);
     this.themeTimers.push(id);
   }
 

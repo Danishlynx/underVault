@@ -723,3 +723,20 @@ candidates; flip them in the named data file, not in code.
     visibilitychange hard-mute still governs; the match-strike remains
     the in-run ceremony. Harness: snap.ts clicks .uv-menu-begin before
     the story skip for game captures; a bare snap captures the menu.
+
+85. Menu theme RECOMPOSED on operator verdict ("felt like one mono
+    bell"). External audio sources are off the table by design
+    (invariant 4: no external network / zero fetched assets; plus Devvit
+    bundle budgets and hackathon licensing risk), so the fix is craft,
+    not sourcing: the vigil is now a composed piece, still 100%
+    synthesized in AudioGraph. Descending lament bass in A minor
+    (Am(add9) - G - Fmaj7 - E, ~9.6 s per bar, Phrygian close), five
+    detuned pad voices per chord spread across the stereo field with
+    slow breath LFOs, an authored music-box melody ("the Candlemaid's
+    tune" - in-key, rubato, rests every third pass), a rare far toll,
+    all routed through a PROCEDURAL stereo convolution reverb (impulse
+    response synthesized: decorrelated noise, exponential decay,
+    progressive high-frequency damping - no samples anywhere). The old
+    out-of-key bell dyads and static organ pedal are gone. New dev
+    harness: tools/dev-harness/audio-smoke.ts (gesture-wake + 3 bars +
+    stop handoff under headless, asserts no WebAudio exceptions).
