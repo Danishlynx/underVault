@@ -773,3 +773,14 @@ candidates; flip them in the named data file, not in code.
     light-hairs fading before the shells converge, verified 3:4 through
     2.1:1. Standing rule added to the snap matrix: ALWAYS verify menu/
     hero art at ultrawide (1920x930) alongside 16:9 and portrait.
+
+88. The ceiling loses (operator, third flag on the same region: "that
+    long elongated black thing... looks out of place"). Both vault
+    shell masses removed from the menu backdrop entirely - edges,
+    light-hairs, inter-shell haze - replaced by a single soft void
+    gradient deepening toward the top edge. No shapes above the Gate
+    crown and title zone; the Gate upper rim arcs fade up into the dark
+    with no terminations. Rationale: a near-black mass on near-black
+    ground is legible only by its edge, and a lone long edge always
+    reads as a cut/tear; "too far up to see" says colossal better than
+    any drawn ceiling. Reaffirms D83: the void stays pure.
