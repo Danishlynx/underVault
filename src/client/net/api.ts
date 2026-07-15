@@ -109,6 +109,17 @@ export function apiDay(): Promise<DayRes> {
   return get("/api/day", zDayRes);
 }
 
+// ⚠ DEV-ONLY (D122) — REMOVE BEFORE PUBLIC LAUNCH. Wipes your own run so the
+// in-game "Play again (dev)" button can replay without the mod menu. Raw fetch
+// (no schema): the response is ignored, the caller reloads afterwards.
+export async function apiRunResetDev(): Promise<void> {
+  await fetch("/api/run/reset-dev", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+}
+
 export function apiRunStart(): Promise<StartRes> {
   return post("/api/run/start", {}, zStartRes);
 }

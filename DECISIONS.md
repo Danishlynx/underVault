@@ -1108,6 +1108,19 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+122. IN-GAME "PLAY AGAIN (dev)" BUTTON — DEV-ONLY, REMOVE BEFORE
+    PUBLIC (operator: "just for dev testing, don't forget to remove
+    it later"). The mod-menu reset (D120) still meant leaving the
+    webview; this puts a one-tap replay on the candle-spent/expired
+    wall. main.ts renderRefusal shows it only for CANDLE_SPENT /
+    RUN_EXPIRED -> apiRunResetDev() -> POST /api/run/reset-dev
+    (auth-guarded, clears the caller's own run) -> location.reload().
+    It DEFEATS the one-candle law by design and is only safe on the
+    private playtest sub. THREE things to strip before public launch
+    (all tagged "DEV-ONLY (D122)"): the /api/run/reset-dev route
+    (run.ts), apiRunResetDev (net/api.ts), and the button block
+    (main.ts). Logged in docs/09 handoff removal list.
+
 121. MOBILE HIGH-DPI + LOAD STATE (live playtest on Reddit: mobile
     render muddy, ~5s black screen). Root cause: game.ts sized the
     WebGL buffer to CSS px (Scale.RESIZE) so on a phone (dpr ~2.5-3)

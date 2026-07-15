@@ -2,8 +2,22 @@
 
 Written 2026-07-15 (hackathon deadline day) by the outgoing session. The game is
 **feature-complete for the jam**; the only critical path left is **hosting**.
-Read CLAUDE.md first, then this. DECISIONS.md (D95–D108) is the authoritative
+Read CLAUDE.md first, then this. DECISIONS.md (D95–D122) is the authoritative
 recent history; docs on disk may lag it.
+
+## ⚠ REMOVE BEFORE PUBLIC LAUNCH (dev-only tools, private-sub testing only)
+
+- **`/api/run/reset-dev`** (`src/server/http/run.ts`) + **`apiRunResetDev`**
+  (`src/client/net/api.ts`) + the **"↻ Play again (dev)" button**
+  (`src/client/main.ts` renderRefusal) — all tagged `DEV-ONLY (D122)`. This trio
+  lets any authenticated user wipe their own run and replay, which defeats the
+  one-candle-a-day law. Fine on the private playtest sub; strip all three before
+  a public post.
+- The **"Undervault: reset my candle (dev)"** menu item (`devvit.json` +
+  `/internal/menu/reset-run`, D120) — mod-gated, so lower risk, but still a
+  test affordance; decide whether to keep or cut at launch.
+- In-run **dev keys** M / P / L / K (`Descent.ts`, tagged `DEV-ONLY: deleted at
+  M2`) — never in a judge's hands, but confirm they're stripped for public.
 
 ## 1. State of the world
 

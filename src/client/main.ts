@@ -10,7 +10,7 @@
 
 import "../../design/tokens/tokens.css";
 import { createUndervaultGame } from "./game.js";
-import { ApiError } from "./net/api.js";
+import { ApiError, apiRunResetDev } from "./net/api.js";
 import { createRemotePorts, VaultRefusal } from "./net/remote-ports.js";
 
 /** In-fiction copy per error code (04 tone); server messages are already in-fiction. */
@@ -64,6 +64,33 @@ function renderRefusal(parent: HTMLElement, err: unknown): void {
   line.style.cssText = "margin: 0; max-width: 32ch; font-size: 15px; line-height: 1.5";
 
   box.append(flame, line);
+
+  // ⚠ DEV-ONLY (D122) — REMOVE BEFORE PUBLIC LAUNCH. On the spent/expired wall,
+  // a one-tap in-webview replay (wipes your run, reloads) so testing needs no
+  // mod menu. Only shown for the replay-able refusals.
+  const code = err instanceof ApiError ? err.code : "";
+  if (code === "CANDLE_SPENT" || code === "RUN_EXPIRED") {
+    const btn = document.createElement("button");
+    btn.textContent = "↻ Play again (dev)";
+    btn.style.cssText = [
+      "margin-top: 8px",
+      "padding: 10px 18px",
+      "font: inherit",
+      "font-size: 14px",
+      "color: #0b0906",
+      "background: #d8a24a",
+      "border: none",
+      "border-radius: 6px",
+      "cursor: pointer",
+    ].join(";");
+    btn.addEventListener("click", () => {
+      btn.disabled = true;
+      btn.textContent = "Kindling…";
+      void apiRunResetDev().finally(() => window.location.reload());
+    });
+    box.append(btn);
+  }
+
   parent.replaceChildren(box);
   dismissLoader(); // the refusal IS the content now — never hold the loader over it
 }
