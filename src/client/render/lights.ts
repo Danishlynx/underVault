@@ -12,7 +12,8 @@ import Phaser from "phaser";
 import { COLOR } from "../../../design/tokens/tokens.js";
 import { Tile, type SimState } from "../../shared/sim/types.js";
 import { BRAZIER_RADIUS, FIRE_LIGHT_RADIUS } from "../../shared/sim/constants.js";
-import { gridToScreen, TILE_H, TILE_W } from "./iso.js";
+import { depthOf, gridToScreen, Layer, TILE_H, TILE_W } from "./iso.js";
+import { FLAME_ORIGIN_Y, FLAME_TEX, flameFrameKey } from "./tilemap.js";
 
 // ── Token-derived tint ramp ────────────────────────────────────────────────
 export function lerpColor(a: number, b: number, t: number): number {
@@ -229,6 +230,52 @@ export interface GlowPool {
 // furnace heat-haze controllers, keyed by glow image (D77)
 const hazeMap = new WeakMap<Phaser.GameObjects.Image, Phaser.Filters.Displacement>();
 
+// ── Living flames (D110): braziers/wax candles were static paintings whose
+// only motion was a glow pulse. We overlay the menu's teardrop flame (built
+// as frames in tilemap.buildFlameFrames) on every lit source and animate it
+// here — frame-swap for silhouette change plus a light transform wobble.
+// Pure presentation; the sim never learns. Reduced-motion holds a still pose.
+const REDUCED_FLAME =
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Placement of a source's flame: world-px offset from the tile-diamond
+ *  centre to the wick root, and the flame's visual height in world px. */
+interface FlameSpec {
+  dx: number;
+  dy: number;
+  h: number;
+}
+const FLAME_SPECS: Record<number, FlameSpec> = {
+  [Tile.BRAZIER_LIT]: { dx: 0, dy: -18, h: 22 },
+  [Tile.WAX_STUB]: { dx: 0, dy: -3, h: 11 },
+  [Tile.WAX_CAKE]: { dx: 0, dy: -6, h: 11 },
+  [Tile.WAX_DRIP]: { dx: 0, dy: 8, h: 9 },
+};
+// base scale (from setDisplaySize) + current frame, per flame image, so the
+// per-frame wobble multiplies a stable base and frame-swaps are deduped.
+const flameBase = new WeakMap<Phaser.GameObjects.Image, { x: number; y: number }>();
+const flameFrame = new WeakMap<Phaser.GameObjects.Image, number>();
+
+function animateFlame(img: Phaser.GameObjects.Image, key: string, time: number): void {
+  const base = flameBase.get(img);
+  if (base === undefined) return;
+  if (REDUCED_FLAME) return; // stays on the placed pose — a calm lit flame
+  // per-source phase from the tile-index digits so no two flames march in step
+  const phase = (key.charCodeAt(3) * 89 + (key.charCodeAt(4) || 0) * 17 + key.length * 41) % 997;
+  const fk = Math.floor(time / 82 + phase) % FLAME_TEX.count; // ~12 fps swap
+  if (flameFrame.get(img) !== fk) {
+    img.setTexture(flameFrameKey(fk));
+    flameFrame.set(img, fk);
+  }
+  // continuous flicker BETWEEN discrete frames — squash/stretch + a base lean
+  const w = time / 1000 + phase;
+  img.scaleX = base.x * (1 + Math.sin(w * 7.3) * 0.05 + Math.sin(w * 11.9 + 1.3) * 0.03);
+  img.scaleY = base.y * (1 + Math.sin(w * 6.1 + 0.7) * 0.07 + Math.sin(w * 9.7) * 0.04);
+  img.setAngle(Math.sin(w * 3.7) * 2.2 + Math.sin(w * 6.3 + 0.9) * 1.3);
+}
+
 export function syncSourceGlows(
   scene: Phaser.Scene,
   pool: GlowPool,
@@ -257,6 +304,27 @@ export function syncSourceGlows(
     img.setVisible(true);
   };
 
+  // an animated teardrop flame rooted on a lit source's wick (D110)
+  const placeFlame = (key: string, x: number, y: number, spec: FlameSpec): void => {
+    want.add(key);
+    let img = pool.images.get(key);
+    if (img === undefined) {
+      img = scene.add.image(0, 0, flameFrameKey(0));
+      img.setOrigin(0.5, FLAME_ORIGIN_Y);
+      layer?.add(img);
+      pool.images.set(key, img);
+      flameFrame.set(img, 0);
+    }
+    // just above its own prop; a wall in front (larger x+y) still occludes it
+    img.depth = depthOf(x, y, Layer.WALL) + 0.7;
+    const c = gridToScreen(x, y);
+    img.setPosition(c.sx + spec.dx, c.sy + spec.dy);
+    const scale = spec.h / FLAME_TEX.fh;
+    img.setDisplaySize(FLAME_TEX.cw * scale, FLAME_TEX.ch * scale);
+    flameBase.set(img, { x: img.scaleX, y: img.scaleY });
+    img.setVisible(true);
+  };
+
   // colored feature halos (D69): every glowing archway/shrine gets a soft
   // additive pool, like the reference dioramas — visible tiles only
   const FEATURE_HALO: Record<number, [number, number]> = {
@@ -277,6 +345,7 @@ export function syncSourceGlows(
     const t = s.tiles[i]!;
     if (t === Tile.BRAZIER_LIT) {
       place(`b:${i}`, x, y, 2.6, COLOR.flame);
+      placeFlame(`bf:${i}`, x, y, FLAME_SPECS[Tile.BRAZIER_LIT]!);
       if (haze) {
         const img = pool.images.get(`b:${i}`);
         if (img !== undefined) flames.push({ img, d: Math.abs(x - s.px) + Math.abs(y - s.py) });
@@ -287,6 +356,9 @@ export function syncSourceGlows(
         const img = pool.images.get(`f:${i}`);
         if (img !== undefined) flames.push({ img, d: Math.abs(x - s.px) + Math.abs(y - s.py) });
       }
+    } else if (FLAME_SPECS[t] !== undefined) {
+      // lit wax candles on the floor (stub / cake / drip) breathe too
+      placeFlame(`wf:${i}`, x, y, FLAME_SPECS[t]!);
     } else if (t === Tile.WAYSTONE) place(`w:${i}`, x, y, 1.3, COLOR.verdigris);
     else if (FEATURE_HALO[t] !== undefined) {
       const [tiles, tint] = FEATURE_HALO[t];
@@ -315,10 +387,15 @@ export function syncSourceGlows(
   }
 }
 
-/** Per-frame breathing of the source glows (cosmetic). */
+/** Per-frame breathing of the source glows + the living-flame overlays. */
 export function pulseGlows(pool: GlowPool, time: number): void {
   pool.images.forEach((img, key) => {
     if (!img.visible) return;
+    // animated teardrop flames (braziers/wax candles) — frame-swap + wobble
+    if (key.startsWith("bf:") || key.startsWith("wf:")) {
+      animateFlame(img, key, time);
+      return;
+    }
     const phase = (key.charCodeAt(2) * 131) % 1000;
     const isFire = key.startsWith("f:");
     const isFeature = key.startsWith("d:"); // quieter than open flame (D69)

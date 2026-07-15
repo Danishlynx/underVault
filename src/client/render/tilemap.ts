@@ -87,7 +87,11 @@ function moldBody(
   ctx.stroke(path);
 }
 
-/** Layered candle flame with halo — the game's leitmotif, drawn everywhere. */
+/** Layered candle flame with halo — the game's leitmotif, drawn everywhere.
+ *  `bake`="glow" paints ONLY the in-canvas bloom + a hot wick seed and skips
+ *  the tongues: the lit tongue now rides as a per-frame animated overlay
+ *  (buildFlameFrames + lights.pulseGlows) so braziers and wax candles flicker
+ *  like the menu's living flame instead of reading as a static painting. */
 function flameAt(
   ctx: CanvasRenderingContext2D,
   fx: number,
@@ -96,6 +100,7 @@ function flameAt(
   emberC: string,
   flameC: string,
   hiC: string,
+  bake: "full" | "glow" = "full",
 ): void {
   // the glow must die INSIDE the canvas (D98 operator: "squareish, not
   // natural" — a gradient overrunning the texture edge clips into a soft
@@ -113,6 +118,20 @@ function flameAt(
   halo.addColorStop(1, shade(flameC, 1, 0));
   ctx.fillStyle = halo;
   ctx.fillRect(hx - r, hy - r, r * 2, r * 2);
+  if (bake === "glow") {
+    // only a hot bead at the wick — the tongue is an animated overlay now.
+    // Keeps the prop reading as "lit" even before the first overlay frame.
+    const seed = ctx.createRadialGradient(fx, fy - s * 0.4, 0, fx, fy - s * 0.4, s * 0.9);
+    seed.addColorStop(0, shade(hiC, 1, 0.95));
+    seed.addColorStop(0.5, shade(flameC, 1, 0.7));
+    seed.addColorStop(1, shade(flameC, 1, 0));
+    ctx.fillStyle = seed;
+    ctx.beginPath();
+    ctx.ellipse(fx, fy - s * 0.4, s * 0.5, s * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    return;
+  }
   const tongue = (w: number, h: number, color: string, a: number): void => {
     ctx.fillStyle = color;
     ctx.globalAlpha = a;
@@ -126,6 +145,104 @@ function flameAt(
   tongue(s * 0.7, s * 1.6, flameC, 0.95);
   tongue(s * 0.4, s * 1.0, hiC, 1);
   ctx.globalAlpha = 1;
+}
+
+// ── Living-flame frames (the menu's teardrop, made into an overlay) ─────────
+// The in-world braziers and wax candles were static paintings whose only
+// motion was a glow-alpha pulse. These frames capture a real flame's timeline
+// at distinct key-poses (drawn with the menu's exact teardrop grammar); the
+// glow pool cycles them per-source in lights.pulseGlows so every lit prop
+// flickers alive. Built once at boot; frame-swap + a light transform wobble
+// keep mobile cheap (no per-frame canvas work, no filters). All presentation
+// — the deterministic sim never sees any of it.
+export const FLAME_TEX = { count: 6, cw: 44, ch: 60, fh: 22 } as const;
+export function flameFrameKey(k: number): string {
+  return `uv-flame-${k}`;
+}
+/** Wick-root pivot (normalised) so a placed frame roots exactly on its wick. */
+export const FLAME_ORIGIN_Y = (FLAME_TEX.ch - FLAME_TEX.fh * 0.35) / FLAME_TEX.ch;
+
+/** One teardrop, the menu's grammar: attached glow, hot-graded body, cream
+ *  core; root pinned to the wick, tip leans with sway. Built additively so the
+ *  frame reads luminous when composited over the dark prop. */
+function drawTeardropFlame(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  fH: number,
+  t: number,
+  sway: number,
+  flick: number,
+): void {
+  const C = COLOR_CSS;
+  const wickX = w / 2;
+  const wickY = h - fH * 0.35;
+  const F = fH * 1.05 * flick;
+  const s = sway * F * 0.2; // lateral lean, strongest at the tip
+  ctx.globalCompositeOperation = "lighter";
+
+  // attached glow — dies INSIDE the canvas (D98: no square-cropped bloom)
+  const gx = wickX + s * 0.35;
+  const gy = wickY - F * 0.42;
+  const gr = Math.min(F * 0.92, gx, w - gx, gy, h - gy);
+  const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+  glow.addColorStop(0, shade(C.flame, 1, 0.2));
+  glow.addColorStop(1, shade(C.flame, 1, 0));
+  ctx.fillStyle = glow;
+  ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
+
+  const tear = (height: number, width: number, lean: number, fill: CanvasGradient): void => {
+    const tipX = wickX + lean;
+    const tipY = wickY - height;
+    const wob = Math.sin(t * 11.3) * width * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(wickX, wickY + F * 0.02);
+    ctx.bezierCurveTo(
+      wickX - width, wickY - height * 0.3,
+      wickX - width * 0.42 + lean * 0.6 + wob, wickY - height * 0.74,
+      tipX, tipY,
+    );
+    ctx.bezierCurveTo(
+      wickX + width * 0.42 + lean * 0.6 + wob, wickY - height * 0.74,
+      wickX + width, wickY - height * 0.3,
+      wickX, wickY + F * 0.02,
+    );
+    ctx.fillStyle = fill;
+    ctx.fill();
+  };
+  const body = ctx.createLinearGradient(wickX, wickY + 2, wickX, wickY - F);
+  body.addColorStop(0, shade(C.ember, 1, 0.72));
+  body.addColorStop(0.42, shade(C.flame, 1, 0.92));
+  body.addColorStop(1, shade(C.flameHi, 1, 0.94));
+  tear(F, F * 0.38, s, body);
+
+  const core = ctx.createLinearGradient(wickX, wickY, wickX, wickY - F * 0.66);
+  core.addColorStop(0, shade(C.flame, 1, 0.55));
+  core.addColorStop(0.45, shade(C.flameHi, 1, 0.96));
+  core.addColorStop(1, mix(C.flameHi, C.parchment, 0.7, 1));
+  tear(F * 0.66, F * 0.18, s * 0.8, core);
+
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/** Bake the flame-frame set (idempotent). Overlay sprites, so we keep the 4×
+ *  master for crispness and scale via setDisplaySize at placement. */
+export function buildFlameFrames(scene: Phaser.Scene): void {
+  const T = scene.textures;
+  if (T.exists(flameFrameKey(0))) return;
+  const { count, cw, ch, fh } = FLAME_TEX;
+  for (let k = 0; k < count; k++) {
+    const tex = T.createCanvas(flameFrameKey(k), cw, ch);
+    if (tex === null) continue;
+    const ctx = hiBegin(tex);
+    // sample the menu flame's own sway/flick laws at distinct phases so the
+    // six silhouettes genuinely differ (proof-of-animation between captures)
+    const t = k * 0.62;
+    const sway = Math.sin(t * 2.3) * 0.62 + Math.sin(t * 5.1 + 1.7) * 0.4 + Math.sin(t * 1.3) * 0.25;
+    const flick = 1 + Math.sin(t * 9.7) * 0.09 + Math.sin(t * 13.3 + 0.6) * 0.1;
+    drawTeardropFlame(ctx, cw, ch, fh, t, sway, flick);
+    hiEnd(tex, true);
+  }
 }
 
 /** Soft elliptical contact shadow — grounds standing props. */
@@ -227,6 +344,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
   buildBiomeSkin(scene.textures, 0); // the Tallow Halls skin ships with boot
   makeGlobalIsoTextures(scene);
   buildAllDecoSets(scene.textures); // per-biome furniture (D71)
+  buildFlameFrames(scene); // living-flame overlay frames (braziers, candles)
 }
 
 // ── Biome skins (D70): each biome wears its own stone ──────────────────────
@@ -1286,7 +1404,7 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
         ctx.arc(cx2 + 0.4, cy2 - 0.5, r2 * 0.4, 0, Math.PI * 2);
         ctx.fill();
       }
-      flameAt(ctx, 22, 30, 11, C.ember, C.flame, C.flameHi);
+      flameAt(ctx, 22, 30, 11, C.ember, C.flame, C.flameHi, "glow");
       // stray sparks
       ctx.fillStyle = shade(C.flameHi, 1, 0.9);
       ctx.fillRect(15, 12, 1.2, 1.2);
@@ -1455,7 +1573,7 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
       ctx.lineTo(15 + r - 0.2, 26);
       ctx.stroke();
     }
-    flameAt(ctx, 15, fy - 0.5, 3.2 + r * 0.3, C.ember, C.flame, C.flameHi);
+    flameAt(ctx, 15, fy - 0.5, 3.2 + r * 0.3, C.ember, C.flame, C.flameHi, "glow");
     hiEnd(c);
   };
   pickup("iso-wax-drip", 3, false);
