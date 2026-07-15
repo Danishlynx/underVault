@@ -1,79 +1,68 @@
 # The Undervault
 
-**A community knowledge-roguelike for Reddit.** One shared dungeon. One candle — one life — per player, per day. The dungeon's laws are *hidden*, and the only way to learn them is together: what one delver discovers and carves into the Codex, every delver after them inherits.
+One shared dungeon. One candle a day. You get a single life, and the dungeon's rules are hidden from you. The only way to learn them is together: whatever one player discovers and banks into the Codex, everyone who plays after them gets to know.
 
-Built on **Reddit's Developer Platform (Devvit Web)** with **Phaser 4.2** (WebGL), an isometric world, and a fully server-authoritative simulation.
+It's a community knowledge-roguelike built for Reddit on Devvit Web, with a Phaser 4.2 WebGL game inside the post.
 
----
+## The idea
 
-## The hook
+Every day the vault reshuffles its secret laws. Does ringing a bell wake the floor, or scare something off? Does salt stop a slime or feed it? If you snuff your candle, do you vanish from the thing hunting you, or just go blind while it closes in? Nobody tells you. You find out by trying it, usually dying, and then banking what you learned so the whole town is a little less in the dark tomorrow.
 
-Every dungeon looks familiar, but its rules are secret and they **reshuffle at dusk**. Does striking a bell wake the floor? Does salt stop a slime — or feed it? Does snuffing your candle hide you from the thing in the dark, or blind you while it closes in? Nobody is told. You find out by trying, dying, and **banking what you learned** so the whole town gets a little less blind.
+A few things make it tick:
 
-- **One candle a day.** You get a single life. Spend it well — the dark is patient.
-- **Knowledge is the only progression.** You keep no gear between days. You keep what the community *knows*.
-- **Every trace is a real person.** The corpse on the stairs, the ghostly echo of a delver's last run, the chalk sign scrawled on a wall, the Codex entry marked "confirmed by 7 delvers" — those are other redditors, today.
-- **A season-long shared goal.** Deep in the vault, someone is waiting. When the town collectively gives **100 candles**, the Great Gate opens and she comes home — a finish line the whole community crosses together, once.
+- You get one candle, so one life, per day. Spend it well.
+- You don't keep gear between days. You keep what the community figured out.
+- Every trace in the dungeon is a real person who played today: the corpse on the stairs, the ghost replaying a delver's last moments, the chalk sign on the wall, the Codex line that says "confirmed by 7 delvers."
+- There's a season-long goal the whole sub chips away at. Someone is waiting at the bottom. When the town gives 100 candles between them, the gate opens and she comes home. It happens once, and everyone got her there.
 
-You come back tomorrow because the laws changed, the Codex grew, and the Gate is one candle closer.
-
----
+You come back because the rules changed overnight, the Codex grew, and the gate is one candle closer.
 
 ## How to play
 
-**Goal:** descend as far as your one candle allows, learn the vault's hidden rules, and **bank them at a Waystone** so they enter the shared Codex before you die.
+Get as deep as your one candle lets you, learn the vault's hidden rules, and bank them at a Waystone before you die. Unbanked truths die with you.
 
-### Controls
-- **Move:** WASD / Arrow keys, or **tap a tile** to walk there (mobile).
-- **Interact / open doors / bank at a waystone:** **E**, or tap the thing.
-- **Descend stairs:** stand on them and press **Enter** (or tap yourself).
-- **Use an item:** tap its slot in the bottom tray (salt, chalk, flint, bell, mirror, and more).
-- **Cup the flame (C):** sip wax instead of burning it — dimmer, but you last longer and draw less attention.
-- **Snuff the candle (hold X / hold SNUFF):** vanish into the dark. Some things can't find you without your light — but you can't see them either.
-- **Look around (V):** pull the camera back to read the room, then lean back in.
-- **Inspect (long-press a tile):** read what you've seen there.
+Controls:
 
-### The loop
-1. **Strike the match** to light your candle and descend.
-2. **Probe the dark.** Every monster, item, door and shrine obeys a hidden law. Test them — carefully.
-3. **When the vault yields a truth,** carry it to a **Waystone** and bank it. Unbanked truths die with you.
-4. **You will die.** Your body, your last words, and your unbanked truths stay in the dungeon for other delvers to find. You **found a House** — a lineage that endures across days and generations.
-5. **Share your fall.** Post your epitaph to the subreddit as a comment, so your run becomes part of the feed.
-6. **Come back at dusk.** New laws, a fuller Codex, a Gate one step closer.
+- Move with WASD or the arrow keys. On mobile, tap a tile to walk there.
+- Interact, open doors, and bank at a waystone with E, or just tap the thing.
+- To go down stairs, stand on them and press Enter (or tap yourself).
+- Use an item by tapping its slot in the bottom bar: salt, chalk, flint, bell, mirror, and more.
+- Press C to cup the flame. It burns slower and draws less attention, but you see less.
+- Hold X (or hold SNUFF) to put the candle out and disappear into the dark. Some things can't find you without your light. Neither can you find them.
+- Press V to pull the camera back and read the room, then lean back in.
+- Long-press a tile to inspect what you've seen there.
 
----
+The loop:
 
-## Why it's a Reddit game
+1. Strike the match and descend.
+2. Poke at the dark. Every monster, item, door, and shrine follows a hidden law. Test them, carefully.
+3. When the vault gives up a truth, carry it to a Waystone and bank it. It enters the shared Codex for everyone.
+4. You're going to die. Your body, your last words, and your unbanked truths stay down there for the next delver. You also found a House, a family line that carries on across days.
+5. Post your epitaph to the sub as a comment so your run joins the feed.
+6. Come back at dusk. New rules, a bigger Codex, a closer gate.
 
-- **The comment section is part of the game.** Deaths post epitaphs; discoveries become shared Codex entries; the whole sub is one collaborative logbook of a dungeon nobody fully understands yet.
-- **User contributions everywhere:** player-carved signs, banked truths, planted lights, and corpses seed the world every other player walks through.
-- **Retention by design:** a daily reshuffled dungeon, a persistent House/lineage, a growing communal Codex, and a season-long Gate goal — anticipation that renews every day.
-- **One life a day** turns each descent into an event worth talking about.
+## Why it belongs on Reddit
 
----
+The comment section is part of the game. Deaths post epitaphs, discoveries become shared Codex entries, and the whole subreddit turns into one running logbook of a dungeon nobody has fully cracked yet. Players leave signs, plant lights, bank truths, and drop corpses that everyone else walks through. It's built to be a daily habit: a dungeon that reshuffles every day, a House that persists, a Codex that keeps growing, and a season goal the community reaches together.
 
-## Under the hood
+## How it's built
 
-- **Phaser 4.2, WebGL** — isometric 2:1 dimetric presentation over an unchanged square-grid simulation (the sim never learns iso exists); animated candlelight, wall-occlusion fade, depth-sorted billboards, GPU filters.
-- **Devvit Web (serverless)** — Hono server, Redis persistence, zod-validated endpoints.
-- **Server-authoritative & deterministic** — all game logic is pure integer simulation with a seeded RNG. The client never holds the secret rule table; unknown interactions are resolved by the server, which replays your full action log against the hidden laws and returns only the rule you actually touched. Invented claims are refused. A golden-replay corpus guards determinism on every change.
-- **Two entrypoints** — a lightweight feed-card splash (no engine) and the full Phaser game, so the card paints instantly in-feed and the engine loads only on tap.
-
----
+- Phaser 4.2 on WebGL. The world is drawn in isometric 2:1, but the simulation underneath is a plain square grid that never knows the iso view exists. Animated candlelight, walls that fade when they'd block you, depth-sorted sprites, GPU post-effects.
+- Devvit Web, serverless. Hono on the server, Redis for storage, every request validated.
+- Server-authoritative and deterministic. All the game logic is pure integer math with a seeded RNG. The client never holds the secret rule table. When you touch something unknown, the server replays your whole run against the hidden laws and hands back only the one rule you actually hit. You can't bank a rule you didn't really discover. A golden-replay test suite keeps the simulation identical across changes.
+- Two entry points: a tiny splash card that paints instantly in the feed with no game engine, and the full Phaser game that loads only when you tap in.
 
 ## Running it
 
-This is a Devvit app; it runs inside a Reddit post.
+It's a Devvit app, so it runs inside a Reddit post.
 
 ```bash
 npm install
-npm run check        # typecheck + lint + unit + golden-replay + guards
-npx devvit playtest r/<your-test-sub>   # hot-reload against a test subreddit
-npx devvit upload                        # publish a version → app listing
+npm run check                          # typecheck, lint, unit tests, golden replays, guards
+npx devvit playtest r/<your-test-sub>  # hot-reload against a test subreddit
+npx devvit upload                      # publish a version and get the app listing
 ```
 
-Open the app's post on **new Reddit** (web or the official app) and **strike the match** to descend.
+Open the post on new Reddit (web or the official app) and strike the match.
 
----
-
-*One candle a day. Learn the dungeon's hidden rules together, and what you discover outlives you.*
+One candle a day. Learn the dungeon's hidden rules together, and what you discover outlives you.
