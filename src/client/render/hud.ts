@@ -273,8 +273,14 @@ export class Hud {
     h = h / f;
     this.w = w;
     this.h = h;
-    this.barY = h - HUD.bottomBarH;
-    this.meterH = Math.min(300, h - METER_Y - HUD.bottomBarH - 16);
+    // D126: on touch devices lift the bar clear of mobile-browser bottom
+    // chrome (Chrome's nav bar overlaps embedded webviews and hid CUP/SNUFF
+    // entirely on mobile web — the only snuff/cup path a phone has). The
+    // Reddit app is fullscreen so the lift just breathes; mobile web survives.
+    const touchLift =
+      typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? 34 : 0;
+    this.barY = h - HUD.bottomBarH - touchLift;
+    this.meterH = Math.min(300, h - METER_Y - HUD.bottomBarH - touchLift - 16);
 
     this.plaque.setPosition(16, 16);
     this.plaqueInner.setPosition(20, 20);
