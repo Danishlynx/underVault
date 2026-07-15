@@ -6,3 +6,4 @@ coverage/
 .devvit/
 .env
 *.log
+.claude/scheduled_tasks.lock
