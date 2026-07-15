@@ -179,7 +179,7 @@ export async function createRemotePorts(): Promise<GamePorts> {
   const resumeWire = start.resumed ? start.resume : undefined;
   if (start.resumed && resumeWire === undefined) {
     throw new VaultRefusal(
-      "Your candle already burns beyond recall — the vault would not retrace " +
+      "Your candle already burns beyond recall. The vault would not retrace " +
         "its steps. Return with tomorrow's flame.",
     );
   }
@@ -274,7 +274,7 @@ export async function createRemotePorts(): Promise<GamePorts> {
       // resume.learned covers every consulted key and floors 1..floor are
       // cached, so a stall means ledger/client disagreement — refuse cleanly
       throw new VaultRefusal(
-        "The vault's ledger and your candle disagree — this descent cannot " +
+        "The vault's ledger and your candle disagree. This descent cannot " +
           "be retraced. Return with tomorrow's flame.",
       );
     }

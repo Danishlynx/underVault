@@ -625,7 +625,7 @@ export function openGuildhall(
       "p",
       "uv-hall-charge",
       "One candle a day. Descend the shared Vault, learn its hidden laws, " +
-        "and bank them at the waystones — what you learn is all that survives you.",
+        "and bank them at the waystones. What you learn is all that survives you.",
     ),
   );
 

@@ -1108,6 +1108,27 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+125. FULL-GAME POLISH SWEEP (operator: "run a lot of opus agents to
+    check the whole game and polish it, fix the bug, play it, test the
+    ending, lag, or every other aspect"). Five parallel playtesters
+    (floors 1-3, biome sweep, both endings via meeting-probe, mobile
+    viewport at three sizes, copy audit) fed three area-locked fixers;
+    the flame (D130-locked), splash, and sim files were read-only. Net
+    result was a copy pass excising the last em-dashes and comma-splices
+    the operator flagged as "AI slop": every pickup lesson, tutorial
+    teach-line, inspect plaque, waystone/epitaph/victory/heirloom sheet,
+    codex + guildhall header, refusal string, and the no-house strap now
+    break cleanly on periods and colons (client-only; no player-verified
+    string changed, goldens untouched). One real layout fix: the menu
+    daily-pulse (rumor + vitals) is now gathered on a single soft
+    radial-void plaque with a firm max-width, so the two engraved lines
+    stop washing out against the bright candle they overlap and stay a
+    tidy centered stamp instead of a wide banner grazing the flame. Full
+    gate green (320 unit + 14 golden + no-secret-leak + byte-report); the
+    final gatekeeper agent stalled, so its `npm run check` was re-run by
+    hand before commit. The DEV-ONLY reset trio (D122) and dev keys still
+    ship, flagged in 09-OPERATOR-HANDOFF for the pre-launch cut.
+
 124. NETWORK LAG PASS (operator: "whole game is server lagging like
     PUBG... graphics fine"; screenshot showed 3x "the Vault did not
     answer"). Root causes + fixes: (a) RATE GATE — ACT_MIN_SPACING_MS

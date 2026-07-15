@@ -30,7 +30,7 @@ function roman(n: number): string {
 
 /** Guildhall house strap-line (dev-adapter parity; 04 copy lands with the real Guildhall). */
 export function houseLineFor(house: string, gen: number): string {
-  if (house === "") return "No house sworn yet — die once to found one.";
+  if (house === "") return "No house sworn yet. Die once to found one.";
   return `⚑ House ${house} · ${house} ${roman(gen)} awaits`.slice(0, 120);
 }
 

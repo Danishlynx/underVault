@@ -25,7 +25,7 @@ export interface SignRec {
   noun: number;
 }
 
-const NO_HOUSE_LINE = "No house sworn yet — die once to found one.";
+const NO_HOUSE_LINE = "No house sworn yet. Die once to found one.";
 /** Server houseLine shape: `⚑ House {name} · {name} {roman} awaits` (day.ts). */
 const HOUSE_LINE_RE = /^⚑ House (.+?) · /u;
 

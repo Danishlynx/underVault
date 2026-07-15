@@ -37,7 +37,7 @@ export function openWaystoneSheet(
   onClose: () => void,
 ): () => void {
   const close = openSheet(host, (sheet) => {
-    sheet.appendChild(el("h1", "", "WAYSTONE, the Vault listens"));
+    sheet.appendChild(el("h1", "", "WAYSTONE: the Vault listens"));
     const meaningful = bankable.filter((r) => r.effect !== Effect.NONE);
     const picked = new Set<string>();
     let seal: HTMLButtonElement | null = null;
@@ -152,7 +152,7 @@ export function openEpitaphSheet(
       sheet.appendChild(head);
       const list = el("ul", "uv-list");
       for (const t of unfinished.truths.slice(0, 3)) {
-        list.appendChild(el("li", "uv-dim", `${t}, lies with your corpse, 72 hours.`));
+        list.appendChild(el("li", "uv-dim", `${t}. It lies with your corpse for 72 hours.`));
       }
       for (const c of unfinished.nearClaims.slice(0, 2)) {
         list.appendChild(el("li", "uv-dim", c));
@@ -211,7 +211,7 @@ export function openEpitaphSheet(
       sheet.appendChild(houseInput);
     } else {
       sheet.appendChild(
-        el("p", "uv-gold", `The line endures, ${house} ${ROMAN[generation + 1] ?? generation + 1} will wake at dusk.`),
+        el("p", "uv-gold", `The line endures. ${house} ${ROMAN[generation + 1] ?? generation + 1} will wake at dusk.`),
       );
     }
 
@@ -233,7 +233,7 @@ export function openEpitaphSheet(
     // the law, stated PLAINLY once (D98): "rest until dusk" alone reads
     // as "back to menu", players must leave knowing the day is spent
     sheet.appendChild(
-      el("p", "uv-dim", "One candle a day, yours is spent. A new candle is cut at dusk, and the Vault deals new laws."),
+      el("p", "uv-dim", "One candle a day. Yours is spent. A new candle is cut at dusk, and the Vault deals new laws."),
     );
     const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
     again.addEventListener("click", () => finish(false));
@@ -299,7 +299,7 @@ export function openVictorySheet(
         el(
           "p",
           "uv-gold",
-          `Floor XXV. Day ${summary.day}. The hundredth candle was yours, the Gate needed no key, only warmth, and the town gave it a hundred times.`,
+          `Floor XXV. Day ${summary.day}. The hundredth candle was yours. The Gate needed no key, only warmth, and the town gave it a hundred times.`,
         ),
       );
       sheet.appendChild(
@@ -367,7 +367,7 @@ export function openHeirloomSheet(host: HTMLElement, onPick: (id: number) => voi
   ];
   const close = openSheet(host, (sheet) => {
     sheet.appendChild(el("h1", "", "THE LINE ENDURES"));
-    sheet.appendChild(el("p", "uv-dim", "Three generations gone. The Guild grants one heirloom, choose."));
+    sheet.appendChild(el("p", "uv-dim", "Three generations gone. The Guild grants one heirloom. Choose."));
     const list = el("ul", "uv-list");
     for (const o of OPTIONS) {
       const li = el("li", "", "");

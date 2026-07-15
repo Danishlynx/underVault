@@ -17,7 +17,7 @@ import { createRemotePorts, VaultRefusal } from "./net/remote-ports.js";
 const REFUSAL_COPY: Partial<Record<string, string>> = {
   UNAUTHENTICATED: "The Guildhall does not know your face. Sign in, then descend.",
   NO_DAY: "The vault has not opened today. Return when the day's candle is minted.",
-  CANDLE_SPENT: "The candle is spent, return with tomorrow's flame.",
+  CANDLE_SPENT: "The candle is spent. Return with tomorrow's flame.",
   RUN_EXPIRED: "The dark took your last descent while it lingered. Tomorrow, another flame.",
   FROZEN: "The vault is sealed while the Guild works. Patience, delver.",
 };

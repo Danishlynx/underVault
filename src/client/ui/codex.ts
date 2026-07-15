@@ -83,7 +83,7 @@ export function openCodexSheet(
   const close = openSheet(host, (sheet) => {
     const inked = entries.filter((e) => e.status === "inked").length;
     const pct = entries.length === 0 ? 0 : Math.round((inked / entries.length) * 100);
-    sheet.appendChild(el("h1", "", `THE CODEX, ${pct}% inked`));
+    sheet.appendChild(el("h1", "", `THE CODEX: ${pct}% inked`));
     sheet.appendChild(el("hr", "uv-rule"));
 
     if (entries.length === 0) {

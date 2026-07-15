@@ -199,19 +199,32 @@ function injectStyles(): void {
   font-size: var(--size-body-sm); color: var(--bone-dim);
   text-shadow: 0 1px 6px var(--void);
 }
-.uv-menu-rumor {
+/* the daily pulse sits over the painted candle at the frame's lower-left;
+   a soft void plaque (fading to nothing at its edges) restores contrast so
+   the two engraved lines never wash out against the bright wax, and a firm
+   max-width keeps the block a tidy centered stamp instead of a wide banner
+   whose left end grazes the flame (menu-vitals collision fix). */
+.uv-menu-daily {
   margin-top: clamp(14px, 3.5vh, 30px);
+  max-width: min(340px, 80%);
+  padding: 9px 20px 11px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: radial-gradient(130% 108% at 50% 50%,
+    color-mix(in srgb, var(--void) 66%, transparent) 0%,
+    color-mix(in srgb, var(--void) 44%, transparent) 56%,
+    transparent 100%);
+}
+.uv-menu-rumor {
   font-family: var(--font-display); font-style: italic;
   font-size: var(--size-body-sm);
-  color: var(--bone); opacity: 0.85;
-  text-shadow: 0 1px 8px var(--void);
+  color: var(--bone); opacity: 0.92;
+  text-shadow: 0 0 4px var(--void), 0 1px 6px var(--void);
 }
 .uv-menu-vitals {
-  margin-top: 6px;
   font-family: var(--font-body); font-size: 11px;
-  letter-spacing: 0.16em; text-transform: uppercase;
+  letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--bone-dim);
-  text-shadow: 0 1px 6px var(--void);
+  text-shadow: 0 0 4px var(--void), 0 1px 5px var(--void);
 }
 .uv-menu-item {
   position: relative;
@@ -417,20 +430,22 @@ export function openMainMenu(
   const soundBtn = mkItem(`Sound: ${audio.muted ? "off" : "on"}`, false);
   col.appendChild(items);
 
-  // the daily pulse (D91) — two quiet lines, all that remains of the hall
-  let rumorEl: HTMLElement | null = null;
-  let vitalsEl: HTMLElement | null = null;
+  // the daily pulse (D91) — two quiet lines, all that remains of the hall,
+  // gathered on one soft plaque so they read over the candle they overlap
+  let dailyEl: HTMLElement | null = null;
   if (vitals !== undefined) {
-    rumorEl = el("div", "uv-menu-rumor uv-menu-stage", vitals.rumor);
-    vitalsEl = el(
-      "div",
-      "uv-menu-vitals uv-menu-stage",
-      rescued
-        ? `Day ${vitals.day} · the Gate stands open · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`
-        : `Day ${vitals.day} · the Gate strains ${vitals.gatePct}% · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`,
+    dailyEl = el("div", "uv-menu-daily uv-menu-stage");
+    dailyEl.appendChild(el("div", "uv-menu-rumor", vitals.rumor));
+    dailyEl.appendChild(
+      el(
+        "div",
+        "uv-menu-vitals",
+        rescued
+          ? `Day ${vitals.day} · the Gate stands open · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`
+          : `Day ${vitals.day} · the Gate strains ${vitals.gatePct}% · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`,
+      ),
     );
-    col.appendChild(rumorEl);
-    col.appendChild(vitalsEl);
+    col.appendChild(dailyEl);
   }
   root.appendChild(col);
 
@@ -771,8 +786,7 @@ export function openMainMenu(
     [tagline, 950],
   ];
   list.forEach((b, bi) => staged.push([b, 1100 + bi * 90]));
-  if (rumorEl !== null) staged.push([rumorEl, 1520]);
-  if (vitalsEl !== null) staged.push([vitalsEl, 1580]);
+  if (dailyEl !== null) staged.push([dailyEl, 1520]);
   const reduced = REDUCED();
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
