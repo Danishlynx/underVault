@@ -1006,3 +1006,22 @@ candidates; flip them in the named data file, not in code.
     to fades. Fallback (no postData, no API) stays intentional: dark
     gate, "The gate is not yet open." Composition verified 380x220 /
     700x400 / 520x940. splash chunk 135 KB, no phaser (invariant 7).
+
+104. THE MEETING, EMOTIONAL PASS (operator: "show her with tears,
+    more vulnerable... make the story slightly lighter in end, where
+    she tells what this vault is... keep the background music").
+    (a) Her Face gains wax-dried tear tracks + one fresh gold tear +
+    micro-grief - she has been crying for twenty years, quietly.
+    (b) NEW plate four "What She Kept": hood down (grey hair, braid),
+    sitting not kneeling, hands open in her lap, almost-smile, the
+    fed flame the lightest image in the game, stairs up warmly lit,
+    her shadow finally falling AWAY from the light. (c) Captions are
+    now a four-beat arc: homesick question -> confession in tears
+    ("it would have followed me up") -> the gift -> what the Vault is
+    ("the cold the world was made from... never hungry, only unlit.
+    Tell them the dark can be warmed") - lighter ending, seeds the
+    Long Rescue. (d) MEETING_SCORE: her tune with nothing withheld
+    (gain 0.26 - most present music in the game, organ pad, fewer
+    rests) starts the moment the Seal breaks; the vigil and Choir
+    were always thinning this exact melody, so the finale resolves
+    the game's whole musical sentence.

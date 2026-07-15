@@ -6,7 +6,11 @@
  * quiet and twofold: her cupped hands and forearms have gone translucent as
  * wax, drip-lines frozen down them (she is becoming what she keeps); and her
  * eyes hold a reflected flame that cannot be the stub — too tall, upright,
- * a memory of the First Flame whole. Her shadow is wrong too: it still
+ * a memory of the First Flame whole. Twenty years alone show quietly: tear
+ * tracks dried to wax down both cheeks — the weeping went the way of the
+ * hands — one fresh tear welling gold at the brighter eye, inner brows
+ * lifted a breath, mouth corners weighted. Grief AND relief at the first
+ * face since; never melodrama. Her shadow is wrong too: it still
  * kneels on the dead candle-mass beside her, bowed TOWARD the light it
  * should flee — she turned, it did not. Behind her the great mother-candle
  * rises like a melted monument; far above, the Gate seam breathes faint
@@ -420,7 +424,7 @@ export function paintMeeting2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.bezierCurveTo(fx0 - shW * 1.14, shY + fh * 0.14, fx0 - fh * 0.43, hemY - fh * 0.3, fx0 - fh * 0.44, hemY - fh * 0.02);
   ctx.stroke();
 
-  // ── 8. the face — half-lit from below, patience the size of years ───────
+  // ── 8. the face — half-lit from below, patience and grief the size of years
   const hoodTilt = (turn / hr) * 0.16;
   const hood = new Path2D();
   hood.ellipse(fx0 + turn * 0.6, fy0 + hr * 0.05, hr * 0.64, hr * 0.86, hoodTilt, 0, Math.PI * 2);
@@ -473,12 +477,13 @@ export function paintMeeting2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.quadraticCurveTo(fcx, fy0 + hr * 0.02, fcx - hr * 0.06, fy0 + hr * 0.2);
   ctx.closePath();
   ctx.fill();
-  // philtrum shade, mouth level and unhurried, lit lower lip, bright chin
+  // philtrum shade; the mouth nearly level — corners weighted a breath,
+  // grief carried, not performed; lit lower lip, bright chin
   ctx.strokeStyle = shade(C.ink, 0.5, 0.85);
   ctx.lineWidth = Math.max(1, hr * 0.032);
   ctx.beginPath();
-  ctx.moveTo(fcx - hr * 0.15, fy0 + hr * 0.46);
-  ctx.quadraticCurveTo(fcx, fy0 + hr * 0.465, fcx + hr * 0.14, fy0 + hr * 0.455);
+  ctx.moveTo(fcx - hr * 0.15, fy0 + hr * 0.474);
+  ctx.quadraticCurveTo(fcx, fy0 + hr * 0.455, fcx + hr * 0.14, fy0 + hr * 0.469);
   ctx.stroke();
   ctx.strokeStyle = mix(C.flame, C.parchment, 0.3, 0.7);
   ctx.lineWidth = Math.max(1, hr * 0.028);
@@ -549,7 +554,75 @@ export function paintMeeting2(ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.beginPath();
     ctx.ellipse(ex, ey + hr * 0.008, hr * 0.126, hr * 0.06, sx * 0.05, Math.PI * 0.22, Math.PI * 0.78);
     ctx.stroke();
+    // brow in the hood's dark — the inner end lifted a breath, no more
+    ctx.strokeStyle = shade(C.ink, 0.45, 0.55);
+    ctx.lineWidth = Math.max(1, hr * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(ex + sx * hr * 0.15, ey - hr * 0.12);
+    ctx.quadraticCurveTo(ex + sx * hr * 0.02, ey - hr * 0.135, ex - sx * hr * 0.11, ey - hr * 0.175);
+    ctx.stroke();
+    // the stub's light finds the lift's underside, or it would stay unread
+    ctx.strokeStyle = mix(C.ember, C.parchment, 0.45, sx < 0 ? 0.22 : 0.16);
+    ctx.lineWidth = Math.max(1, hr * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(ex + sx * hr * 0.05, ey - hr * 0.112);
+    ctx.quadraticCurveTo(ex - sx * hr * 0.03, ey - hr * 0.128, ex - sx * hr * 0.1, ey - hr * 0.158);
+    ctx.stroke();
   }
+  // ── tear tracks dried to wax — years of weeping, kept the way the wax
+  // keeps everything; thin translucent ridges down both cheeks, their edges
+  // catching more of the stub's light the lower they fall toward it ──
+  ctx.lineCap = "round";
+  for (const sx of [-1, 1] as const) {
+    const tx0 = fcx + sx * hr * 0.27; // just under the lower lid
+    const ty0 = fy0 + hr * 0.02;
+    const ty1 = fy0 + hr * 0.6; // dies out along the jaw
+    // an older, fainter ridge just outboard — these have layered for years
+    ctx.strokeStyle = mix(C.parchmentAged, C.bone, 0.4, 0.09);
+    ctx.lineWidth = Math.max(1, hr * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(tx0 + sx * hr * 0.06, ty0 + hr * 0.05);
+    ctx.quadraticCurveTo(tx0 + sx * hr * 0.09, fy0 + hr * 0.24, tx0 + sx * hr * 0.05, fy0 + hr * 0.42);
+    ctx.stroke();
+    // the ridge body — wax gone translucent, one shade off the skin
+    ctx.strokeStyle = mix(C.parchmentAged, C.bone, 0.4, sx < 0 ? 0.2 : 0.15);
+    ctx.lineWidth = Math.max(1, hr * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(tx0, ty0);
+    ctx.quadraticCurveTo(tx0 + sx * hr * 0.03, fy0 + hr * 0.22, tx0 - sx * hr * 0.02, fy0 + hr * 0.38);
+    ctx.quadraticCurveTo(tx0 - sx * hr * 0.05, fy0 + hr * 0.48, tx0 - sx * hr * 0.045, ty1);
+    ctx.stroke();
+    // the lit edge — a drip-line in miniature, brightening toward the flame
+    const trackLit = ctx.createLinearGradient(0, ty0, 0, ty1);
+    trackLit.addColorStop(0, mix(C.flame, C.parchment, 0.35, 0.1));
+    trackLit.addColorStop(1, mix(C.flame, C.parchment, 0.35, sx < 0 ? 0.42 : 0.32));
+    ctx.strokeStyle = trackLit;
+    ctx.lineWidth = Math.max(1, hr * 0.011);
+    ctx.beginPath();
+    ctx.moveTo(tx0 - sx * hr * 0.008, ty0 + hr * 0.03);
+    ctx.quadraticCurveTo(tx0 + sx * hr * 0.02, fy0 + hr * 0.22, tx0 - sx * hr * 0.028, fy0 + hr * 0.38);
+    ctx.quadraticCurveTo(tx0 - sx * hr * 0.058, fy0 + hr * 0.48, tx0 - sx * hr * 0.052, ty1 - hr * 0.02);
+    ctx.stroke();
+    // the frozen bead where the last of it stopped — the same mark her
+    // forearms carry; she is becoming what she keeps
+    ctx.fillStyle = mix(C.parchment, C.flame, 0.28, 0.4);
+    ctx.beginPath();
+    ctx.arc(tx0 - sx * hr * 0.045, ty1, Math.max(1, hr * 0.018), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.lineCap = "butt";
+  // one fresh tear at the lower lid of the brighter eye — the first face in
+  // twenty years; it wells and has not yet learned to fall
+  const teX = fcx - hr * 0.28;
+  const teY = fy0 - hr * 0.005;
+  ctx.fillStyle = mix(C.bone, C.flame, 0.4, 0.28); // the water, barely
+  ctx.beginPath();
+  ctx.ellipse(teX, teY, hr * 0.022, hr * 0.028, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shade(C.flameHi, 1.25, 0.95); // a single gold glint
+  ctx.beginPath();
+  ctx.arc(teX - hr * 0.006, teY + hr * 0.009, Math.max(0.6, hr * 0.009), 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore(); // ← end hood-opening clip
   // the hood's inner rim below the chin, catching the light from her hands
   ctx.strokeStyle = mix(C.ember, C.parchment, 0.4, 0.5);
@@ -610,8 +683,9 @@ export function paintMeeting2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.fill();
 
   // ── 10. arms and the WAX HANDS — she is becoming what she keeps ─────────
-  const wristL = { x: glowX - cr * 0.95, y: handY - cr * 0.12 };
-  const wristR = { x: glowX + cr * 0.98, y: handY - cr * 0.06 };
+  // wrists a fraction closer than the shipped plate — protective, tired
+  const wristL = { x: glowX - cr * 0.9, y: handY - cr * 0.12 };
+  const wristR = { x: glowX + cr * 0.93, y: handY - cr * 0.06 };
   ctx.lineCap = "round";
   for (const [sx, wr] of [
     [-1, wristL],

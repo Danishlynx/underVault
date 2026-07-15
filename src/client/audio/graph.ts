@@ -170,6 +170,13 @@ const VIGIL: ScoreDef = {
   gain: 0.2, barS: 9.6, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 3,
   toll: { freq: 329.63, everyBars: 5 }, hush: { freq: 220, gain: 0.55 }, shimmer: true, crackle: true, bellSend: 0.8, melVoice: "box", padStyle: "soft", bassPulse: false,
 };
+// The Meeting (D104): her tune with nothing withheld — what the vigil and
+// the Choir were always thinning. More present than any floor, organ-full,
+// fewer rests; the only music in the game allowed to feel like relief.
+const MEETING_SCORE: ScoreDef = {
+  gain: 0.26, barS: 8.8, chords: LAMENT_CHORDS, melody: CANDLEMAID_TUNE, restEvery: 5,
+  toll: { freq: 440.0, everyBars: 4 }, hush: { freq: 330, gain: 0.35 }, shimmer: true, crackle: true, bellSend: 1.2, melVoice: "box", padStyle: "organ", bassPulse: false,
+};
 
 // ── The floors (D93): one sadness per biome, quiet under the game ─────────
 const BIOME_SCORES: readonly ScoreDef[] = [
@@ -503,6 +510,11 @@ export class AudioGraph {
    */
   startMenuTheme(): void {
     this.switchScore(VIGIL);
+  }
+
+  /** The Meeting (D104): her tune at full presence, under the ending. */
+  startMeetingTheme(): void {
+    this.switchScore(MEETING_SCORE);
   }
 
   /** In-run music (D93): each biome plays its own lament, far beneath the

@@ -2818,10 +2818,12 @@ export class DescentScene extends Phaser.Scene {
     this.overlayOpen = true;
     this.running = false;
     this.audio.setHeartbeat(false);
-    // The Seal breaks into quiet, not fanfare: the Meeting first — she is
-    // what the Vault was keeping — then the victory sheet reframed as the
-    // wax-gift (D101). The fanfare waits until she has spoken.
+    // The Seal breaks into her music, not fanfare: the Meeting first — she
+    // is what the Vault was keeping — then the victory sheet reframed as
+    // the wax-gift (D101). Her tune rises to full presence under the plates
+    // (D104, operator: "without music it was emotionless").
     this.audio.setDarkness(0);
+    this.audio.startMeetingTheme();
     openMeeting(host, () => {
       this.audio.play("victory");
       openVictorySheet(host, this.runSummary(), () => {

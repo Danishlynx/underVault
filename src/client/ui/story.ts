@@ -18,6 +18,7 @@ import { paintDescent } from "./story/descent.js";
 import { paintMeeting1 } from "./story/meeting1.js";
 import { paintMeeting2 } from "./story/meeting2.js";
 import { paintMeeting3 } from "./story/meeting3.js";
+import { paintMeeting4 } from "./story/meeting4.js";
 
 interface Slide {
   paint: (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
@@ -59,23 +60,33 @@ const SLIDES: Slide[] = [
 
 const HOLD_MS = 6500; // gentle auto-advance; any tap moves on sooner
 
-// The Meeting — what waits behind the Seal (D101). No skip: this is the
-// game's answer, and the player broke twenty-five floors to hear it.
+// The Meeting — what waits behind the Seal (D101, emotional arc D104).
+// No skip: this is the game's answer, and the player broke twenty-five
+// floors to hear it. Four beats: homesick question → confession in tears
+// → the gift → what the Vault is, and the first smile under the earth.
 const MEETING: Slide[] = [
   {
     paint: paintMeeting1,
-    caption: "She does not turn.\n“Do they still cut their candles from mine?”",
+    caption:
+      "She does not turn.\n“Do they still cut their candles from mine? Do they still sing, up there, when the wicks catch?”",
   },
   {
     paint: paintMeeting2,
-    caption: "“Then they remember me. Give me what is left of yours.”",
+    caption:
+      "“Every dusk I fed it my flame so it would sleep. Every dusk it dreamed new laws. I could not leave — it would have followed me up.”\nHer tears dried to wax years ago. They shine anyway.",
   },
   {
     paint: paintMeeting3,
-    caption: "“The way up is shorter than the way down. It always was.”",
+    caption:
+      "“Give me what is left of yours.”\nYour candle tips; the last of your wax runs from your hands into hers. The First Flame stands tall for the first time in living memory.",
+  },
+  {
+    paint: paintMeeting4,
+    caption:
+      "“You ask what I kept. The Vault is the cold the world was made from. It was never hungry, little flame — only unlit.”\nShe smiles like a door unlocking. “Go up — the way up is shorter than the way down. It always was. Tell them the dark can be warmed.”",
   },
 ];
-const MEETING_HOLD_MS = 11000; // reverent pace; a tap still advances
+const MEETING_HOLD_MS = 12500; // reverent pace; a tap still advances
 
 let styled = false;
 function injectStyles(): void {
