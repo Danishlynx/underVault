@@ -316,6 +316,14 @@ export function openVictorySheet(
           "At dusk, the Festival of Wicks: two candles for every hearth. Her flame stands in the square now, and every house that gave is carved beneath it.",
         ),
       );
+      // what happens now (D109): the rescue ends her wait, not the game
+      sheet.appendChild(
+        el(
+          "p",
+          "uv-dim",
+          "The descent does not end. The Vault still shifts its laws at dusk, and the Codex is not yet full. She asks only this: keep going down. Learn it all — so the door she kept never needs a keeper again.",
+        ),
+      );
     } else {
       sheet.appendChild(el("div", "uv-cause", "THE FIRST FLAME IS FED"));
       sheet.appendChild(el("hr", "uv-rule"));

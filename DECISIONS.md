@@ -1107,3 +1107,16 @@ candidates; flip them in the named data file, not in code.
     brief for the next session/model - hosting critical path,
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
+
+109. HER FLAME BREATHES (operator: the mother-candle was static).
+    backdrop.ts no longer paints her flame body (veil/crown/hearth/
+    halo stay static); menu.ts drives a LIVE second flame at
+    geom.mother - same drawFlame, calmer flick/sway, no gutter and
+    no midnight death: restored, she neither shrinks nor dies with
+    the day, a slow certain burn beside the anxious daily one.
+    ROOT-CAUSE BUG found on the way: the menu entrance stagger list
+    is hardcoded, so an unstaged uv-menu-stage element stays at
+    opacity 0 forever - herFlame AND the melt layer are now staged.
+    Also the what-now beat on THE GATE IS OPEN sheet: the descent
+    does not end - laws still shift, the Codex is not full; keep
+    going down so the door never needs a keeper again.

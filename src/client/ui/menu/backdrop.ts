@@ -982,16 +982,6 @@ export function paintMenuBackdrop(
     const fB = mWickY - h * 0.006;
     const fT = fB - mfH;
     const heartY = fT + mfH * 0.52;
-    const tear = (x: number, tipY: number, baseY: number, hw: number): void => {
-      const dh = baseY - tipY;
-      ctx.beginPath();
-      ctx.moveTo(x, tipY);
-      ctx.bezierCurveTo(x + hw * 0.2, tipY + dh * 0.26, x + hw, tipY + dh * 0.6, x + hw * 0.62, baseY - dh * 0.07);
-      ctx.quadraticCurveTo(x + hw * 0.3, baseY, x, baseY);
-      ctx.quadraticCurveTo(x - hw * 0.3, baseY, x - hw * 0.62, baseY - dh * 0.07);
-      ctx.bezierCurveTo(x - hw, tipY + dh * 0.6, x - hw * 0.2, tipY + dh * 0.26, x, tipY);
-      ctx.closePath();
-    };
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     const veilG = ctx.createRadialGradient(mfx, heartY, 0, mfx, heartY, mfH * 0.95);
@@ -1001,24 +991,8 @@ export function paintMenuBackdrop(
     ctx.fillStyle = veilG;
     ctx.fillRect(mfx - mfH, heartY - mfH, mfH * 2, mfH * 2);
     ctx.restore();
-    // amber sheath → luminous heart → the still core
-    const mfG = ctx.createLinearGradient(0, fT, 0, fB);
-    mfG.addColorStop(0, mix(C.flame, C.flameHi, 0.3, 0.88));
-    mfG.addColorStop(0.6, mix(C.flame, C.ember, 0.3, 0.9));
-    mfG.addColorStop(1, shade(C.ember, 0.85, 0.7));
-    ctx.fillStyle = mfG;
-    tear(mfx, fT, fB, mfH * 0.3);
-    ctx.fill();
-    ctx.fillStyle = mix(C.flameHi, C.flame, 0.3, 0.95);
-    tear(mfx, fT + mfH * 0.26, fB - mfH * 0.03, mfH * 0.185);
-    ctx.fill();
-    ctx.fillStyle = mix(C.flameHi, C.parchment, 0.6, 0.98);
-    tear(mfx, fT + mfH * 0.5, fB - mfH * 0.07, mfH * 0.095);
-    ctx.fill();
-    ctx.fillStyle = shade(C.ember, 0.45, 0.5); // the dark seat at the wick root
-    ctx.beginPath();
-    ctx.ellipse(mfx, fB - mfH * 0.02, mfH * 0.09, mfH * 0.045, 0, 0, TAU);
-    ctx.fill();
+    // (the flame BODY is not painted here: menu.ts breathes a LIVE flame at
+    // geom.mother — D109. The veil, crown, hearth and halo below stay static.)
     // her light answers on the world — a response crown on her own wax…
     ctx.save();
     ctx.globalCompositeOperation = "lighter";

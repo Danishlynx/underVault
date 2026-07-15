@@ -359,6 +359,12 @@ export function openMainMenu(
   flame.className = "uv-menu-flame uv-menu-stage";
   root.appendChild(flame);
 
+  // her flame (D109) — the First Flame breathes live too, once she is home
+  const herFlame = document.createElement("canvas");
+  herFlame.className = "uv-menu-flame uv-menu-stage";
+  herFlame.style.display = "none";
+  root.appendChild(herFlame);
+
   // the wax weeps in real time (D99) — drips crawl the candle's flank
   const melt = document.createElement("canvas");
   melt.className = "uv-menu-flame uv-menu-stage";
@@ -439,6 +445,7 @@ export function openMainMenu(
   // ── paint + layout ────────────────────────────────────────────────────
   let geom: BurnGeom = { flameX: 0.24, flameY: 0.58, flameH: 0.09 };
   let flamePx = 40; // geom.flameH in px, kept current by layout()
+  let herFlamePx = 40; // geom.mother.flameH in px (D109)
   let burn = dayBurn(); // the candle IS the day (D99)
   let meltBox = { x: 0, y: 0, w: 0, h: 0 };
   let closed = false;
@@ -470,6 +477,27 @@ export function openMainMenu(
     flame.style.top = `${Math.round(geom.flameY * h - (ch - fH * 0.35) + fH * 0.06)}px`;
     const fctx = flame.getContext("2d");
     fctx?.scale(dpr, dpr);
+    // her flame hugs the mother-wick the painter left anchored (D109);
+    // geom.mother.flameY is the flame's HEART — the base sits ~0.48 fH below
+    if (geom.mother !== undefined) {
+      const mfH = geom.mother.flameH * h;
+      herFlamePx = mfH;
+      const mw2 = Math.max(24, Math.round(mfH * 2.2));
+      const mh2 = Math.max(32, Math.round(mfH * 2.6));
+      herFlame.width = Math.round(mw2 * dpr);
+      herFlame.height = Math.round(mh2 * dpr);
+      herFlame.style.width = `${mw2}px`;
+      herFlame.style.height = `${mh2}px`;
+      herFlame.style.left = `${Math.round(geom.mother.flameX * w - mw2 / 2)}px`;
+      const wickY = geom.mother.flameY * h + mfH * 0.48;
+      herFlame.style.top = `${Math.round(wickY - (mh2 - mfH * 0.35) + mfH * 0.02)}px`;
+      const hctx0 = herFlame.getContext("2d");
+      hctx0?.scale(dpr, dpr);
+      herFlame.style.display = "";
+      if (REDUCED() && hctx0 !== null && hctx0 !== undefined) drawFlame(hctx0, mw2, mh2, mfH, 0.4, 0, 1);
+    } else {
+      herFlame.style.display = "none";
+    }
     // breathing warm pool behind the flame
     const gr = Math.round(Math.min(w, h) * 0.42);
     glow.style.width = `${gr * 2}px`;
@@ -612,6 +640,19 @@ export function openMainMenu(
       drawFlame(fctx, fw, fh, flamePx * scale, t, sway, flick);
     }
 
+    // her flame: the same breath, calmer — restored, it neither gutters nor
+    // dies with the day; a slow certain burn beside the anxious daily one
+    if (geom.mother !== undefined && herFlame.style.display !== "none") {
+      const hctx = herFlame.getContext("2d");
+      if (hctx !== null) {
+        const hw2 = herFlame.width / dpr;
+        const hh2 = herFlame.height / dpr;
+        const hFlick = 1 + Math.sin(t * 5.3) * 0.018 + Math.sin(t * 8.9 + 1.7) * 0.022;
+        const hSway = Math.sin(t * 1.4) * 0.16 + Math.sin(t * 3.1 + 0.8) * 0.09;
+        drawFlame(hctx, hw2, hh2, herFlamePx * hFlick, t * 0.8 + 3.1, hSway, hFlick);
+      }
+    }
+
     // the wax weeps: beads crawl the flank, faster as dusk nears
     const mctx = melt.getContext("2d");
     if (mctx !== null && geom.candle !== undefined && melt.style.display !== "none") {
@@ -720,6 +761,8 @@ export function openMainMenu(
     [bg, 0],
     [glow, 350],
     [flame, 350],
+    [herFlame, 350], // hers rises with the daily flame (D109)
+    [melt, 350],
     [pane, 420],
     [sheenDrift, 420],
     [title, 500],
