@@ -67,6 +67,8 @@ import {
   setBiomeGrade,
   syncSourceGlows,
   tintForLight,
+  ensureVeilTexture,
+  positionVeil,
   type GlowPool,
 } from "../render/lights.js";
 import {
@@ -133,6 +135,25 @@ const LONG_PRESS_MS = 400;
 // by killTweensOf every held-key step and the sprite chronically lags its
 // logical tile (D73)
 const GLIDE_MS = 64;
+
+/** What the plaque calls the living (D97) — bestiary names, in-voice. */
+const ENTITY_NAMES: Record<number, string> = {
+  [EntityKind.RAT]: "a wax-rat",
+  [EntityKind.WICKWORM]: "a wickworm",
+  [EntityKind.MOTH]: "a candlemoth",
+  [EntityKind.BEAST]: "the Beast",
+  [EntityKind.SLIME]: "a gloomcap slime",
+  [EntityKind.MIMIC]: "a mirrormaw",
+  [EntityKind.SPOREWIGHT]: "a sporewight",
+  [EntityKind.DROWNED]: "one of the drownedkin",
+  [EntityKind.BELLHUNG]: "a bellhung",
+  [EntityKind.SHADE]: "a cinder shade",
+  [EntityKind.GASLIGHT]: "a gaslight",
+  [EntityKind.CHOIRLESS]: "one of the choirless",
+  [EntityKind.RUSTLING]: "a rustling",
+  [EntityKind.KEEPER]: "the Lantern-Keeper",
+  [EntityKind.CORPSE]: "a fallen delver",
+};
 
 const TILE_NAMES: Record<number, string> = {
   [Tile.WALL]: "vault wall",
@@ -201,6 +222,7 @@ export class DescentScene extends Phaser.Scene {
   private overlays = new Map<string, Phaser.GameObjects.Image>();
   private glowPool: GlowPool = { images: new Map() };
   private cursorG!: Phaser.GameObjects.Graphics;
+  private lightVeil!: Phaser.GameObjects.Image; // pool-edge rounder (D96)
   private halo!: Phaser.GameObjects.Image;
   private fx!: WorldFx;
   private followBias = 0; // HUD-aware vertical bias (applyViewport)
@@ -308,9 +330,21 @@ export class DescentScene extends Phaser.Scene {
     this.halo.depth = DEPTH_HALO;
     this.halo.setVisible(false);
     this.worldLayer.add(this.halo);
+    // the pool-edge veil rounds the tile-stepped light boundary (D96);
+    // depth above every world sprite — its alpha lives only at the edge
+    ensureVeilTexture(this);
+    this.lightVeil = this.add.image(0, 0, "uv-light-veil");
+    this.lightVeil.depth = 800;
+    this.lightVeil.setVisible(false);
+    this.worldLayer.add(this.lightVeil);
     this.cursorG = this.add.graphics();
     this.cursorG.depth = DEPTH_CURSOR;
     this.worldLayer.add(this.cursorG);
+    // hold-to-inspect progress ring — screen-space, above everything (D96)
+    this.pressRing = this.add.graphics();
+    this.pressRing.setScrollFactor(0);
+    this.pressRing.depth = 1500;
+    this.uiLayer.add(this.pressRing);
     this.playerShadow = this.add.image(0, 0, "iso-shadow");
     this.playerShadow.setVisible(false);
     this.worldLayer.add(this.playerShadow);
@@ -343,10 +377,6 @@ export class DescentScene extends Phaser.Scene {
         onRelight: () => this.enqueueRelight(),
         onRestart: () => this.finishRun(false),
         onUseSlot: (slot) => this.useSlot(slot),
-        onToggleMute: () => {
-          this.audio.setMuted(!this.audio.muted);
-          return this.audio.muted;
-        },
       },
       this.uiLayer,
     );
@@ -465,8 +495,9 @@ export class DescentScene extends Phaser.Scene {
       this.teach(
         "move",
         touch
-          ? "Tap a floor tile to walk. Tap yourself to wait."
-          : "W A S D or Arrows — walk. Hold a key to keep walking.",
+          ? "Tap a tile to walk there. Tap yourself to stand still."
+          : "W A S D or Arrows — walk the dark. Hold a key to keep walking.",
+        { title: "First steps" },
       );
     });
   }
@@ -486,15 +517,70 @@ export class DescentScene extends Phaser.Scene {
   private lessonKey: string | null = null;
   private lessonMoves = 0;
   private lessonTimer: Phaser.Time.TimerEvent | null = null;
+  private bumpStreak = 0; // consecutive wall-grinds → the "blocked" lesson
+  private lastBumpAt = 0;
+  private lightMap: Float32Array | null = null; // last redraw's light values
+  private pressRing!: Phaser.GameObjects.Graphics; // hold-charge feedback (D96)
+  private lastRejectAt = 0; // throttle for the universal reject toast (D97)
+  private lastHurtKind = 0; // who struck last — the epitaph names them (D98)
+  /** Threshold beacons (D98): entry + stairs breathe so they never get
+   *  lost in the dark once seen. Rebuilt when the floor changes. */
+  private beacons: { img: Phaser.GameObjects.Image; i: number; phase: number }[] = [];
+  private beaconFloor = -1;
 
-  private teach(key: string, text: string, timedMs = 0): void {
+  private teach(
+    key: string,
+    text: string,
+    opts: { timed?: number; title?: string; at?: { x: number; y: number } } = {},
+  ): void {
     if (this.guides.has(key) || this.lessonKey !== null) return;
     this.guides.add(key);
     this.lessonKey = key;
     this.lessonMoves = 0;
-    this.hud.lesson(text);
+    this.hud.lesson(text, opts.title);
+    // point AT the subject (D96): a lesson about an unmarked thing in the
+    // dark reads as a riddle — the gold diamond says "this one"
+    if (opts.at !== undefined) this.markLesson(opts.at.x, opts.at.y);
     this.lessonTimer?.remove();
-    this.lessonTimer = timedMs > 0 ? this.time.delayedCall(timedMs, () => this.lessonDone(key)) : null;
+    this.lessonTimer =
+      opts.timed !== undefined && opts.timed > 0
+        ? this.time.delayedCall(opts.timed, () => this.lessonDone(key))
+        : null;
+  }
+
+  /** The lesson's subject glows — LIGHT, not lines (D98 operator: the
+   *  wireframe diamond read as a debug artifact, "not a proper game
+   *  design way"). A soft golden pool beneath the subject, two breaths,
+   *  then gone. Same visual language as the vigils and beacons. */
+  private lessonMark: Phaser.GameObjects.Image | null = null;
+  private markLesson(x: number, y: number): void {
+    this.clearLessonMark();
+    const c = gridToScreen(x, y);
+    const img = this.add.image(c.sx, c.sy, "halo");
+    img.setBlendMode(Phaser.BlendModes.ADD);
+    img.setDisplaySize(TILE_W * 1.5, TILE_H * 1.8);
+    img.setTint(COLOR.goldInk);
+    img.depth = depthOf(x, y, Layer.CORPSE); // pools UNDER the subject
+    img.setAlpha(0);
+    this.worldLayer.add(img);
+    this.tweens.add({
+      targets: img,
+      alpha: { from: 0, to: 0.5 },
+      duration: 650,
+      yoyo: true,
+      repeat: 2,
+      ease: "Sine.easeInOut",
+      onComplete: () => {
+        if (this.lessonMark === img) this.lessonMark = null;
+        this.tweens.add({ targets: img, alpha: 0, duration: 400, onComplete: () => img.destroy() });
+      },
+    });
+    this.lessonMark = img;
+  }
+
+  private clearLessonMark(): void {
+    this.lessonMark?.destroy();
+    this.lessonMark = null;
   }
 
   private lessonDone(key: string): void {
@@ -503,11 +589,26 @@ export class DescentScene extends Phaser.Scene {
     this.lessonTimer?.remove();
     this.lessonTimer = null;
     this.hud.clearLesson();
-    // the burn truth follows straight after the first steps
+    this.clearLessonMark();
+    // the burn truth follows the first steps; the camera follows the burn
     if (key === "move") {
       this.time.delayedCall(700, () =>
-        this.teach("burn", "Every act burns the candle. The meter on the left is your life.", 6500),
+        this.teach("burn", "Every act burns the candle. The meter on the left is your life.", {
+          timed: 6500,
+          title: "The candle is life",
+        }),
       );
+    } else if (key === "burn") {
+      // touch has no V key — teaching it there was a dead lesson (D97)
+      const touch = this.sys.game.device.input.touch && !this.sys.game.device.os.desktop;
+      if (!touch) {
+        this.time.delayedCall(900, () =>
+          this.teach("view", "V — the dark steps back and shows the room. V again, and it leans close.", {
+            timed: 8000,
+            title: "Two ways of seeing",
+          }),
+        );
+      }
     }
   }
 
@@ -519,35 +620,72 @@ export class DescentScene extends Phaser.Scene {
       for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
         const t = s.tiles[(s.py + dy) * s.w + (s.px + dx)];
         if (t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK || t === Tile.DOOR_IRON) {
-          this.teach("interact", "A door. Face it and press E — or tap it — to interact.");
+          this.teach("interact", "A door. Face it and press E — see if it gives. (A tap works too.)", {
+            title: "What stands before you",
+            at: { x: s.px + dx, y: s.py + dy },
+          });
           break;
         }
       }
     }
     if (!this.guides.has("inspect")) {
       for (const e of s.entities) {
-        if (e.kind !== EntityKind.CORPSE && this.visibleMask[e.y * s.w + e.x]! === 1) {
+        const ei = e.y * s.w + e.x;
+        // only teach about a creature the player can actually SEE well —
+        // a lesson pointing into near-darkness reads as a riddle (D96)
+        if (e.kind !== EntityKind.CORPSE && this.visibleMask[ei]! === 1 && (this.lightMap?.[ei] ?? 0) >= 0.3) {
           this.teach(
             "inspect",
-            "Something lives down here. Hold a long-press on it to inspect — every creature keeps hidden laws.",
-            9000,
+            "Something lives down here. Hold your pointer on it — finger or mouse — and learn its shape before it learns yours.",
+            { timed: 9000, title: "The things below", at: { x: e.x, y: e.y } },
           );
           break;
         }
       }
     }
-    if (!this.guides.has("bank") || !this.guides.has("stairs")) {
+    if (!this.guides.has("bank") || !this.guides.has("stairs") || !this.guides.has("wax")) {
       for (let i = 0; i < s.tiles.length; i++) {
         if (this.visibleMask[i]! !== 1) continue;
-        if (s.tiles[i] === Tile.WAYSTONE) {
-          this.teach("bank", "A waystone. Stand on it and press E — truths banked there outlive you.", 9000);
-        } else if (s.tiles[i] === Tile.STAIRS_DOWN) {
+        const t = s.tiles[i];
+        const tx = i % s.w;
+        const ty = (i / s.w) | 0;
+        if (t === Tile.WAYSTONE) {
+          this.teach("bank", "A waystone. Stand on it, press E — what you carve there outlives you.", {
+            timed: 9000,
+            title: "What outlives you",
+            at: { x: tx, y: ty },
+          });
+        } else if (t === Tile.STAIRS_DOWN) {
           this.guide("stairs", "The stairs down. Deeper floors keep deeper secrets.");
+        } else if (t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE) {
+          this.teach("wax", "Wax on the stone. Walk over it — your candle drinks it.", {
+            timed: 9000,
+            title: "The Vault provides",
+            at: { x: tx, y: ty },
+          });
         }
       }
     }
+    // something is CLOSE (D98, operator cornered with no idea of the
+    // counterplay): teach stealth at the moment of pursuit, not at low wax
+    if (!this.guides.has("hunted")) {
+      for (const e of s.entities) {
+        if (e.kind === EntityKind.CORPSE) continue;
+        if (Math.abs(e.x - s.px) + Math.abs(e.y - s.py) > 2) continue;
+        if (this.visibleMask[e.y * s.w + e.x]! !== 1) continue;
+        this.teach(
+          "hunted",
+          "It hunts your light. Cup it (C) — or snuff and vanish. Each creature keeps its own law: test them.",
+          { timed: 9000, title: "The dark hunts the light" },
+        );
+        break;
+      }
+    }
     if (s.wax > 0 && s.wax < 150) {
-      this.teach("cup", "The candle wanes. C cups the flame — hidden, and it burns slower. Drippings refill it.", 8000);
+      this.teach("cup", "The candle wanes. C — cup the flame in your palm: unseen, and it sips instead of burns.", {
+        timed: 8000,
+        title: "Guard the flame",
+      });
     }
   }
 
@@ -810,13 +948,21 @@ export class DescentScene extends Phaser.Scene {
   }
 
   private toggleView(): void {
+    // guards (D97): V used to zoom under open sheets and pre-run menus
+    if (this.overlayOpen || !this.running) return;
+    this.lessonDone("view"); // doing dismisses the lesson (D95)
+    const before = this.cameras.main.zoom;
     this.viewMode = this.viewMode === "scout" ? "delve" : "scout";
     this.registry.set(VIEW_KEY, this.viewMode);
     this.applyViewport(true);
-    this.hud.toast(
-      this.viewMode === "delve" ? "Delve view — the dark leans close. (V to step back)" : "Scout view — the room at a glance.",
-      "info",
-    );
+    // at wide viewports the two modes nearly coincide — announcing a
+    // dramatic change for a 4% zoom reads as a broken toggle (D97)
+    if (Math.abs(this.baseZoom - before) / before > 0.08) {
+      this.hud.toast(
+        this.viewMode === "delve" ? "Delve view — the dark leans close. (V to step back)" : "Scout view — the room at a glance.",
+        "info",
+      );
+    }
   }
 
   /**
@@ -856,12 +1002,18 @@ export class DescentScene extends Phaser.Scene {
   /**
    * A 64×96 billboard at (x,y) covers tiles at (x-i, y-j) for i+j ≤ 5 with
    * |i-j| ≤ 1 (beyond that the columns no longer overlap on screen). Ring-1
-   * is already the CUT rule; this asks whether any DEEPER cone tile is
-   * see-through and currently FOV-visible — if so the tall prop must ghost.
+   * is already the CUT rule; this asks whether a DEEPER cone tile hides
+   * something that MATTERS — the player or a visible creature. (D96: it
+   * used to ghost for ANY visible floor, which turned whole room edges
+   * into glass — operator: "clutter in rendering". Empty floor may hide;
+   * a monster you can see must never render invisible.)
    */
   private static readonly OCCLUSION_CONE: readonly [number, number][] = [
     [1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [2, 2], [3, 2], [2, 3],
   ];
+  /** Tiles that must never be buried: player + currently visible entities.
+   *  Rebuilt once per redraw, read by buriesVisibleGround. */
+  private importantTiles = new Set<number>();
   private buriesVisibleGround(x: number, y: number): boolean {
     const s = this.state;
     if (s === null) return false;
@@ -869,8 +1021,7 @@ export class DescentScene extends Phaser.Scene {
       const tx = x - i;
       const ty = y - j;
       if (tx < 0 || ty < 0 || tx >= s.w || ty >= s.h) continue;
-      const ti = ty * s.w + tx;
-      if (this.visibleMask[ti]! === 1 && (TILE_FLAGS[s.tiles[ti]!]! & F_OPAQUE) === 0) return true;
+      if (this.importantTiles.has(ty * s.w + tx)) return true;
     }
     return false;
   }
@@ -920,8 +1071,10 @@ export class DescentScene extends Phaser.Scene {
   // ── Input ────────────────────────────────────────────────────────────────
   /** Held direction keys, polled every frame (D92): OS key-repeat gives a
    *  first-step hitch (step… pause… stream) — the clunk the operator felt.
-   *  Polling feeds the drain at its own 70 ms cadence instead. */
-  private heldDirs: { key: Phaser.Input.Keyboard.Key; d: number; op: number }[] = [];
+   *  Polling feeds the drain at its own 70 ms cadence instead. wasDown =
+   *  two-frame confirmation (D97): a tap straddling one SLOW frame used to
+   *  read as a hold and inject phantom steps at low fps. */
+  private heldDirs: { key: Phaser.Input.Keyboard.Key; d: number; op: number; wasDown: boolean }[] = [];
 
   /** Facing → body (D92): walking away (N/W) shows the hood's back, walking
    *  toward (S/E) the candle-lit front; E/W mirror via flip. The iso screen
@@ -954,34 +1107,55 @@ export class DescentScene extends Phaser.Scene {
       kb.on("keydown-LEFT", (ev: KeyboardEvent) => move(DIRS.W, Action.MOVE_W, ev));
       kb.on("keydown-SPACE", () => this.enqueue(Action.WAIT));
       kb.on("keydown-C", () => this.enqueue(Action.CUP));
-      kb.on("keydown-E", () => this.enqueue(Action.INTERACT_N + this.facing));
-      kb.on("keydown-T", () => this.enqueue(Action.SALT_N + this.facing));
+      kb.on("keydown-E", () => this.smartInteract());
+      kb.on("keydown-T", () => this.throwSaltSmart());
       kb.on("keydown-G", () => this.enqueue(Action.CHALK_MARK));
-      kb.on("keydown-ENTER", () => this.enqueue(Action.DESCEND));
+      kb.on("keydown-ENTER", () => {
+        const s2 = this.state;
+        if (s2 === null || !this.running || this.overlayOpen) return;
+        // pre-validate (D97): descending off-stairs used to silently burn wax
+        if (s2.tiles[s2.py * s2.w + s2.px] !== Tile.STAIRS_DOWN) {
+          this.audio.play("reject", true);
+          this.hud.toast("No stairs beneath you.", "info");
+          return;
+        }
+        this.enqueue(Action.DESCEND);
+      });
       kb.on("keydown-R", () => this.enqueueRelight());
-      kb.on("keydown-X", () => this.enqueueSnuff());
+      // X is HOLD-to-snuff (D97): a single stray keypress used to snuff the
+      // candle instantly — keyboard now honors the same 450ms as the HUD
+      kb.on("keydown-X", (ev: KeyboardEvent) => {
+        if (ev.repeat) return;
+        this.xDownAt = this.time.now;
+      });
+      kb.on("keyup-X", () => {
+        if (this.xDownAt === 0) return;
+        const held = this.time.now - this.xDownAt;
+        this.xDownAt = 0;
+        if (!this.running || this.overlayOpen) return;
+        if (held >= 450) this.enqueueSnuff();
+        else this.hud.toast("Hold X to snuff the flame.", "info");
+      });
       kb.on("keydown-B", () => this.openSigns()); // plant a sign
       kb.on("keydown-V", () => this.toggleView()); // scout ↔ delve camera (D67)
       kb.on("keydown-M", () => this.devTeleport()); // DEV-ONLY: deleted at M2
 
       const KC = Phaser.Input.Keyboard.KeyCodes;
       this.heldDirs = [
-        { key: kb.addKey(KC.W), d: DIRS.N, op: Action.MOVE_N },
-        { key: kb.addKey(KC.UP), d: DIRS.N, op: Action.MOVE_N },
-        { key: kb.addKey(KC.D), d: DIRS.E, op: Action.MOVE_E },
-        { key: kb.addKey(KC.RIGHT), d: DIRS.E, op: Action.MOVE_E },
-        { key: kb.addKey(KC.S), d: DIRS.S, op: Action.MOVE_S },
-        { key: kb.addKey(KC.DOWN), d: DIRS.S, op: Action.MOVE_S },
-        { key: kb.addKey(KC.A), d: DIRS.W, op: Action.MOVE_W },
-        { key: kb.addKey(KC.LEFT), d: DIRS.W, op: Action.MOVE_W },
+        { key: kb.addKey(KC.W), d: DIRS.N, op: Action.MOVE_N, wasDown: false },
+        { key: kb.addKey(KC.UP), d: DIRS.N, op: Action.MOVE_N, wasDown: false },
+        { key: kb.addKey(KC.D), d: DIRS.E, op: Action.MOVE_E, wasDown: false },
+        { key: kb.addKey(KC.RIGHT), d: DIRS.E, op: Action.MOVE_E, wasDown: false },
+        { key: kb.addKey(KC.S), d: DIRS.S, op: Action.MOVE_S, wasDown: false },
+        { key: kb.addKey(KC.DOWN), d: DIRS.S, op: Action.MOVE_S, wasDown: false },
+        { key: kb.addKey(KC.A), d: DIRS.W, op: Action.MOVE_W, wasDown: false },
+        { key: kb.addKey(KC.LEFT), d: DIRS.W, op: Action.MOVE_W, wasDown: false },
       ];
     }
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (this.overlayOpen || !this.running || this.state === null) return;
-      if (p.y > this.scale.height - 80 || p.y < 60) return;
-      const mb = this.hud.meterBounds();
-      if (p.x < mb.x + mb.w && p.y > mb.y && p.y < mb.y + mb.h) return;
+      if (this.pointerEaten(p.x, p.y)) return;
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       this.pressTile = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
       this.pressAt = this.time.now;
@@ -1004,6 +1178,8 @@ export class DescentScene extends Phaser.Scene {
     const cancelPress = (): void => {
       this.pressTile = null;
       this.pressConsumed = false;
+      this.cursorG.clear(); // no orphaned hover diamond (D96)
+      this.cursorAt = 0;
     };
     this.input.on("gameout", cancelPress);
     this.game.canvas.addEventListener("pointercancel", cancelPress);
@@ -1014,6 +1190,8 @@ export class DescentScene extends Phaser.Scene {
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
       this.cursorG.clear();
       if (this.overlayOpen || !this.running || this.state === null) return;
+      // never advertise tappability where pointerdown is eaten (D97)
+      if (this.pointerEaten(p.x, p.y)) return;
       const wp = this.cameras.main.getWorldPoint(p.x, p.y);
       const t = screenToGrid(wp.x, wp.y, this.state.w, this.state.h);
       if (t === null) return;
@@ -1026,7 +1204,115 @@ export class DescentScene extends Phaser.Scene {
       this.cursorG.lineTo(c.sx - HALF_W, c.sy);
       this.cursorG.closePath();
       this.cursorG.strokePath();
+      this.cursorAt = this.time.now; // idles away in update() (D96)
     });
+  }
+
+  /** Last hover-cursor draw time — a parked mouse must not leave a
+   *  dotted diamond floating in the scene forever (D96). */
+  private cursorAt = 0;
+
+  /** Tiles the SIM's interactTile actually answers (D97 audit): sending
+   *  INTERACT at anything else burns a turn of wax for silent nothing. */
+  private static readonly SIM_INTERACTABLE: ReadonlySet<number> = new Set([
+    Tile.DOOR_CLOSED, Tile.DOOR_STUCK, Tile.DOOR_IRON, Tile.DOOR_HUNGER,
+    Tile.DOOR_CHOIR, Tile.DOOR_SIGIL, Tile.BRAZIER_UNLIT, Tile.CHEST,
+    Tile.ALTAR, Tile.POOL, Tile.FONT, Tile.SEAL, Tile.WAYSTONE,
+  ]);
+
+  private static readonly WALKABLE: ReadonlySet<number> = new Set([
+    Tile.FLOOR, Tile.MOSS, Tile.WEBBING, Tile.WATER, Tile.GLOWMOSS,
+    Tile.PLATE, Tile.DOOR_OPEN, Tile.KEY_DROP, Tile.WAX_DRIP,
+    Tile.WAX_STUB, Tile.WAX_CAKE, Tile.STAIRS_DOWN, Tile.ENTRY,
+    Tile.WAYSTONE,
+  ]);
+
+  private static readonly DXA = [0, 1, 0, -1] as const;
+  private static readonly DYA = [-1, 0, 1, 0] as const;
+
+  private livingAt(tx: number, ty: number): Entity | null {
+    const s = this.state;
+    if (s === null) return null;
+    for (const e of s.entities) {
+      if (e.x === tx && e.y === ty && e.kind !== EntityKind.CORPSE) return e;
+    }
+    return null;
+  }
+
+  /** Brief diamond flash where a tap landed — a tap is NEVER silent (D97). */
+  private tapAck(tx: number, ty: number, ok: boolean): void {
+    const c = gridToScreen(tx, ty);
+    const g = this.add.graphics();
+    g.lineStyle(1.4, ok ? COLOR.bone : COLOR.seal, 0.9);
+    g.beginPath();
+    g.moveTo(0, -HALF_H);
+    g.lineTo(HALF_W, 0);
+    g.lineTo(0, HALF_H);
+    g.lineTo(-HALF_W, 0);
+    g.closePath();
+    g.strokePath();
+    g.setPosition(c.sx, c.sy);
+    g.depth = DEPTH_CURSOR;
+    this.worldLayer.add(g);
+    this.tweens.add({ targets: g, alpha: 0, duration: 340, onComplete: () => g.destroy() });
+  }
+
+  /** Leaving costs your whole run — one stray tap must never do it (D97). */
+  private exitArmAt = 0;
+  private confirmExit(dir: number): void {
+    if (this.time.now - this.exitArmAt < 3200) {
+      this.exitArmAt = 0;
+      this.enqueue(Action.INTERACT_N + dir);
+      return;
+    }
+    this.exitArmAt = this.time.now;
+    this.hud.toast("The way out. Use it again to end the run and keep what you banked.", "warning");
+  }
+
+  /** Far tap → one safe step toward it (D97): the phone's only locomotion
+   *  was a lie before — "tap a tile to walk there" now walks there. */
+  private stepToward(tx: number, ty: number): void {
+    const s = this.state;
+    if (s === null) return;
+    const dx = tx - s.px;
+    const dy = ty - s.py;
+    const h = dx > 0 ? DIRS.E : DIRS.W;
+    const v = dy > 0 ? DIRS.S : DIRS.N;
+    const order: number[] = [];
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      if (dx !== 0) order.push(h);
+      if (dy !== 0) order.push(v);
+    } else {
+      if (dy !== 0) order.push(v);
+      if (dx !== 0) order.push(h);
+    }
+    for (const d of order) {
+      const nx = s.px + DescentScene.DXA[d]!;
+      const ny = s.py + DescentScene.DYA[d]!;
+      if (nx < 0 || ny < 0 || nx >= s.w || ny >= s.h) continue;
+      const t = s.tiles[ny * s.w + nx]!;
+      // auto-route only across SAFE ground: never onto a plate, never
+      // into a creature — those must be deliberate adjacent taps
+      if (t === Tile.PLATE || !DescentScene.WALKABLE.has(t)) continue;
+      if (this.livingAt(nx, ny) !== null) continue;
+      this.facing = d;
+      this.applyFacing();
+      this.enqueue(Action.MOVE_N + d);
+      this.tapAck(tx, ty, true);
+      return;
+    }
+    this.tapAck(tx, ty, false);
+  }
+
+  /** Zones where world presses die — matched to the ACTUAL chrome (D97:
+   *  the old full-width bands ate 29% of landscape height). */
+  private pointerEaten(x: number, y: number): boolean {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    if (y > h - 72) return true; // the bottom bar, exactly
+    if (y < 60 && (x < 240 || x > w - 110)) return true; // plaque | mute+menu
+    const mb = this.hud.meterBounds();
+    return x < mb.x + mb.w && y > mb.y && y < mb.y + mb.h;
   }
 
   private tapTile(tx: number, ty: number): void {
@@ -1034,20 +1320,48 @@ export class DescentScene extends Phaser.Scene {
     if (s === null) return;
     const dx = tx - s.px;
     const dy = ty - s.py;
+    const t = s.tiles[ty * s.w + tx]!;
     if (dx === 0 && dy === 0) {
-      const onStairs = s.tiles[ty * s.w + tx] === Tile.STAIRS_DOWN;
-      this.enqueue(onStairs ? Action.DESCEND : Action.WAIT);
+      if (t === Tile.STAIRS_DOWN) {
+        this.enqueue(Action.DESCEND);
+        return;
+      }
+      // tap-self ON the stone banks (D98): the lesson says "stand on it"
+      // — touch had no gesture to honor that promise
+      if (t === Tile.WAYSTONE) {
+        this.openBank();
+        return;
+      }
+      this.enqueue(Action.WAIT);
       return;
     }
-    if (Math.abs(dx) + Math.abs(dy) !== 1) return;
+    if (Math.abs(dx) + Math.abs(dy) !== 1) {
+      this.stepToward(tx, ty);
+      return;
+    }
     const dir = dy === -1 ? DIRS.N : dx === 1 ? DIRS.E : dy === 1 ? DIRS.S : DIRS.W;
     this.facing = dir;
-    const t = s.tiles[ty * s.w + tx]!;
-    const interactable = propTextureFor(t) !== "" || t === Tile.WAYSTONE || t === Tile.STAIRS_DOWN || t === Tile.ENTRY;
-    const walkableTile = t === Tile.FLOOR || t === Tile.MOSS || t === Tile.WEBBING || t === Tile.WATER ||
-      t === Tile.GLOWMOSS || t === Tile.PLATE || t === Tile.DOOR_OPEN || t === Tile.KEY_DROP ||
-      t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE;
-    this.enqueue(walkableTile && !interactable ? Action.MOVE_N + dir : Action.INTERACT_N + dir);
+    this.applyFacing();
+    // a living thing there: tapping IT is the deliberate touch (sim bump)
+    if (this.livingAt(tx, ty) !== null) {
+      this.enqueue(Action.MOVE_N + dir);
+      return;
+    }
+    if (t === Tile.ENTRY) {
+      this.confirmExit(dir);
+      return;
+    }
+    // ONLY tiles the sim answers get INTERACT (D97: open doors, wax and
+    // stairs are WALKED onto — they were unreachable on touch before)
+    if (DescentScene.SIM_INTERACTABLE.has(t)) {
+      this.enqueue(Action.INTERACT_N + dir);
+      return;
+    }
+    if (DescentScene.WALKABLE.has(t)) {
+      this.enqueue(Action.MOVE_N + dir);
+      return;
+    }
+    this.tapAck(tx, ty, false); // wall/void: seen, refused, never silent
   }
 
   private inspect(tx: number, ty: number): void {
@@ -1072,6 +1386,16 @@ export class DescentScene extends Phaser.Scene {
         return;
       }
     }
+    // a creature on the tile speaks before the stone under it (D97: the
+    // lesson said "learn its shape" but the plaque named the floor)
+    const ent = s.entities.find((e2) => e2.x === tx && e2.y === ty);
+    if (ent !== undefined && this.visibleMask[i]! === 1) {
+      // a disguised mirrormaw lies to the plaque too — secrets hold
+      const disguised = ent.kind === EntityKind.MIMIC && ent.state === MimicState.DISGUISED;
+      const name = disguised ? "an old chest" : ENTITY_NAMES[ent.kind] ?? "something nameless";
+      this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)} — ${name}`, "info");
+      return;
+    }
     const what = TILE_NAMES[s.tiles[i]!] ?? "…";
     this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)} — ${what}`, "info");
   }
@@ -1080,7 +1404,10 @@ export class DescentScene extends Phaser.Scene {
     const s = this.state;
     if (s === null || !this.running) return;
     const item = s.inv[slot]!;
-    if (item === Item.NONE) return;
+    if (item === Item.NONE) {
+      this.hud.toast("Nothing in that slot.", "info"); // never silent (D97)
+      return;
+    }
     if (item === Item.FLINT) {
       this.enqueueRelight();
       return;
@@ -1131,16 +1458,108 @@ export class DescentScene extends Phaser.Scene {
     if (this.queue.length < 4) this.queue.push({ op, arg });
   }
 
+  /** X held to confirm — 0 while idle (D97). */
+  private xDownAt = 0;
+
+  /**
+   * The candle verbs FLUSH pending moves instead of silently dropping the
+   * confirmed gesture (D97): a completed 450ms hold used to vanish if a
+   * step was still queued — the deliberate act wins over the stale queue.
+   */
   private enqueueSnuff(): void {
     const s = this.state;
-    if (s === null || s.candle === Candle.SNUFFED || this.queue.length > 0) return;
+    if (s === null || s.candle === Candle.SNUFFED) return;
+    this.queue.length = 0;
     for (let i = 0; i < SNUFF_TICKS; i++) this.enqueue(Action.SNUFF);
   }
 
   private enqueueRelight(): void {
     const s = this.state;
-    if (s === null || s.candle !== Candle.SNUFFED || this.queue.length > 0) return;
+    if (s === null || s.candle !== Candle.SNUFFED) return;
+    this.queue.length = 0;
     for (let i = 0; i < RELIGHT_TICKS; i++) this.enqueue(Action.RELIGHT);
+  }
+
+  /**
+   * Smart interact (D97, operator: "it's hard to interact with anything
+   * until I am facing it"). E means "use the thing here": faced tile
+   * first, then the tile underfoot (waystone/stairs/exit), then the ONE
+   * adjacent thing that answers — turning the body toward it. Never
+   * sends an action the sim would reject (rejects burned wax silently).
+   */
+  private smartInteract(): void {
+    const s = this.state;
+    if (s === null || !this.running || this.overlayOpen) return;
+    const here = s.tiles[s.py * s.w + s.px]!;
+    if (here === Tile.WAYSTONE) {
+      this.openBank();
+      return;
+    }
+    if (here === Tile.STAIRS_DOWN) {
+      this.enqueue(Action.DESCEND);
+      return;
+    }
+    if (here === Tile.ENTRY) {
+      this.hud.toast("Step beside the doorway, then use it to leave.", "info");
+      return;
+    }
+    // faced living thing: the deliberate touch (Keeper pickpocket path)
+    const fx = s.px + DescentScene.DXA[this.facing]!;
+    const fy = s.py + DescentScene.DYA[this.facing]!;
+    if (this.livingAt(fx, fy) !== null) {
+      this.enqueue(Action.INTERACT_N + this.facing);
+      return;
+    }
+    const order = [this.facing, DIRS.N, DIRS.E, DIRS.S, DIRS.W];
+    for (const d of order) {
+      const nx = s.px + DescentScene.DXA[d]!;
+      const ny = s.py + DescentScene.DYA[d]!;
+      if (nx < 0 || ny < 0 || nx >= s.w || ny >= s.h) continue;
+      const t = s.tiles[ny * s.w + nx]!;
+      if (t === Tile.ENTRY) {
+        this.facing = d;
+        this.applyFacing();
+        this.confirmExit(d);
+        return;
+      }
+      if (t === Tile.STAIRS_DOWN) {
+        this.hud.toast("Stairs — step onto them, then Enter (or tap yourself).", "info");
+        return;
+      }
+      if (DescentScene.SIM_INTERACTABLE.has(t)) {
+        this.facing = d;
+        this.applyFacing();
+        this.enqueue(Action.INTERACT_N + d);
+        return;
+      }
+    }
+    this.audio.play("reject", true);
+    this.hud.toast("Nothing answers.", "info");
+  }
+
+  /** Salt pre-validated against the sim's own ray rules (D97): a throw
+   *  that cannot land no longer burns a silent turn. */
+  private throwSaltSmart(): void {
+    const s = this.state;
+    if (s === null || !this.running || this.overlayOpen) return;
+    let lands = false;
+    for (let r = 1; r <= 2; r++) {
+      const nx = s.px + DescentScene.DXA[this.facing]! * r;
+      const ny = s.py + DescentScene.DYA[this.facing]! * r;
+      if (nx < 0 || ny < 0 || nx >= s.w || ny >= s.h) break;
+      const t = s.tiles[ny * s.w + nx]!;
+      if (!DescentScene.WALKABLE.has(t) || this.livingAt(nx, ny) !== null) break;
+      if (s.salt[ny * s.w + nx]! === 0) {
+        lands = true;
+        break;
+      }
+    }
+    if (!lands) {
+      this.audio.play("reject", true);
+      this.hud.toast("No clear ground for the salt that way.", "info");
+      return;
+    }
+    this.enqueue(Action.SALT_N + this.facing);
   }
 
   // ── Frame loop ───────────────────────────────────────────────────────────
@@ -1186,9 +1605,41 @@ export class DescentScene extends Phaser.Scene {
       }
     }
 
+    // the hold CHARGES visibly (D96): without this, players hold, see
+    // nothing move, and release before the threshold — "nothing happened"
+    this.pressRing.clear();
+    if (this.pressTile !== null && !this.pressConsumed) {
+      const frac = Math.min(1, (time - this.pressAt) / LONG_PRESS_MS);
+      if (frac > 0.18) {
+        const p = this.input.activePointer;
+        this.pressRing.lineStyle(3, COLOR.goldInk, 0.9);
+        this.pressRing.beginPath();
+        this.pressRing.arc(p.x, p.y - 34, 13, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+        this.pressRing.strokePath();
+      }
+    }
+
     if (this.pressTile !== null && !this.pressConsumed && time - this.pressAt >= LONG_PRESS_MS) {
       this.pressConsumed = true;
+      this.pressRing.clear();
       this.inspect(this.pressTile.x, this.pressTile.y);
+    }
+
+    // a parked mouse's hover diamond fades after a beat (D96)
+    if (this.cursorAt > 0 && time - this.cursorAt > 1200) {
+      this.cursorG.clear();
+      this.cursorAt = 0;
+    }
+
+    // threshold beacons breathe (D98): seen = ember of memory, lit = alive
+    for (const b of this.beacons) {
+      if (this.state.seen[b.i]! !== 1) {
+        b.img.setAlpha(0);
+        continue;
+      }
+      const vis = this.visibleMask[b.i]! === 1;
+      const breathe = 0.7 + 0.3 * Math.sin(time / 640 + b.phase);
+      b.img.setAlpha((vis ? 0.24 : 0.1) * breathe);
     }
 
     // hit-stop restoration: real game time is unscaled, so this is exact
@@ -1206,7 +1657,8 @@ export class DescentScene extends Phaser.Scene {
     if (this.running && !this.overlayOpen && this.queue.length === 0) {
       let best: { d: number; op: number; t: number } | null = null;
       for (const h of this.heldDirs) {
-        if (h.key.isDown && time - h.key.timeDown > HOLD_REPEAT_MS && (best === null || h.key.timeDown > best.t)) {
+        // two-frame confirmation (D97): must have been down LAST frame too
+        if (h.key.isDown && h.wasDown && time - h.key.timeDown > HOLD_REPEAT_MS && (best === null || h.key.timeDown > best.t)) {
           best = { d: h.d, op: h.op, t: h.key.timeDown };
         }
       }
@@ -1216,6 +1668,7 @@ export class DescentScene extends Phaser.Scene {
         this.enqueue(best.op);
       }
     }
+    for (const h of this.heldDirs) h.wasDown = h.key.isDown;
 
     if (this.queue.length > 0 && !this.overlayOpen && time - this.lastStep > 70 && time >= this.hitStopUntil) {
       this.lastStep = time;
@@ -1236,13 +1689,10 @@ export class DescentScene extends Phaser.Scene {
   private step(stepIn: Step): void {
     const s0 = this.state;
     if (s0 === null) return;
-    // lessons are dismissed by DOING (D93)
-    const lop = stepIn.op;
-    if (this.lessonKey === "move" && (lop === Action.MOVE_N || lop === Action.MOVE_E || lop === Action.MOVE_S || lop === Action.MOVE_W)) {
-      if (++this.lessonMoves >= 3) this.lessonDone("move");
-    } else if ((this.lessonKey === "interact" || this.lessonKey === "bank") && lop >= Action.INTERACT_N && lop < Action.INTERACT_N + 4) {
-      this.lessonDone(this.lessonKey);
-    } else if (this.lessonKey === "cup" && lop === Action.CUP) {
+    // lessons are dismissed by DOING (D93/D97): moves count on Ev.MOVED,
+    // the door lesson on Ev.DOOR_OPENED — a FAILED attempt must not eat
+    // the guidance at the exact moment the player got it wrong
+    if (this.lessonKey === "cup" && stepIn.op === Action.CUP) {
       this.lessonDone("cup");
     }
     const before = this.meaningfulLearned();
@@ -1329,9 +1779,12 @@ export class DescentScene extends Phaser.Scene {
 
   // DEV-ONLY: deleted at M2 — operator floor-skip for judging every biome
   // without earning the stairs. Same transition as a real descend.
+  private devTpAt = 0; // debounce (D97: slow frames double-teleported)
   private devTeleport(target?: number): void {
     const s = this.state;
     if (s === null || !this.running || this.overlayOpen || s.status !== Status.ALIVE) return;
+    if (this.time.now - this.devTpAt < 300) return;
+    this.devTpAt = this.time.now;
     const next = target ?? s.floor + 1;
     if (next < 1 || next > MAX_FLOOR || next === s.floor) return;
     s.status = Status.DESCENDING; // the sim's transition guard demands it
@@ -1347,6 +1800,12 @@ export class DescentScene extends Phaser.Scene {
       case Ev.MOVED: {
         const t = s.tiles[e.b * s.w + e.a] ?? Tile.FLOOR;
         cue(t === Tile.MOSS || t === Tile.GLOWMOSS ? "step-moss" : t === Tile.WEBBING || t === Tile.WATER ? "step-soft" : "step-stone");
+        if (this.lessonKey === "move" && ++this.lessonMoves >= 3) this.lessonDone("move");
+        // arriving ON the stairs names the next gesture (D97: touch had
+        // no path to descend at all before)
+        if (t === Tile.STAIRS_DOWN) {
+          this.hud.toast("The stairs. Tap yourself (or Enter) to descend.", "info");
+        }
         break;
       }
       case Ev.BLOCKED:
@@ -1371,6 +1830,14 @@ export class DescentScene extends Phaser.Scene {
           this.pendingBank = null;
           this.hud.toast("The stone is beyond reach — nothing was committed.", "warning");
           cue("reject");
+          break;
+        }
+        // EVERY rejection is heard (D97): these still cost a turn of wax
+        // sim-side, and total silence read as broken controls
+        cue("reject", true);
+        if (this.time.now - this.lastRejectAt > 2500) {
+          this.lastRejectAt = this.time.now;
+          this.hud.toast("Nothing answers.", "info");
         }
         break;
       case Ev.STAIRS_TOUCHED:
@@ -1384,12 +1851,16 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.DOOR_OPENED:
       case Ev.DOOR_SIGIL_OPEN:
+        this.lessonDone("interact"); // the door GAVE — lesson learned (D97)
         this.puffAt(e.a, e.b, 8); // old hinges shed their dust (D75)
         cue("door");
         break;
       case Ev.DOOR_FORCED:
+        this.lessonDone("interact");
         this.puffAt(e.a, e.b, 12);
         cue("door-force");
+        // the hidden extra cost surfaces (D97): stuck doors are not free
+        this.hud.toast("You force it — loud, and it takes wax.", "warning");
         break;
       case Ev.DOOR_FED:
         this.hud.toast("The door swallows fifty wax, and opens.", "warning");
@@ -1411,18 +1882,22 @@ export class DescentScene extends Phaser.Scene {
         cue("death");
         break;
       case Ev.PLAYER_HURT:
+        this.lastHurtKind = e.a; // the epitaph names your killer (D98)
+        this.damageFloat(e.b);
         this.impact(0.003 + e.b * 0.0002);
         this.hitStop(80);
         this.damageFlash();
         cue("bite");
         break;
       case Ev.FIRE_HURT:
+        this.damageFloat(e.b);
         this.impact(0.005);
         this.hitStop(80);
         this.damageFlash();
         cue("fire");
         break;
       case Ev.SHOCK:
+        this.damageFloat(e.b);
         this.impact(0.006);
         this.hitStop(80);
         this.damageFlash();
@@ -1511,6 +1986,7 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.WAX_GAINED:
         cue("pickup");
+        this.lessonDone("wax"); // the candle drank — lesson learned (D95)
         break;
       case Ev.ALTAR_PULSE:
         this.hud.toast("The altar drinks 100 wax — the floor unfolds in your mind.", "discovery");
@@ -1638,20 +2114,79 @@ export class DescentScene extends Phaser.Scene {
     this.time.delayedCall(700, () => puff.destroy());
   }
 
+  /** Any of the 4 orthogonal neighbours currently inside the light? */
+  private adjacentVisible(x: number, y: number): boolean {
+    const s = this.state;
+    if (s === null) return false;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= s.w || ny >= s.h) continue;
+      if (this.visibleMask[ny * s.w + nx]! === 1) return true;
+    }
+    return false;
+  }
+
+  /** A bite you can READ (D98): candle-burn and monster-damage felt
+   *  identical, so players credited their own flame's cost to whatever
+   *  was walking behind them. Real damage now rises off the body. */
+  private damageFloat(amount: number): void {
+    const s = this.state;
+    if (s === null || amount <= 0) return;
+    const c = gridToScreen(s.px, s.py);
+    const t = this.add
+      .text(c.sx, c.sy - 44, `−${amount}`, {
+        fontFamily: "Georgia, serif",
+        fontSize: "15px",
+        fontStyle: "italic",
+        color: "#a33b2e",
+      })
+      .setOrigin(0.5);
+    t.setResolution(Math.min(window.devicePixelRatio || 1, 3));
+    t.depth = 860;
+    this.worldLayer.add(t);
+    this.tweens.add({
+      targets: t,
+      y: c.sy - 68,
+      alpha: { from: 1, to: 0 },
+      duration: 900,
+      ease: "Sine.easeOut",
+      onComplete: () => t.destroy(),
+    });
+  }
+
   private playBump(): void {
     const b = this.pendingBump;
     this.pendingBump = null;
     if (b === null || this.state === null) return;
     const target = gridToScreen(b.x, b.y);
     const here = gridToScreen(this.state.px, this.state.py);
+    // D95 playtest: the old 14%/55ms twitch was invisible in practice —
+    // and most Reddit players are muted, so this recoil IS the bump.
+    // Anchor to the TRUE rest pose first: back-to-back bumps otherwise
+    // compound the relative tween and drift the sprite off its tile.
+    this.tweens.killTweensOf(this.playerView);
+    this.playerView.setPosition(here.sx, here.sy + HALF_H - 2);
     this.tweens.add({
       targets: this.playerView,
-      x: `+=${(target.sx - here.sx) * 0.14}`,
-      y: `+=${(target.sy - here.sy) * 0.14}`,
-      duration: 55,
+      x: `+=${(target.sx - here.sx) * 0.3}`,
+      y: `+=${(target.sy - here.sy) * 0.3}`,
+      duration: 80,
       yoyo: true,
       ease: "Sine.easeOut",
     });
+    // dust where flesh met stone
+    this.puffAt(b.x, b.y, 3);
+    // grinding into hidden walls is the classic new-player fugue — teach
+    const now = this.time.now;
+    this.bumpStreak = now - this.lastBumpAt < 2600 ? this.bumpStreak + 1 : 1;
+    this.lastBumpAt = now;
+    if (this.bumpStreak >= 3) {
+      this.teach("blocked", "Stone. The dark hides walls — what your light has not touched is not yet real.", {
+        timed: 7000,
+        title: "The unseen stone",
+      });
+    }
   }
 
   /** Every listed monster's whisper (01 §8); quiet=true marks reused cues
@@ -1761,6 +2296,7 @@ export class DescentScene extends Phaser.Scene {
 
     const effR = effectiveRadius(s);
     const light = computeLightMap(s, this.visibleMask, effR);
+    this.lightMap = light; // runGuides reads it: teach only what is LIT (D96)
     // colored pools around visible archways/shrines (D69)
     const glowTints = computeGlowTints(s, this.visibleMask);
     const stain = (i: number, base: number): number => {
@@ -1813,6 +2349,11 @@ export class DescentScene extends Phaser.Scene {
     }
 
     positionHalo(this.halo, s, effR);
+    // the halo lives at the PLAYER'S depth, not above the world (D95):
+    // a fixed depth let the amber wash paint OVER walls that stand
+    // between camera and delver — light must not shine through stone
+    this.halo.depth = depthOf(s.px, s.py, Layer.WALL);
+    positionVeil(this.lightVeil, s, effR);
     // the dust lives only where the light reaches, and leans toward the
     // flame; a snuffed candle stops gathering it (D75)
     if (this.dustZone !== null) {
@@ -1834,6 +2375,20 @@ export class DescentScene extends Phaser.Scene {
       this.worldLayer,
       BIOMES.indexOf(biomeFor(s.floor)) === 3, // the Furnaces shimmer (D77)
     );
+
+    // the inspect lesson's marker FOLLOWS the creature it points at (D96):
+    // a static diamond over a tile the beast already left reads as a lie
+    if (this.lessonKey === "inspect" && this.lessonMark !== null) {
+      for (const e2 of s.entities) {
+        const ei2 = e2.y * s.w + e2.x;
+        if (e2.kind !== EntityKind.CORPSE && this.visibleMask[ei2]! === 1 && (light[ei2] ?? 0) >= 0.3) {
+          const mc = gridToScreen(e2.x, e2.y);
+          this.lessonMark.setPosition(mc.sx, mc.sy);
+          this.lessonMark.depth = depthOf(e2.x, e2.y, Layer.CORPSE);
+          break;
+        }
+      }
+    }
 
     const pc = gridToScreen(s.px, s.py);
     const pi = s.py * s.w + s.px;
@@ -1889,13 +2444,60 @@ export class DescentScene extends Phaser.Scene {
       if (seen) img.setTint(vis ? stain(i, tintForLight(light[i]!)) : MEMORY_TINT);
     });
 
+    // threshold beacons rebuild when the floor changes (D98)
+    if (this.beaconFloor !== s.floor) {
+      this.beaconFloor = s.floor;
+      for (const b of this.beacons) b.img.destroy();
+      this.beacons = [];
+      for (let i = 0; i < s.tiles.length; i++) {
+        const bt = s.tiles[i];
+        if (bt !== Tile.ENTRY && bt !== Tile.STAIRS_DOWN) continue;
+        const bx = i % s.w;
+        const by = (i / s.w) | 0;
+        const bc = gridToScreen(bx, by);
+        const img = this.add.image(bc.sx, bc.sy, "halo");
+        img.setBlendMode(Phaser.BlendModes.ADD);
+        img.setDisplaySize(TILE_W * 1.15, TILE_H * 1.15);
+        img.setTint(bt === Tile.ENTRY ? COLOR.flame : COLOR.verdigris);
+        img.depth = depthOf(bx, by, Layer.CORPSE); // over ground, under feet
+        img.setAlpha(0);
+        this.worldLayer.add(img);
+        this.beacons.push({ img, i, phase: (bx * 7 + by * 13) % 10 });
+      }
+    }
+
+    // what must never be buried behind glass-faded walls (D96)
+    this.importantTiles.clear();
+    this.importantTiles.add(s.py * s.w + s.px);
+    for (const e2 of s.entities) {
+      if (e2.kind !== EntityKind.CORPSE && this.visibleMask[e2.y * s.w + e2.x]! === 1) {
+        this.importantTiles.add(e2.y * s.w + e2.x);
+      }
+    }
+
     this.props.forEach((prop, i) => {
       const x = i % s.w;
       const y = (i / s.w) | 0;
       const seen = s.seen[i]! === 1;
       const vis = this.visibleMask[i]! === 1;
-      prop.sprite.setVisible(seen);
-      if (!seen) return;
+      if (!seen) {
+        // penumbra (D95, tightened D96): an unseen WALL beside the player
+        // shows as a faint cold silhouette — but only within arm's reach
+        // (manhattan ≤ 2). The first cut ringed the WHOLE light pool in
+        // ghosts and read as clutter; the point is "what will I bump
+        // NEXT", not an x-ray of the room. Items in the dark stay secret.
+        const near = Math.abs(x - s.px) + Math.abs(y - s.py) <= 2;
+        if (near && isWallishTile(prop.tile) && this.adjacentVisible(x, y)) {
+          prop.sprite.setVisible(true);
+          prop.sprite.setTint(MEMORY_TINT);
+          prop.occluded = false;
+          prop.sprite.setAlpha(0.32);
+        } else {
+          prop.sprite.setVisible(false);
+        }
+        return;
+      }
+      prop.sprite.setVisible(true);
       prop.sprite.setTint(vis ? stain(i, tintForLight(Math.min(light[i]! + 0.08, 1))) : MEMORY_TINT);
       // cut walls are knee-high — they never hide the delver (D65).
       // Tall walls and doors ghost when their 96px body buries ANY ground
@@ -2003,6 +2605,7 @@ export class DescentScene extends Phaser.Scene {
     const host = this.host();
     const s = this.state;
     if (host === null || s === null || this.overlayOpen) return;
+    this.lessonDone("bank"); // the stone answered — lesson learned (D97)
     this.overlayOpen = true;
     const bankable = this.unbankedThisRun();
     openWaystoneSheet(
@@ -2069,7 +2672,7 @@ export class DescentScene extends Phaser.Scene {
       });
       this.confirmRun();
       this.afterCeremony(rest);
-    }, { truths, nearClaims, nearMiss });
+    }, { truths, nearClaims, nearMiss }, ENTITY_NAMES[this.lastHurtKind]);
   }
 
   private openExit(): void {

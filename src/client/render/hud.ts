@@ -44,7 +44,6 @@ export interface HudCallbacks {
   onRestart(): void;
   onUseSlot(slot: number): void;
   /** toggle audio; returns the new muted state for display */
-  onToggleMute(): boolean;
 }
 
 export class Hud {
@@ -61,7 +60,6 @@ export class Hud {
   private plaqueInner!: Phaser.GameObjects.Rectangle;
   private depthText!: Phaser.GameObjects.Text;
   private objectiveText!: Phaser.GameObjects.Text;
-  private muteText!: Phaser.GameObjects.Text;
   private menuText!: Phaser.GameObjects.Text;
   private barRect!: Phaser.GameObjects.Rectangle;
   private barRim!: Phaser.GameObjects.Rectangle;
@@ -117,19 +115,19 @@ export class Hud {
       s.add.text(0, 0, "", { fontFamily: SANS, fontSize: "11px", fontStyle: "italic", color: "#7e786c" }).setOrigin(0, 0),
     );
 
-    this.muteText = this.fixed(
-      s.add.text(0, 0, "MUTE", { fontFamily: SANS, fontSize: "12px", color: "#7e786c" }).setOrigin(0.5, 0),
-    );
-    this.muteText.setInteractive({ useHandCursor: true }); // always visible (invariant 6)
-    this.muteText.on("pointerdown", () => {
-      const muted = this.cb.onToggleMute();
-      this.muteText.setText(muted ? "MUTED" : "MUTE");
-      this.muteText.setAlpha(muted ? 1 : 0.6);
-    });
+    // NO in-HUD audio control (D98 operator override, twice confirmed):
+    // the music is part of the game and stays on during play. The menu's
+    // SOUND toggle remains the app-level control. Invariant 6's
+    // "always visible" is overridden by the operator — logged in
+    // DECISIONS; visibilitychange hard-mute is untouched.
     this.menuText = this.fixed(
       s.add.text(0, 0, "≡", { fontFamily: SANS, fontSize: "28px", color: "#b7ae9c" }).setOrigin(0.5, 0),
     );
-    this.menuText.setInteractive({ useHandCursor: true });
+    this.menuText.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(-16, -6, HUD.touchTarget, HUD.touchTarget),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
     this.menuText.on("pointerdown", () => {
       const now = this.scene.time.now;
       if (now - this.restartArmedAt < 2000) {
@@ -171,7 +169,13 @@ export class Hud {
       bg.setScrollFactor(0);
       bg.setInteractive({ useHandCursor: true });
       const slotIndex = i;
-      bg.on("pointerdown", () => this.cb.onUseSlot(slotIndex));
+      bg.on("pointerdown", () => {
+        // pressed-state flash (D97): a tap must LOOK received
+        bg.setFillStyle(COLOR.surface2, 0.6);
+        this.cb.onUseSlot(slotIndex);
+      });
+      bg.on("pointerup", () => bg.setFillStyle(COLOR.surface2, 1));
+      bg.on("pointerout", () => bg.setFillStyle(COLOR.surface2, 1));
       const underline = s.add.rectangle(4, HUD.slotCell - 3, HUD.slotCell - 8, 1, COLOR.flame, 0).setOrigin(0, 0);
       const icon = s.add.image(HUD.slotCell >> 1, (HUD.slotCell >> 1) - 2, "icon-flint").setVisible(false);
       icon.setScale(TEX_SCALE); // icons are baked on 4× masters
@@ -211,7 +215,7 @@ export class Hud {
     // crisp glyphs on HiDPI displays — the sanctioned per-Text fix (D75)
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     const texts: Phaser.GameObjects.Text[] = [
-      this.depthText, this.objectiveText, this.muteText, this.menuText,
+      this.depthText, this.objectiveText, this.menuText,
       this.waxText, this.graceText, this.snuffLabel, ...this.slotCharges,
     ];
     for (const c of [this.cupBtn, this.snuffBtn]) {
@@ -231,6 +235,10 @@ export class Hud {
     const text = s.add.text(0, 0, label, { fontFamily: SANS, fontSize: "12px", color: "#b7ae9c" }).setOrigin(0.5, 0.5);
     text.setScrollFactor(0);
     c.add([circle, text]);
+    // pressed-state flash on every round button (D97)
+    circle.on("pointerdown", () => circle.setFillStyle(COLOR.surface2, 0.6));
+    circle.on("pointerup", () => circle.setFillStyle(COLOR.surface2, 1));
+    circle.on("pointerout", () => circle.setFillStyle(COLOR.surface2, 1));
     if (label === "CUP") circle.on("pointerdown", onTap);
     return c;
   }
@@ -246,7 +254,6 @@ export class Hud {
     this.plaqueInner.setPosition(20, 20);
     this.depthText.setPosition(16 + 48, 16 + 18);
     this.objectiveText.setPosition(17, 58);
-    this.muteText.setPosition(w - 96, 20);
     this.menuText.setPosition(w - 40, 12);
 
     this.meterBg.setPosition(METER_X, METER_Y);
@@ -274,13 +281,15 @@ export class Hud {
     for (let i = 0; i < 6; i++) {
       this.slots[i]!.setPosition(gridX + i * (HUD.slotCell + 4), this.barY + 12);
     }
-    this.snuffBtn.setPosition(w - 52, midY);
+    // w-44 not w-52 (D97): the circle overlapped slot 6 by 8px at 480 wide
+    this.snuffBtn.setPosition(w - 44, midY);
     this.graceText.setPosition(w >> 1, 120);
   }
 
-  /** The meter's touch strip in screen coords (scene input guard). */
+  /** The meter's touch strip in screen coords (scene input guard).
+   *  Width 56 (D97): the old 64 ate a sliver of playable world. */
   meterBounds(): { x: number; y: number; w: number; h: number } {
-    return { x: 0, y: METER_Y - 20, w: 64, h: this.meterH + 40 };
+    return { x: 0, y: METER_Y - 20, w: 56, h: this.meterH + 40 };
   }
 
   // ── Per-frame ────────────────────────────────────────────────────────────
@@ -288,7 +297,7 @@ export class Hud {
     if (this.snuffHolding) {
       const t = (now - this.snuffHoldStart) / HUD.snuffHoldMs;
       this.snuffRing.clear();
-      const cx = this.w - 52;
+      const cx = this.w - 44; // matches the shifted SNUFF circle (D97)
       const cy = this.barY + (HUD.bottomBarH >> 1);
       this.snuffRing.setScrollFactor(0);
       this.snuffRing.depth = 1001;
@@ -361,74 +370,145 @@ export class Hud {
     if (this.objectiveText.text !== text) this.objectiveText.setText(text);
   }
 
-  // ── Lessons of the Wick (D93): the teaching plaque — parchment against
-  // the dark, ONE at a time, dismissed by DOING the thing it teaches ──────
-  private lessonBits: (Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text)[] = [];
+  // ── Lessons of the Wick (D93, dressed D96): the teaching plaque — a
+  // little manuscript folio against the dark, ONE at a time, dismissed by
+  // DOING the thing it teaches. Built as a single container so its
+  // entrance/exit can never strand half-faded pieces. ─────────────────────
+  private lessonBox: Phaser.GameObjects.Container | null = null;
 
-  lesson(text: string): void {
+  lesson(text: string, title = "The Wick teaches"): void {
     this.clearLesson();
     const s = this.scene;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const eyebrow = s.add
+      .text(0, 0, title.toUpperCase(), {
+        fontFamily: SANS,
+        fontSize: "10px",
+        color: "#8a6d35",
+      })
+      .setOrigin(0.5);
+    eyebrow.setLetterSpacing(3);
+    eyebrow.setResolution(dpr);
     const t = s.add
       .text(0, 0, text, {
-        fontFamily: SANS,
+        fontFamily: SERIF,
         fontSize: "15px",
+        fontStyle: "italic",
         color: "#2a2520",
         align: "center",
         wordWrap: { width: Math.min(430, this.w - 72) },
       })
       .setOrigin(0.5);
-    t.setResolution(Math.min(window.devicePixelRatio || 1, 3));
-    const w = t.width + 30;
-    const h = t.height + 22;
-    const x = this.w >> 1;
-    const y = this.h - HUD.bottomBarH - h / 2 - 20;
-    const bg = s.add.rectangle(x, y, w, h, COLOR.parchment, 0.96).setStrokeStyle(1, COLOR.ink, 0.95);
-    const outer = s.add.rectangle(x, y, w + 8, h + 8, COLOR.parchment, 0).setStrokeStyle(1, COLOR.ink, 0.45);
-    t.setPosition(x, y);
-    this.fixed(outer);
-    this.fixed(bg);
-    this.fixed(t);
-    t.depth = 1001; // text above its parchment
-    this.lessonBits = [outer, bg, t];
-    for (const o of this.lessonBits) {
-      const target = o === bg ? 0.96 : 1;
-      o.setAlpha(0);
-      s.tweens.add({ targets: o, alpha: target, y: "-=6", duration: 220, ease: "Sine.easeOut" });
+    t.setResolution(dpr);
+    const w = Math.max(t.width, eyebrow.width) + 44;
+    const h = t.height + eyebrow.height + 38;
+    eyebrow.setY(-h / 2 + 8 + eyebrow.height / 2);
+    t.setY(eyebrow.y + eyebrow.height / 2 + 9 + t.height / 2);
+    const g = s.add.graphics();
+    // soft shadow, parchment leaf, double ink rule (the sacred-panel frame)
+    g.fillStyle(COLOR.void, 0.4);
+    g.fillRoundedRect(-w / 2 + 3, -h / 2 + 4, w, h, 2);
+    g.fillStyle(COLOR.parchment, 0.97);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, 2);
+    g.lineStyle(1, COLOR.ink, 0.9);
+    g.strokeRoundedRect(-w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 1);
+    g.lineStyle(1, COLOR.ink, 0.4);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 2);
+    // gold-ink diamonds bridging the top and bottom rules — folio marks
+    g.fillStyle(COLOR.goldInk, 1);
+    for (const dy of [-h / 2, h / 2]) {
+      g.beginPath();
+      g.moveTo(0, dy - 3.2);
+      g.lineTo(3.2, dy);
+      g.lineTo(0, dy + 3.2);
+      g.lineTo(-3.2, dy);
+      g.closePath();
+      g.fillPath();
     }
+    // hairline under the chapter heading
+    const sepY = eyebrow.y + eyebrow.height / 2 + 4.5;
+    g.lineStyle(1, COLOR.ink, 0.25);
+    g.beginPath();
+    g.moveTo(-w / 2 + 26, sepY);
+    g.lineTo(w / 2 - 26, sepY);
+    g.strokePath();
+    const box = s.add.container(this.w >> 1, this.h - HUD.bottomBarH - h / 2 - 20, [g, eyebrow, t]);
+    box.setScrollFactor(0);
+    box.depth = 1001;
+    this.layer?.add(box);
+    this.lessonBox = box;
+    box.setAlpha(0);
+    box.y += 6;
+    s.tweens.add({ targets: box, alpha: 1, y: "-=6", duration: 240, ease: "Sine.easeOut" });
   }
 
   clearLesson(): void {
-    const bits = this.lessonBits;
-    if (bits.length === 0) return;
-    this.lessonBits = [];
-    for (const o of bits) {
-      this.scene.tweens.add({ targets: o, alpha: 0, duration: 200, onComplete: () => o.destroy() });
-    }
+    const box = this.lessonBox;
+    if (box === null) return;
+    this.lessonBox = null;
+    this.scene.tweens.add({ targets: box, alpha: 0, duration: 200, onComplete: () => box.destroy() });
   }
 
+  /** Toasts stack downward so two whispers never overlap (D98). */
+  private activeToasts: Phaser.GameObjects.Container[] = [];
+
+  /**
+   * A whisper from the Vault (D98, operator: "make them professional"):
+   * dark leaf, hairline frame and one small diamond in the KIND's color —
+   * the accent carries the meaning, the words stay parchment. Same
+   * manuscript grammar as the lesson plaques, quieter register.
+   */
   toast(text: string, kind: "info" | "discovery" | "warning" | "death"): void {
-    const color = kind === "discovery" ? "#4fb39a" : kind === "warning" ? "#c9701e" : kind === "death" ? "#a33b2e" : "#b7ae9c";
-    const t = this.scene.add
-      .text(this.w >> 1, 64, text, {
-        fontFamily: SANS,
+    const s = this.scene;
+    const accent =
+      kind === "discovery" ? COLOR.verdigris : kind === "warning" ? COLOR.ember : kind === "death" ? COLOR.seal : COLOR.boneDim;
+    const body = text.replace(/^◆\s*/, ""); // the diamond is drawn, not typed
+    const t = s.add
+      .text(0, 0, body, {
+        fontFamily: SERIF,
         fontSize: "14px",
-        color,
-        backgroundColor: "#16131cE6",
-        padding: { x: 12, y: 6 },
+        fontStyle: "italic",
+        color: "#eae0c9",
         align: "center",
-        wordWrap: { width: 320 },
+        wordWrap: { width: Math.min(360, this.w - 90) },
       })
-      .setOrigin(0.5, 0)
-      .setScrollFactor(0);
+      .setOrigin(0.5);
     t.setResolution(Math.min(window.devicePixelRatio || 1, 3)); // D75
-    t.depth = 1002;
-    this.layer?.add(t);
-    this.scene.tweens.add({
-      targets: t,
+    const w = t.width + 36;
+    const h = t.height + 16;
+    const g = s.add.graphics();
+    g.fillStyle(COLOR.void, 0.5);
+    g.fillRoundedRect(-w / 2 + 2, -h / 2 + 3, w, h, 2);
+    g.fillStyle(COLOR.surface, 0.95);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, 2);
+    g.lineStyle(1, accent, 0.6);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 2);
+    g.fillStyle(accent, 1);
+    g.beginPath();
+    g.moveTo(0, -h / 2 - 2.6);
+    g.lineTo(2.6, -h / 2);
+    g.lineTo(0, -h / 2 + 2.6);
+    g.lineTo(-2.6, -h / 2);
+    g.closePath();
+    g.fillPath();
+    let top = 56;
+    for (const c of this.activeToasts) top = Math.max(top, c.y + 38);
+    const box = s.add.container(this.w >> 1, top + h / 2, [g, t]);
+    box.setScrollFactor(0);
+    box.depth = 1002;
+    this.layer?.add(box);
+    this.activeToasts.push(box);
+    box.setAlpha(0);
+    s.tweens.add({ targets: box, alpha: 1, y: "+=4", duration: 200, ease: "Sine.easeOut" });
+    s.tweens.add({
+      targets: box,
       alpha: 0,
       delay: 3500,
       duration: MOTION.standard,
-      onComplete: () => t.destroy(),
+      onComplete: () => {
+        this.activeToasts = this.activeToasts.filter((c) => c !== box);
+        box.destroy();
+      },
     });
   }
 }

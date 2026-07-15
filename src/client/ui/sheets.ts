@@ -118,9 +118,15 @@ export function openEpitaphSheet(
   generation: number,
   onDone: (result: EpitaphResult, restAtDusk: boolean) => void,
   unfinished?: UnfinishedBusiness,
+  killer?: string,
 ): () => void {
   const close = openSheet(host, (sheet) => {
-    const cause = CAUSE_LINE[state.deathCause] ?? "TAKEN BY THE DARK";
+    // the death screen NAMES the killer (D98): deaths are the teachers in
+    // a knowledge game — "taken by the dark" taught nothing
+    const cause =
+      state.deathCause === DeathCause.TAKEN_BY_THE_DARK && killer !== undefined
+        ? `TAKEN BY ${killer.toUpperCase()}`
+        : CAUSE_LINE[state.deathCause] ?? "TAKEN BY THE DARK";
     sheet.appendChild(
       el("div", "uv-cause", `${cause} · FL. ${ROMAN[summary.floor] ?? summary.floor} · DAY ${summary.day}`),
     );
@@ -129,7 +135,7 @@ export function openEpitaphSheet(
       el(
         "p",
         "uv-dim",
-        `The candle lasted ${summary.ticks} steps. ${summary.discoveries} unbanked truth${summary.discoveries === 1 ? "" : "s"} lie with the body.`,
+        `The candle lasted ${summary.ticks} steps. ${summary.discoveries} unbanked truth${summary.discoveries === 1 ? " lies" : "s lie"} with the body.`,
       ),
     );
 
@@ -224,6 +230,11 @@ export function openEpitaphSheet(
     seal.addEventListener("click", () => finish(true));
     sheet.appendChild(seal);
     sheet.appendChild(el("span", "uv-seal-label", "REST UNTIL DUSK"));
+    // the law, stated PLAINLY once (D98): "rest until dusk" alone reads
+    // as "back to menu" — players must leave knowing the day is spent
+    sheet.appendChild(
+      el("p", "uv-dim", "One candle a day — yours is spent. A new candle is cut at dusk, and the Vault deals new laws."),
+    );
     const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
     again.addEventListener("click", () => finish(false));
     sheet.appendChild(again);

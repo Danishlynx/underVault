@@ -97,12 +97,22 @@ function flameAt(
   flameC: string,
   hiC: string,
 ): void {
-  const halo = ctx.createRadialGradient(fx, fy - s * 0.6, 0, fx, fy - s * 0.6, s * 3.2);
+  // the glow must die INSIDE the canvas (D98 operator: "squareish, not
+  // natural" — a gradient overrunning the texture edge clips into a soft
+  // square on every lit prop). Clamp to the nearest edge, floor at 1.6s.
+  const hx = fx;
+  const hy = fy - s * 0.6;
+  const tf = ctx.getTransform().a || 1;
+  const cw = ctx.canvas.width / tf;
+  const ch = ctx.canvas.height / tf;
+  const fit = Math.min(hx, cw - hx, hy, ch - hy);
+  const r = Math.max(s * 1.6, Math.min(s * 3.2, fit));
+  const halo = ctx.createRadialGradient(hx, hy, 0, hx, hy, r);
   halo.addColorStop(0, shade(flameC, 1, 0.5));
   halo.addColorStop(0.55, shade(flameC, 1, 0.16));
   halo.addColorStop(1, shade(flameC, 1, 0));
   ctx.fillStyle = halo;
-  ctx.fillRect(fx - s * 3.2, fy - s * 0.6 - s * 3.2, s * 6.4, s * 6.4);
+  ctx.fillRect(hx - r, hy - r, r * 2, r * 2);
   const tongue = (w: number, h: number, color: string, a: number): void => {
     ctx.fillStyle = color;
     ctx.globalAlpha = a;
@@ -1350,21 +1360,42 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = halo;
     ctx.fillRect(4, 11, 32, 32);
     ctx.restore();
-    // carved rune: dark groove + glowing core
-    const rune = (ox: number, oy: number, col: string, lw: number): void => {
-      ctx.strokeStyle = col;
-      ctx.lineWidth = lw;
+    // carved LINES of banked truths (D98): the old cross-rune read as a
+    // gravestone. Slide 6's canon: a densely-paged stone — the freshest
+    // carving glows, older rows fade, the oldest are ghosts.
+    for (let row = 0; row < 6; row++) {
+      const y = 15 + row * 5.4;
+      const len = 9 + crand() * 8;
+      const x0 = 20 - len / 2 + (crand() - 0.5) * 3;
+      const fade = Math.max(0.18, 1 - row * 0.17);
+      // groove shadow, then glowing script core
+      ctx.strokeStyle = shade(C.void, 1.2, 0.55);
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(20 + ox, 14 + oy);
-      ctx.lineTo(20 + ox, 40 + oy);
-      ctx.moveTo(14 + ox, 22 + oy);
-      ctx.lineTo(26 + ox, 22 + oy);
-      ctx.moveTo(15 + ox, 34 + oy);
-      ctx.lineTo(25 + ox, 30 + oy);
+      ctx.moveTo(x0 + 0.7, y + 0.7);
+      ctx.lineTo(x0 + len + 0.7, y + 0.7);
       ctx.stroke();
-    };
-    rune(0.8, 0.8, shade(C.void, 1.2, 0.7), 2);
-    rune(0, 0, shade(C.verdigris, 1.85), 1.6);
+      ctx.strokeStyle = shade(C.verdigris, 1.7, fade);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x0 + len, y);
+      ctx.stroke();
+      // word-breaks: nick the line so it reads as script, not a ruler
+      ctx.strokeStyle = shade(C.verdigrisDim, 0.6, fade);
+      for (let n = 0; n < 2; n++) {
+        const nx = x0 + 2 + crand() * (len - 4);
+        ctx.beginPath();
+        ctx.moveTo(nx, y - 1.2);
+        ctx.lineTo(nx, y + 1.2);
+        ctx.stroke();
+      }
+    }
+    // the freshest truth, still warm from the chisel
+    ctx.fillStyle = shade(C.verdigris, 2.1, 0.95);
+    ctx.beginPath();
+    ctx.arc(26.5, 15, 1.3, 0, Math.PI * 2);
+    ctx.fill();
     // ink edge
     ctx.strokeStyle = INK;
     ctx.lineWidth = 1;

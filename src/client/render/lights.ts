@@ -120,8 +120,15 @@ export function computeLightMap(s: SimState, visible: Uint8Array, candleRadius: 
     if (visible[i]! !== 1) continue;
     const x = i % s.w;
     const y = (i / s.w) | 0;
-    let best = 0.2; // ambient floor for anything you can see at all (⚖ was
-    // 0.14 — the design-art midtones drowned; preview-parity rebalance)
+    // ambient BREATHES OUT from the delver (D96): a flat 0.2 floor lit
+    // every visible tile equally, so big rooms ended in a hard square
+    // terminator at the FOV edge (operator: "square end of a large area
+    // of light"). Tapering it leaves the farthest visible tiles nearly
+    // dark — no cliff left for the eye to catch.
+    const pdx = x - s.px;
+    const pdy = y - s.py;
+    const dp = Math.sqrt(pdx * pdx + pdy * pdy);
+    let best = Math.max(0.07, 0.21 - 0.024 * dp);
     for (const src of sources) {
       const dx = x - src.x;
       const dy = y - src.y;
@@ -129,6 +136,11 @@ export function computeLightMap(s: SimState, visible: Uint8Array, candleRadius: 
       const l = (1 - d / (src.r + 1.4)) * src.boost;
       if (l > best) best = l;
     }
+    // the way out and the way down never drown (D98): once in sight,
+    // these tiles keep a readable floor — losing the exit to the
+    // distance-tapered dark read as a bug to the operator
+    const t = s.tiles[i]!;
+    if ((t === Tile.ENTRY || t === Tile.STAIRS_DOWN) && best < 0.3) best = 0.3;
     light[i] = Math.min(best, 1);
   }
   // you can always FEEL the floor you stand on — at radius 0 the delver
@@ -152,6 +164,50 @@ export function positionHalo(halo: Phaser.GameObjects.Image, s: SimState, radius
   halo.setDisplaySize(dw, dh);
   const c = gridToScreen(s.px, s.py);
   halo.setPosition(c.sx, c.sy);
+}
+
+// ── The pool-edge veil (D96): candlelight is spherical, tiles are not ──────
+/**
+ * Per-tile light quantizes the pool's boundary into grid steps (operator:
+ * "the lighting feels square"). This soft elliptical band of void sits
+ * exactly ON the boundary and melts the steps into the dark — the pool
+ * reads as a candle's true round falloff. Interior stays untouched
+ * (alpha 0 in the hole) and the band fades out again beyond the edge so
+ * the memory view keeps breathing.
+ */
+export function ensureVeilTexture(scene: Phaser.Scene): void {
+  if (scene.textures.exists("uv-light-veil")) return;
+  const S = 256;
+  const t = scene.textures.createCanvas("uv-light-veil", S, S);
+  if (t === null) return;
+  const ctx = t.getContext();
+  const r = (COLOR.void >> 16) & 0xff;
+  const g = (COLOR.void >> 8) & 0xff;
+  const b = COLOR.void & 0xff;
+  const grad = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+  grad.addColorStop(0.52, `rgba(${r},${g},${b},0)`);
+  grad.addColorStop(0.72, `rgba(${r},${g},${b},0.42)`);
+  grad.addColorStop(0.88, `rgba(${r},${g},${b},0.3)`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, S, S);
+  t.refresh();
+}
+
+/** Seat the veil so its dark band (≈0.72 of the half-size) straddles the
+ *  lit pool's edge; elliptical 2:1 like everything iso. */
+export function positionVeil(veil: Phaser.GameObjects.Image, s: SimState, radius: number): void {
+  if (radius <= 0) {
+    veil.setVisible(false);
+    return;
+  }
+  veil.setVisible(true);
+  const edgeW = (radius + 0.6) * TILE_W; // pool edge in world px (horizontal)
+  const dw = (edgeW / 0.72) * 2;
+  veil.setDisplaySize(dw, dw * (TILE_H / TILE_W));
+  const c = gridToScreen(s.px, s.py);
+  veil.setPosition(c.sx, c.sy);
 }
 
 export function flickerHalo(halo: Phaser.GameObjects.Image, radius: number): void {

@@ -177,6 +177,19 @@ export function openSignComposer(
     });
     sheet.appendChild(cancelBtn);
 
+    // Escape cancels (D97): the composer was pointer-only to leave, which
+    // stranded keyboard players who opened it with B
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key === "Escape") {
+        window.removeEventListener("keydown", onKey);
+        close();
+        onCancel();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    cancelBtn.addEventListener("click", () => window.removeEventListener("keydown", onKey));
+    seal.addEventListener("click", () => window.removeEventListener("keydown", onKey));
+
     sync();
   });
   return close;
