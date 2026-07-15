@@ -436,13 +436,6 @@ export class DescentScene extends Phaser.Scene {
 
     this.bindInput();
 
-    // DEV-ONLY: deleted at M2, the Tower X-Ray's click-to-teleport
-    const onDevTeleport = (floor: number): void => this.devTeleport(floor);
-    this.game.events.on("uv-dev-teleport", onDevTeleport);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off("uv-dev-teleport", onDevTeleport);
-    });
-
     if (this.registry.get(AUTOSTART_KEY) === true) {
       this.registry.set(AUTOSTART_KEY, false);
       this.matchStrike();
@@ -1282,9 +1275,6 @@ export class DescentScene extends Phaser.Scene {
       });
       kb.on("keydown-B", () => this.openSigns()); // plant a sign
       kb.on("keydown-V", () => this.toggleView()); // scout ↔ delve camera (D67)
-      kb.on("keydown-M", () => this.devTeleport()); // DEV-ONLY: deleted at M2
-      kb.on("keydown-L", () => this.devOpenSeal()); // DEV-ONLY: deleted at M2
-      kb.on("keydown-K", () => this.devOpenSeal(true)); // DEV-ONLY: the 100th candle
 
       const KC = Phaser.Input.Keyboard.KeyCodes;
       this.heldDirs = [
@@ -2006,35 +1996,6 @@ export class DescentScene extends Phaser.Scene {
       this.echoWorldToasted = true;
       this.hud.toast("You are not the first down here today.", "info");
     }
-  }
-
-  // DEV-ONLY: deleted at M2 — L forces the Seal open (VICTORY) from anywhere,
-  // so the operator can judge the Meeting without banking five truths.
-  // K plays it as the HUNDREDTH candle: the Rescue finale (D106).
-  private devHundredth = false;
-  private devOpenSeal(hundredth = false): void {
-    const s = this.state;
-    if (s === null || !this.running || this.overlayOpen || s.status !== Status.ALIVE) return;
-    this.devHundredth = hundredth;
-    s.status = Status.VICTORY;
-    this.audio.play("bank"); // stands in for the Seal grinding open
-    this.hud.toast(hundredth ? "(dev) The hundredth candle." : "(dev) The Seal forgets its price.", "info");
-    this.time.delayedCall(600, () => this.openVictory());
-  }
-
-  // DEV-ONLY: deleted at M2 — operator floor-skip for judging every biome
-  // without earning the stairs. Same transition as a real descend.
-  private devTpAt = 0; // debounce (D97: slow frames double-teleported)
-  private devTeleport(target?: number): void {
-    const s = this.state;
-    if (s === null || !this.running || this.overlayOpen || s.status !== Status.ALIVE) return;
-    if (this.time.now - this.devTpAt < 300) return;
-    this.devTpAt = this.time.now;
-    const next = target ?? s.floor + 1;
-    if (next < 1 || next > MAX_FLOOR || next === s.floor) return;
-    s.status = Status.DESCENDING; // the sim's transition guard demands it
-    this.installFloor(next);
-    this.hud.toast(`(dev) You fall through the stone to Fl. ${ROMAN[next]}.`, "info");
   }
 
   private handleEvent(e: OutcomeEvent): void {
@@ -2984,8 +2945,7 @@ export class DescentScene extends Phaser.Scene {
     // gate goal is 100, so the day's gatePct IS the season's candle count
     // (D105) — this victory is the next one given. The hundredth (or the
     // dev K key) completes the Long Rescue: the finale plates play (D106).
-    const giftNo = this.devHundredth ? 100 : Math.min(100, this.ports.getGuildhall().gatePct + 1);
-    this.devHundredth = false;
+    const giftNo = Math.min(100, this.ports.getGuildhall().gatePct + 1);
     const finale = giftNo >= 100;
     if (finale) this.registry.set(RESCUED_KEY, true); // the menu stays changed (D108)
     openMeeting(host, () => {

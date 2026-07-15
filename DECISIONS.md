@@ -1108,6 +1108,35 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+129. THE SHEETS ARE ILLUMINATED (operator: "make all these cards in game
+    eye candy like our menu"). The in-game DOM sheets (Waystone, Codex,
+    Epitaph, Victory, Heirloom) were a flat parchment card beside the
+    painted menu. Re-skinned the shared chrome (dom.ts injectStyles +
+    codex.ts) into the menu's illuminated-manuscript language: warm-lit
+    vellum on a candle-in-the-dark radial scrim, a gold folio double-rule
+    with pinned corner studs, engraved gold/verdigris letter-spaced headers,
+    gold-hairline rules with a verdigris breath, wax-seal buttons (struck-
+    wax gradient + embossed ring + star stamp), and a staged entrance (scrim
+    blooms, leaf unrolls). All via tokens + color-mix (0 hardcoded hex); the
+    wax-seal restyle is scoped under .uv-backdrop so the Guildhall's STRIKE
+    THE MATCH is untouched; D127 mobile clearance kept verbatim; motion
+    gated behind prefers-reduced-motion; 04 §4.1 parchment reading-surface
+    honored (eye-candy in the frame, text stays crisp). Built by a subagent,
+    reviewed + gate-verified. Client-only.
+
+128. DEV KEYS REMOVED (operator, pre-submission: "remove the dev thing like
+    k or m key or map skipping key"; the audit flagged them as a submission
+    blocker — a judge pressing K/L trivially wins the run). Deleted the
+    three in-run dev key bindings and both methods: K (jump to the hundredth-
+    candle finale), L (force the Seal open / VICTORY from anywhere), M (floor-
+    skip teleport), plus the "uv-dev-teleport" tower-view hook that fed it.
+    The REAL ending is untouched — openVictory still fires when the sim sets
+    VICTORY, and the finale still triggers for real when giftNo>=100
+    (gatePct+1); devHundredth (the dev-only finale force) is gone so giftNo
+    is now purely the Long-Rescue count. STILL shipping for now (operator is
+    mid-playtest): the reset-dev trio + "Delve again (dev candle)" buttons —
+    cut in the final pre-public pass. Client-only, gate green.
+
 127. THE LIVE FLAME (operator, 3rd flame pass: "i want the flame of main
     menu to be the flame of lamps in gameplay and candle... they look
     bad"). Root cause: the in-game flame and the menu flame were ALREADY

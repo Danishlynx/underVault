@@ -30,19 +30,29 @@ function injectStyles(): void {
   font-family: var(--font-display);
   font-size: var(--size-display-3);
   line-height: var(--lh-display);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   font-weight: normal;
+  color: var(--ink);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--flame-hi) 45%, transparent);
 }
-.uv-codex-entry { padding: 6px 0; border-bottom: 1px solid var(--parchment-aged); }
+.uv-codex-subject::before {
+  content: "◆ "; font-size: 0.62em; vertical-align: middle;
+  color: color-mix(in srgb, var(--gold-ink) 70%, var(--ink));
+}
+.uv-codex-entry {
+  padding: 7px 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--parchment-aged) 80%, transparent);
+}
 .uv-codex-chip {
   display: inline-block;
   margin-right: 8px;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border: 1px solid currentColor;
   border-radius: var(--radius);
   font-size: var(--size-body-sm);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 .uv-codex-meta { display: block; margin-top: 2px; }
 .uv-codex-pending .uv-codex-chip { color: var(--ink-soft); }
@@ -52,7 +62,11 @@ function injectStyles(): void {
 .uv-codex-disproven .uv-codex-chip { color: var(--disproven); }
 .uv-codex-disproven .uv-codex-text { color: var(--disproven); text-decoration: line-through; }
 .uv-codex-cond { color: var(--verdigris-dim); font-style: italic; }
-.uv-codex-empty { text-align: center; padding: var(--pad-component-lg) 0; }
+.uv-codex-empty {
+  text-align: center; padding: var(--pad-component-lg) 0;
+  font-family: var(--font-display); font-style: italic;
+  font-size: var(--size-display-3);
+}
 `;
   document.head.appendChild(style);
 }
