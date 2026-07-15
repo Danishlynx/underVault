@@ -47,8 +47,19 @@ export function uiScale(): number {
 }
 
 export function createUndervaultGame(parent: HTMLElement, ports: GamePorts): Phaser.Game {
-  const logicalW = (): number => Math.max(1, parent.clientWidth || 480);
-  const logicalH = (): number => Math.max(1, parent.clientHeight || 854);
+  // D125: clamp to the VISUAL viewport when available — on mobile the layout
+  // viewport can exceed what is actually visible (browser chrome / webview
+  // bars) and the bottom HUD bar rendered below the fold.
+  const logicalW = (): number => {
+    const vv = window.visualViewport;
+    const base = Math.max(1, parent.clientWidth || 480);
+    return vv !== null && vv !== undefined ? Math.max(1, Math.min(base, Math.floor(vv.width))) : base;
+  };
+  const logicalH = (): number => {
+    const vv = window.visualViewport;
+    const base = Math.max(1, parent.clientHeight || 854);
+    return vv !== null && vv !== undefined ? Math.max(1, Math.min(base, Math.floor(vv.height))) : base;
+  };
 
   const game = new Phaser.Game({
     type: Phaser.WEBGL,
@@ -96,6 +107,7 @@ export function createUndervaultGame(parent: HTMLElement, ports: GamePorts): Pha
   const onResize = (): void => applyBacking();
   window.addEventListener("resize", onResize);
   window.addEventListener("orientationchange", onResize);
+  window.visualViewport?.addEventListener("resize", onResize); // mobile chrome show/hide (D125)
   const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(onResize) : null;
   ro?.observe(parent);
   game.events.once(Phaser.Core.Events.DESTROY, () => {

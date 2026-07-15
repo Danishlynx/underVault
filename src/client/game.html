@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>The Undervault — Descent</title>
     <!-- M2b: the real bootstrap (08-M2-PORT-CONTRACT §7) — remote ports over
          /api/* + the Phaser bundle. tokens.css arrives via main.ts through the
@@ -15,14 +15,23 @@
       body {
         margin: 0;
         height: 100%;
+        overflow: hidden; /* the game IS the page — never scroll (D125) */
       }
       body {
         background: #0b0906;
         color: #e8dcc0;
       }
+      /* D125 mobile viewport: 100% height tracks the LAYOUT viewport, which on
+         phones is taller than the VISIBLE area (browser chrome / webview bars)
+         — the bottom HUD bar rendered below the fold. Fixed inset tracks the
+         visible frame, and the bottom inset respects the home-indicator zone. */
       #app {
-        position: relative;
-        height: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        bottom: env(safe-area-inset-bottom, 0px);
       }
       /* Instant load state (paints before the bundle/boot/art) so the delver
          never stares at a black rectangle. main.ts removes it on first render. */
