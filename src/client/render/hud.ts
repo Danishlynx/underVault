@@ -30,6 +30,9 @@ const ITEM_ICON: Record<number, string> = {
   [Item.KEY_IRON]: "icon-key",
   [Item.KEY_MASTER]: "icon-keymaster",
   [Item.WSHARD]: "icon-wshard",
+  [Item.ROPE]: "icon-rope",
+  [Item.WAXCAKE]: "icon-waxcake",
+  [Item.BONEKEY]: "icon-bonekey",
 };
 const SANS = "system-ui, sans-serif"; // 04 §2.2 body fallback stack
 const SERIF = "Georgia, serif"; // display fallback until bitmap fonts (W4)

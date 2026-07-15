@@ -1,0 +1,36 @@
+{
+  "goldenV": 2,
+  "name": "new-items-delver",
+  "simVersion": 2,
+  "daySeed": 271828,
+  "botSeed": 58,
+  "actionCount": 181,
+  "actionsB64": "ArUACCDDDCGCGCCCCCDRBBBBBFFBBBCCCCGGCCCCCDNDDDDDDDHDHDDCDDERDDDKDEEBDHDHDDGCQGCCGCBFBBCCBBBBBCRBCFBBBFBBBJBFFFFFFFFFFFFFFCBFPBERBBEECEEBJBBBBBBBEEEIIIMIIEIIIIEIICIDEDEDEDGCDRCDBCCCCCCCHA==",
+  "checkpoints": [
+    {
+      "tick": 32,
+      "h32": "52b3daf0"
+    },
+    {
+      "tick": 64,
+      "h32": "838f638c"
+    },
+    {
+      "tick": 96,
+      "h32": "b2399b91"
+    },
+    {
+      "tick": 128,
+      "h32": "8b3a09d0"
+    },
+    {
+      "tick": 160,
+      "h32": "0a79acc6"
+    }
+  ],
+  "finalTick": 181,
+  "finalH32": "60f0cf17",
+  "finalStatus": 1,
+  "finalWax": 0,
+  "finalFloor": 6
+}

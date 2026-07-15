@@ -101,6 +101,9 @@ export const Item = {
   KEY_IRON: 8,
   KEY_MASTER: 9,
   WSHARD: 10, // Waystone Shard: remote bank, single use
+  ROPE: 11, // Coil of Rope: descend to the next floor from anywhere, single use
+  WAXCAKE: 12, // Tallow Cake: restores +100 wax (capped), single use
+  BONEKEY: 13, // Bone Key: reusable iron-door key, opens silently
 } as const;
 
 /** Heirlooms (lineage, informational only — 01 §9/§13). */

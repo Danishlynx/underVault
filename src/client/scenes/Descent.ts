@@ -191,6 +191,53 @@ const TILE_NAMES: Record<number, string> = {
   [Tile.KEY_DROP]: "an iron key",
 };
 
+/** Pickup lessons (D-tut): the first time a FINDABLE item reaches the pack,
+ *  one plaque names the thing and the gesture that spends it. Keyed by Item
+ *  id. The three starting tools (flint/salt/chalk) are absent — they are
+ *  taught by USE, in context, not by finding (see runGuides). */
+const PICKUP_LESSONS: Record<number, { title: string; text: string }> = {
+  [Item.MIRROR]: {
+    title: "The shard that sees",
+    text: "A mirror shard. Tap it when a chest sits wrong — its reflection catches a mirrormaw's fangs before you do.",
+  },
+  [Item.BELL]: {
+    title: "A voice to throw",
+    text: "A bell. Face a way and tap it to throw — the dark chases the sound, not you.",
+  },
+  [Item.GLOWVIAL]: {
+    title: "A light you leave",
+    text: "A glowmoss vial. Tap it to plant a light in the stone underfoot — it will burn for every delver after you.",
+  },
+  [Item.DOUSE]: {
+    title: "The cap that hides you",
+    text: "A dousing cap. Tap it to snuff the flame at once — no wax spent, and the dark takes you in a breath.",
+  },
+  [Item.KEY_IRON]: {
+    title: "One turn of iron",
+    text: "An iron key. Walk into a barred iron door and it turns once, then is spent.",
+  },
+  [Item.KEY_MASTER]: {
+    title: "The Keeper's key",
+    text: "The Lantern-Keeper's master key. Walk into any locked door — it knows every lock in the Vault.",
+  },
+  [Item.WSHARD]: {
+    title: "A stone in your pocket",
+    text: "A waystone shard. Tap it to carve your truths into the Codex from where you stand — once, then it crumbles.",
+  },
+  [Item.ROPE]: {
+    title: "Your own way down",
+    text: "A coil of rope. Tap it to drop to the next floor from anywhere — your own way down when a floor turns against you. Once only.",
+  },
+  [Item.WAXCAKE]: {
+    title: "The Vault's one mercy",
+    text: "A tallow cake. Tap it to feed your candle a hundred wax — the one mercy the Vault offers. Once only.",
+  },
+  [Item.BONEKEY]: {
+    title: "A key that keeps",
+    text: "A bone key. Face an iron door and tap it — it opens without a sound, and is never spent.",
+  },
+};
+
 interface PropView {
   sprite: Phaser.GameObjects.Image;
   tile: number;
@@ -712,6 +759,21 @@ export class DescentScene extends Phaser.Scene {
         }
       }
     }
+    // a gloomcap slime oozes into salt-range while you still carry salt: the
+    // one creature whose counter is already in your pack (D-tut)
+    if (!this.guides.has("use-salt") && s.inv.includes(Item.SALT)) {
+      for (const e of s.entities) {
+        if (e.kind !== EntityKind.SLIME) continue;
+        if (Math.abs(e.x - s.px) + Math.abs(e.y - s.py) > 3) continue;
+        if (this.visibleMask[e.y * s.w + e.x]! !== 1) continue;
+        this.teach(
+          "use-salt",
+          "A gloomcap slime nears. Salt is a wall it cannot cross, and it burns where it touches — press T (or tap the salt) to pour a line before it.",
+          { timed: 8000, title: "A wall of salt", at: { x: e.x, y: e.y } },
+        );
+        break;
+      }
+    }
     // something is CLOSE (D98, operator cornered with no idea of the
     // counterplay): teach stealth at the moment of pursuit, not at low wax
     if (!this.guides.has("hunted")) {
@@ -727,11 +789,39 @@ export class DescentScene extends Phaser.Scene {
         break;
       }
     }
+    // the flame is out and flint waits in your pack: the way back to light
+    if (s.candle === Candle.SNUFFED && s.inv.includes(Item.FLINT)) {
+      this.teach(
+        "use-flint",
+        "Your candle is snuffed, and the dark has you. Flint will catch it again — press R (or tap the flint); three beats to steady the flame.",
+        { timed: 8000, title: "Strike it alight" },
+      );
+    }
     if (s.wax > 0 && s.wax < 150) {
       this.teach("cup", "The candle wanes. C — cup the flame in your palm: unseen, and it sips instead of burns.", {
         timed: 8000,
         title: "Guard the flame",
       });
+    }
+    // early on the first floor, once walking is learned: the mark that is
+    // yours alone — a private map, and a ward against Rustlings (D-tut)
+    if (!this.guides.has("use-chalk") && s.floor === 1 && this.guides.has("move") && s.inv.includes(Item.CHALK)) {
+      this.teach(
+        "use-chalk",
+        "Chalk marks the stone — press G (or tap the chalk). What you draw here endures into your own days to come, a map only you will read; and no Rustling will cross it.",
+        { timed: 9000, title: "A mark of your own" },
+      );
+    }
+    // finds name themselves the first time they reach your hand (D-tut): one
+    // plaque, the thing and the gesture that spends it. teach() serializes,
+    // so unheard finds simply retry until the folio is free.
+    for (let sl = 0; sl < s.inv.length; sl++) {
+      const item = s.inv[sl]!;
+      if (item === Item.NONE) continue;
+      const lesson = PICKUP_LESSONS[item];
+      if (lesson === undefined || this.guides.has(`find:${item}`)) continue;
+      this.teach(`find:${item}`, lesson.text, { timed: 9000, title: lesson.title });
+      if (this.lessonKey !== null) break; // one plaque at a time; the rest wait
     }
   }
 
@@ -1468,6 +1558,11 @@ export class DescentScene extends Phaser.Scene {
       this.hud.toast("Keys turn in doors — walk into a locked one.", "info");
       return;
     }
+    // Generic USE, slot + facing packed: bell/mirror/glowvial/douse/wshard
+    // AND the three new finds — rope & tallow-cake (self-use, direction
+    // ignored) and the bone key (uses the facing to turn the iron door it
+    // fronts). The bone key is deliberately NOT caught by the KEY branch
+    // above: unlike spent iron/master keys, it is a reusable USE verb.
     this.enqueue(Action.USE, ((slot & 7) << 2) | (this.facing & 3));
   }
 
@@ -2149,16 +2244,19 @@ export class DescentScene extends Phaser.Scene {
         cue("sign");
         break;
       case Ev.CHALK_MARKED:
+        this.lessonDone("use-chalk"); // you drew the mark — lesson learned
         this.ports.chalkChanged(s.floor, s.chalk);
         cue("chalk");
         break;
       case Ev.SALT_PLACED:
+        this.lessonDone("use-salt"); // the line is poured — lesson learned
         cue("salt");
         break;
       case Ev.PLATE_PRESSED:
         cue("plate");
         break;
       case Ev.ITEM_USED:
+        this.lessonDone(`find:${e.a}`); // you spent it — its lesson is learned
         if (e.a === Item.GLOWVIAL) {
           this.ports.glowmossPlanted(s.floor, s.py * s.w + s.px);
           this.hud.toast("The glowmoss takes root. It will outlive you.", "discovery");
@@ -2195,6 +2293,7 @@ export class DescentScene extends Phaser.Scene {
           // the world drains toward the memory view while dark (D77)
           if (this.snuffGrade === null) this.snuffGrade = addSnuffGrade(this.cameras.main);
         } else {
+          this.lessonDone("use-flint"); // the flame is back — lesson learned
           cue(e.a === Candle.CUPPED ? "cup" : "relight");
           removeSnuffGrade(this.cameras.main, this.snuffGrade);
           this.snuffGrade = null;

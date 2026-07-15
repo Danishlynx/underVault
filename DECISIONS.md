@@ -1108,6 +1108,28 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+118. THREE NEW ITEMS + ITEM TUTORIALS (operator: "design the rest 3
+    items... tell the user when to use them as tutorial in start").
+    Built by 3 parallel Opus agents on non-overlapping files (sim /
+    icons / tutorials), contract locked first (Item.ROPE=11,
+    WAXCAKE=12, BONEKEY=13). All 3 REDESIGNED to avoid the frozen gen
+    (no new tiles/shafts): ROPE = USE from anywhere -> DESCENDING
+    (own way down, single use, rejects on floor 25); WAXCAKE = +100
+    wax capped at 500, free tick, rejects at cap; BONEKEY = reusable
+    SILENT iron-door key (never consumed, no noise). Added to
+    CHEST_LOOT (finds, not starting kit). Pack framing untouched (inv
+    is u8; item id never in the action log). Goldens: existing 12
+    never reach a chest so stayed byte-identical; +1 new golden
+    (new-items-delver, seed 271828) genuinely exercises the loot
+    path -> 14/14 replay. Icons: coiled hemp rope / tallow puck /
+    carved bone key, matching the woodcut idiom. Tutorials (Descent):
+    contextual STARTING-item lessons (salt when a slime nears, flint
+    when snuffed, chalk early - key hints T/R/G verified real) +
+    once-each PICKUP lessons for every findable item, all in
+    manuscript voice via the existing teach() folio. 62 sim unit
+    tests. Roster now 13 items (was 10); Rope/Bone Key reframed from
+    the doc's shaft/door-tier versions to gen-free equivalents.
+
 117. ONE drawPillar() FOR BOTH CANDLES (operator: "copy the animation
     and everything of the first candle, place it slightly more left").
     The daily candle's entire section 10 (pool, slump, body, drips,

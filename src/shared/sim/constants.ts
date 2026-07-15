@@ -14,6 +14,9 @@ import { Tile, EntityKind, Action, Item, TILE_KIND_COUNT } from "./types.js";
 
 // ── Wax economy (01 §5) ────────────────────────────────────────────────────
 export const START_WAX = 500;
+/** The candle's fill line: Tallow Cake restores toward this, never past it
+ *  (found wax drips may still overfill; the cake is a controlled top-up ⚖). */
+export const WAX_MAX = START_WAX;
 export const COST_BASIC = 1;
 export const COST_FORCE_DOOR = 5;
 export const COST_BRAZIER = 30;
@@ -120,7 +123,9 @@ export const START_INVENTORY: readonly [number, number][] = [
 ];
 export const SALT_THROW_RANGE = 2;
 export const BELL_THROW_RANGE = 4;
-/** Chest loot table rolled from the LOOT stream (⚖). */
+/** Chest loot table rolled from the LOOT stream (⚖). Weight = entry count
+ *  (uniform index roll); each new find sits at ~1/10 per chest. Bone Key's
+ *  5 "charges" are durability flavor — it is reusable and never spent. */
 export const CHEST_LOOT: readonly [number, number][] = [
   // [item, charges]
   [Item.KEY_IRON, 1],
@@ -130,6 +135,9 @@ export const CHEST_LOOT: readonly [number, number][] = [
   [Item.GLOWVIAL, 1],
   [Item.DOUSE, 1],
   [Item.WSHARD, 1],
+  [Item.ROPE, 1], // single-use escape hatch to the next floor
+  [Item.WAXCAKE, 1], // single-use +100 wax
+  [Item.BONEKEY, 5], // reusable silent iron-door key (never consumed)
 ];
 
 // ── World / biomes (01 §6 ladder) ──────────────────────────────────────────
@@ -273,6 +281,7 @@ export const CANDLE_NAME: readonly string[] = ["lit", "cupped", "snuffed"];
 export const ITEM_NAME: readonly string[] = [
   "", "flint", "salt", "chalk", "mirror-shard", "bell", "glowmoss-vial",
   "dousing-cap", "iron-key", "master-key", "waystone-shard",
+  "coil-of-rope", "tallow-cake", "bone-key",
 ];
 
 /** Sign templates (01 §10, verbatim; index 3–4 take no noun). */

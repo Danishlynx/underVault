@@ -3604,6 +3604,201 @@ function makeGlobalIsoTextures(scene: Phaser.Scene): void {
     ctx.stroke();
     hiEnd(iconWshard);
   }
+  const iconRope = T.createCanvas("icon-rope", 28, 28);
+  if (iconRope !== null) {
+    const ctx = hiBegin(iconRope);
+    // a wound coil of hemp — a rope donut with a loose frayed end
+    const hemp = mix(C.ember, C.parchmentAged, 0.5); // warm hemp tone
+    const hempDim = mix(C.ember, C.boneDim, 0.35);
+    const cx = 13, cy = 12.5, rr = 8.2; // coil centre + mean radius
+    // loose end trailing to lower-right (drawn first, under the coil)
+    ctx.strokeStyle = shade(hemp, 0.85);
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(cx + rr - 2, cy + rr - 1);
+    ctx.quadraticCurveTo(24, 20, 21.5, 26);
+    ctx.stroke();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+    // fray at the cut tip
+    ctx.strokeStyle = shade(hemp, 1.05);
+    ctx.lineWidth = 0.8;
+    for (const dx of [-1.6, 0, 1.6] as const) {
+      ctx.beginPath();
+      ctx.moveTo(21.5, 26);
+      ctx.lineTo(21.5 + dx, 27.6);
+      ctx.stroke();
+    }
+    // rope band: a fat stroked ring, lit from the upper-left
+    const g = ctx.createLinearGradient(4, 4, 22, 21);
+    g.addColorStop(0, shade(hemp, 1.16));
+    g.addColorStop(1, shade(hemp, 0.6));
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+    ctx.stroke();
+    // inner winding — a second offset loop reads as coiled, not a flat ring
+    ctx.strokeStyle = shade(hemp, 0.78);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(cx + 1, cy + 0.6, rr - 0.8, 0.25, Math.PI * 1.65);
+    ctx.stroke();
+    // twist ticks — short diagonals across the band read as laid fibre
+    ctx.strokeStyle = shade(hempDim, 0.9, 0.9);
+    ctx.lineWidth = 0.85;
+    for (let a = 0; a < Math.PI * 2 - 0.01; a += Math.PI / 7) {
+      const mx = cx + Math.cos(a) * rr;
+      const my = cy + Math.sin(a) * rr;
+      const tx = Math.cos(a + 0.9) * 2.6;
+      const ty = Math.sin(a + 0.9) * 2.6;
+      ctx.beginPath();
+      ctx.moveTo(mx - tx, my - ty);
+      ctx.lineTo(mx + tx, my + ty);
+      ctx.stroke();
+    }
+    // ink rim, outer + inner, for read-at-size
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr + 2.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr - 2.5, 0, Math.PI * 2);
+    ctx.stroke();
+    hiEnd(iconRope);
+  }
+  const iconWaxcake = T.createCanvas("icon-waxcake", 28, 28);
+  if (iconWaxcake !== null) {
+    const ctx = hiBegin(iconWaxcake);
+    // a squat disc of pale tallow — a puck, unmistakably not the candle
+    const cx = 14, topY = 12, botY = 18, rx = 9, ry = 4.6;
+    // body (side wall) — vertical gradient, darker toward the base
+    const side = ctx.createLinearGradient(0, topY, 0, botY + ry);
+    side.addColorStop(0, shade(C.parchmentAged, 0.9));
+    side.addColorStop(1, shade(C.parchmentAged, 0.58));
+    ctx.fillStyle = side;
+    ctx.beginPath();
+    ctx.moveTo(cx - rx, topY);
+    ctx.lineTo(cx - rx, botY);
+    ctx.ellipse(cx, botY, rx, ry, 0, Math.PI, 0, true);
+    ctx.lineTo(cx + rx, topY);
+    ctx.closePath();
+    ctx.fill();
+    // top face — pale lit tallow
+    const top = ctx.createRadialGradient(cx - 3, topY - 1, 1, cx, topY, rx);
+    top.addColorStop(0, shade(C.parchment, 1.08));
+    top.addColorStop(1, shade(C.bone, 0.96));
+    ctx.fillStyle = top;
+    ctx.beginPath();
+    ctx.ellipse(cx, topY, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // soft thumbed dimple on the top — a hand-pressed cake of wax
+    ctx.strokeStyle = shade(C.boneDim, 0.8, 0.7);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx + 1.4, topY + 0.5, 3.2, 1.6, 0, 0.15, Math.PI * 1.2);
+    ctx.stroke();
+    // sheen on the lit shoulder
+    ctx.fillStyle = shade(C.parchment, 1.18, 0.75);
+    ctx.beginPath();
+    ctx.ellipse(cx - 3.6, topY - 1.1, 2.7, 1.1, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // warm lit rim along the front base — the tallow catching candlelight
+    ctx.strokeStyle = shade(C.ember, 1.0, 0.85);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(cx, botY, rx - 0.5, ry - 0.3, 0, 0.24, Math.PI - 0.24);
+    ctx.stroke();
+    ctx.strokeStyle = shade(C.flame, 1.02, 0.45);
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(cx, botY - 0.3, rx - 1, ry - 0.5, 0, 0.38, Math.PI - 0.38);
+    ctx.stroke();
+    // ink silhouette — body + top rim
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - rx, topY);
+    ctx.lineTo(cx - rx, botY);
+    ctx.ellipse(cx, botY, rx, ry, 0, Math.PI, 0, true);
+    ctx.lineTo(cx + rx, topY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx, topY, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    hiEnd(iconWaxcake);
+  }
+  const iconBonekey = T.createCanvas("icon-bonekey", 28, 28);
+  if (iconBonekey !== null) {
+    const ctx = hiBegin(iconBonekey);
+    ctx.save();
+    ctx.translate(14, 14);
+    ctx.rotate(-0.6);
+    const boneG = ctx.createLinearGradient(-10, -4, 10, 6);
+    boneG.addColorStop(0, shade(C.bone, 1.12));
+    boneG.addColorStop(1, shade(C.bone, 0.7));
+    // bow — a rounded, lumpy bone head, chunkier than the wrought keys
+    ctx.fillStyle = boneG;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(-7, 0, 5, 4.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // eye of the bow
+    ctx.fillStyle = shade(C.void, 1.35);
+    ctx.beginPath();
+    ctx.ellipse(-7, 0, 2, 1.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shade(C.boneDim, 0.85);
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+    // shaft — a chunky rounded bone bar
+    ctx.fillStyle = boneG;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-3, -1.6);
+    ctx.lineTo(8.4, -1.6);
+    ctx.quadraticCurveTo(10, -1.6, 10, 0);
+    ctx.quadraticCurveTo(10, 1.6, 8.4, 1.6);
+    ctx.lineTo(-3, 1.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // rounded centreline highlight — the shaft reads as carved bone, not a bar
+    ctx.strokeStyle = shade(C.bone, 1.28, 0.6);
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(-1, -0.5);
+    ctx.lineTo(8, -0.5);
+    ctx.stroke();
+    // teeth (wards) at the tip — bold enough to read unmistakably as a key
+    ctx.beginPath();
+    ctx.moveTo(4.4, 1.6);
+    ctx.lineTo(4.4, 5.4);
+    ctx.lineTo(6.4, 5.4);
+    ctx.lineTo(6.4, 1.6);
+    ctx.closePath();
+    ctx.moveTo(7.6, 1.6);
+    ctx.lineTo(7.6, 4.4);
+    ctx.lineTo(9.4, 4.4);
+    ctx.lineTo(9.4, 1.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // porous pits — the tell that it is carved bone, not iron or gold
+    ctx.fillStyle = shade(C.boneDim, 0.62, 0.85);
+    for (const [px, py, r] of [[-8.5, -1.3, 0.7], [-5.4, 1.5, 0.6], [-6.8, -2.1, 0.55], [-8.6, 1.4, 0.5], [1, -0.5, 0.6], [4.4, 0.4, 0.55]] as const) {
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    hiEnd(iconBonekey);
+  }
 
   // ── The cavern beyond (D81): a soft irregular rock-mass silhouette that
   // parallaxes behind the world so the unexplored dark reads as a vast

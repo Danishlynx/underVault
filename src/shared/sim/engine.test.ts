@@ -23,7 +23,7 @@ import {
   isRuleRequest,
 } from "./types.js";
 import { keyDropSpot } from "./systems.js";
-import { NOISE_BELL, BELL_PEAL_TICKS } from "./constants.js";
+import { NOISE_BELL, BELL_PEAL_TICKS, MAX_FLOOR } from "./constants.js";
 import { floorFromAscii, makeState, stubRules, runActions, ent } from "../../../tests/helpers.js";
 
 const NONE = stubRules();
@@ -532,5 +532,113 @@ describe("moth orbit (D64)", () => {
     const moth = s.entities.find((e) => e.kind === EntityKind.MOTH)!;
     expect(moth.x).toBe(1); // old code jumped the ring to (3,1) through the player
     expect(moth.y).toBe(1);
+  });
+});
+
+// ── New chest finds: Rope, Tallow Cake, Bone Key ────────────────────────────
+
+const USE = (slot: number, dir = 0): { op: number; arg: number } => ({
+  op: Action.USE,
+  arg: ((slot & 7) << 2) | (dir & 3),
+});
+
+describe("Coil of Rope (ROPE)", () => {
+  test("descends from a mid-floor: DESCENDING, DESCENDED, charge spent", () => {
+    const fd = floorFromAscii(["#####", "#@..#", "#####"], [], 2);
+    const s = makeState(fd);
+    s.inv[3] = Item.ROPE;
+    s.invCharges[3] = 1;
+    const r = tickResolving(s, USE(3), NONE.table, NONE.resolve);
+    expect(r.state.status).toBe(Status.DESCENDING);
+    expect(r.state.inv[3]).toBe(Item.NONE); // single-use, consumed
+    expect(r.state.invCharges[3]).toBe(0);
+    expect(r.events.some((e) => e.type === Ev.DESCENDED)).toBe(true);
+    expect(r.events.some((e) => e.type === Ev.ITEM_USED && e.a === Item.ROPE)).toBe(true);
+  });
+
+  test("rejects on the Bottom (MAX_FLOOR): nowhere down, charge kept", () => {
+    const fd = floorFromAscii(["#####", "#@..#", "#####"], [], MAX_FLOOR);
+    const s = makeState(fd);
+    s.inv[3] = Item.ROPE;
+    s.invCharges[3] = 1;
+    const r = tickResolving(s, USE(3), NONE.table, NONE.resolve);
+    expect(r.state.status).toBe(Status.ALIVE);
+    expect(r.state.inv[3]).toBe(Item.ROPE); // not wasted
+    expect(r.state.invCharges[3]).toBe(1);
+    expect(r.events.some((e) => e.type === Ev.REJECTED)).toBe(true);
+    expect(r.events.some((e) => e.type === Ev.DESCENDED)).toBe(false);
+  });
+});
+
+describe("Tallow Cake (WAXCAKE)", () => {
+  const fd = floorFromAscii(["#####", "#@..#", "#####"]);
+
+  test("adds exactly +100 (free tick) and consumes the cake", () => {
+    let s = makeState(fd);
+    s.wax = 300;
+    s.inv[3] = Item.WAXCAKE;
+    s.invCharges[3] = 1;
+    s = runActions(s, [USE(3)]);
+    expect(s.wax).toBe(400); // exactly +100, no burn (cost 0)
+    expect(s.inv[3]).toBe(Item.NONE); // single-use
+  });
+
+  test("restore is capped at WAX_MAX", () => {
+    let s = makeState(fd);
+    s.wax = 450;
+    s.inv[3] = Item.WAXCAKE;
+    s.invCharges[3] = 1;
+    s = runActions(s, [USE(3)]);
+    expect(s.wax).toBe(500); // min(cap, 550)
+  });
+
+  test("rejects at/above cap without wasting the cake", () => {
+    const s = makeState(fd);
+    s.wax = 500; // already at the fill line
+    s.inv[3] = Item.WAXCAKE;
+    s.invCharges[3] = 1;
+    const r = tickResolving(s, USE(3), NONE.table, NONE.resolve);
+    expect(r.state.inv[3]).toBe(Item.WAXCAKE); // kept
+    expect(r.state.invCharges[3]).toBe(1);
+    expect(r.events.some((e) => e.type === Ev.REJECTED)).toBe(true);
+    expect(r.events.some((e) => e.type === Ev.WAX_GAINED)).toBe(false);
+  });
+});
+
+describe("Bone Key (BONEKEY)", () => {
+  // a small room; the player stands at (2,2) with iron doors N and E
+  const room = (): ReturnType<typeof makeState> => {
+    const fd = floorFromAscii(["#####", "#...#", "#.@.#", "#...#", "#####"]);
+    const s = makeState(fd);
+    s.tiles[1 * 5 + 2] = Tile.DOOR_IRON; // north (2,1)
+    s.tiles[2 * 5 + 3] = Tile.DOOR_IRON; // east  (3,2)
+    s.inv[3] = Item.BONEKEY;
+    s.invCharges[3] = 5;
+    return s;
+  };
+
+  test("opens an adjacent iron door, silently, and is never spent", () => {
+    const s = room();
+    const r = tickResolving(s, USE(3, 0), NONE.table, NONE.resolve); // dir N
+    expect(r.state.tiles[1 * 5 + 2]).toBe(Tile.DOOR_OPEN);
+    expect(r.state.inv[3]).toBe(Item.BONEKEY); // reusable — stays in the pack
+    expect(r.state.invCharges[3]).toBe(5); // charge not consumed
+    expect(r.state.noiseLevel).toBe(0); // silent — no NOISE_INTERACT
+    expect(r.events.some((e) => e.type === Ev.DOOR_OPENED)).toBe(true);
+  });
+
+  test("reusable across doors", () => {
+    const s = room();
+    const r1 = tickResolving(s, USE(3, 0), NONE.table, NONE.resolve); // N
+    const r2 = tickResolving(r1.state, USE(3, 1), NONE.table, NONE.resolve); // E
+    expect(r2.state.tiles[2 * 5 + 3]).toBe(Tile.DOOR_OPEN);
+    expect(r2.state.invCharges[3]).toBe(5); // still not spent
+  });
+
+  test("rejects when the faced tile is not a locked iron door", () => {
+    const s = room();
+    const r = tickResolving(s, USE(3, 2), NONE.table, NONE.resolve); // dir S = plain floor
+    expect(r.events.some((e) => e.type === Ev.REJECTED)).toBe(true);
+    expect(r.state.invCharges[3]).toBe(5); // preserved
   });
 });

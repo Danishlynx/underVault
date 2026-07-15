@@ -42,6 +42,7 @@ import {
   COST_BASIC,
   DX,
   DY,
+  MAX_FLOOR,
   NOISE_BELL,
   BELL_PEAL_TICKS,
   NOISE_INTERACT,
@@ -56,6 +57,7 @@ import {
   START_WAX,
   TIER_THRESHOLDS,
   TILE_FLAGS,
+  WAX_MAX,
   F_WALK,
 } from "./constants.js";
 import { computeVisible } from "./fov.js";
@@ -535,6 +537,51 @@ export function tick(state: SimState, step: Step, rules: RuleTable): TickResult 
           // when the shard is raised — cancelling the sheet costs nothing
           ev(ctx, Ev.ITEM_USED, Item.WSHARD);
           ev(ctx, Ev.WAYSTONE_TOUCHED, s.px, s.py); // the Vault listens remotely
+          break;
+        }
+        case Item.ROPE: {
+          // Coil of Rope: an alternate stair. Reaches DESCENDING from any
+          // floor but the Bottom, reusing the exact stairs transition so the
+          // existing descend flow runs unchanged. Single-use (dir ignored).
+          if (s.floor >= MAX_FLOOR) {
+            demote(); // the Bottom has nowhere below it
+            break;
+          }
+          consumeCharge(s, Item.ROPE);
+          s.status = Status.DESCENDING;
+          ev(ctx, Ev.ITEM_USED, Item.ROPE);
+          ev(ctx, Ev.DESCENDED, s.floor + 1); // same event the stairs emit
+          noise = NOISE_STONE;
+          break;
+        }
+        case Item.WAXCAKE: {
+          // Tallow Cake: pour +100 wax back into the candle, up to the fill
+          // line. At/over the cap it stays in the pack — no waste. The USE
+          // tick is free (cost 0) so the restore is exactly +100 to the cap.
+          if (s.wax >= WAX_MAX) {
+            demote();
+            break;
+          }
+          const before = s.wax;
+          s.wax = s.wax + 100 > WAX_MAX ? WAX_MAX : s.wax + 100;
+          cost = 0;
+          consumeCharge(s, Item.WAXCAKE);
+          ev(ctx, Ev.WAX_GAINED, s.wax - before);
+          ev(ctx, Ev.ITEM_USED, Item.WAXCAKE);
+          break;
+        }
+        case Item.BONEKEY: {
+          // Bone Key: opens an adjacent iron door exactly as the iron key
+          // does (→ DOOR_OPEN, DOOR_OPENED), but it is reusable (charge NOT
+          // consumed) and silent (no NOISE_INTERACT — noise stays 0).
+          const nx = s.px + DX[dir]!;
+          const ny = s.py + DY[dir]!;
+          if (!inBounds(s, nx, ny) || s.tiles[idx(s, nx, ny)] !== Tile.DOOR_IRON) {
+            demote(); // only a locked iron door yields to it
+            break;
+          }
+          s.tiles[idx(s, nx, ny)] = Tile.DOOR_OPEN;
+          ev(ctx, Ev.DOOR_OPENED, nx, ny);
           break;
         }
         default:
