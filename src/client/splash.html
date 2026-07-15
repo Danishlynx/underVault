@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Undervault</title>
+    <!-- Invariant 7: this entrypoint ships NO Phaser and stays <= 300 KB.
+         M2 minimal shell (08-M2-PORT-CONTRACT §1.11); real Guildhall overlay lands at M2b. -->
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        background: #0b0906;
+        color: #e8dcc0;
+        font-family: Georgia, "Times New Roman", serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      main {
+        padding: 24px 20px;
+        max-width: 420px;
+        width: 100%;
+      }
+      h1 {
+        font-size: 20px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        margin: 0 0 4px;
+        color: #d9a441;
+      }
+      #uv-day {
+        font-size: 14px;
+        opacity: 0.85;
+        margin: 0 0 16px;
+      }
+      #uv-teaser {
+        font-style: italic;
+        font-size: 15px;
+        min-height: 3em;
+        margin: 0 0 16px;
+        opacity: 0.9;
+      }
+      #uv-stats {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        font-size: 13px;
+        margin: 0 0 20px;
+        opacity: 0.8;
+      }
+      #uv-house {
+        font-size: 12px;
+        opacity: 0.7;
+        margin: 12px 0 0;
+        min-height: 1em;
+      }
+      #uv-descend {
+        font: inherit;
+        font-size: 16px;
+        letter-spacing: 0.08em;
+        color: #0b0906;
+        background: #d9a441;
+        border: 0;
+        border-radius: 4px;
+        padding: 12px 28px;
+        cursor: pointer;
+      }
+      #uv-descend:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>The Undervault</h1>
+      <p id="uv-day">&hellip;</p>
+      <p id="uv-teaser"></p>
+      <div id="uv-stats">
+        <span>Gate <span id="uv-gate">&ndash;</span>%</span>
+        <span>Codex <span id="uv-codex">&ndash;</span>%</span>
+      </div>
+      <button id="uv-descend" type="button">Strike the match</button>
+      <p id="uv-house"></p>
+    </main>
+    <script type="module" src="./splash.ts"></script>
+  </body>
+</html>

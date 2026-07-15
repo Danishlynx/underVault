@@ -872,3 +872,91 @@ candidates; flip them in the named data file, not in code.
     2 of 3 passes. LESSON (tooling): PS5.1 Get/Set-Content mangled
     UTF-8 comments (mojibake) - source rewrites go through the Edit
     tool or Node scripts, never PowerShell string pipelines.
+
+95. First-person playtest fixes (I played Floor 1 myself via the
+    harness - deaf, screenshot-eyed, like a muted Reddit player).
+    Findings -> fixes: (a) bump recoil was a 14%/55ms twitch nobody
+    sees - now 30%/80ms anchored to the true rest pose (back-to-back
+    bumps used to compound the relative tween and drift the sprite off
+    its tile), plus contact dust and a "blocked" lesson after 3 grinds
+    ("what your light has not touched is not yet real"); (b) PENUMBRA:
+    unseen walls/doors orthogonally adjacent to the lit pool render as
+    faint cold silhouettes (alpha 0.32, MEMORY_TINT) - wall and
+    unexplored void no longer read identically; blockers only, items
+    stay secret; (c) the candle halo had FIXED depth 600 and painted
+    over every wall between camera and delver (the "amber wash,
+    invisible player" bug) - halo now carries the player's world depth;
+    (d) lessons added: V camera (chained after burn, dismissed by V),
+    wax-drips ("walk over it - your candle drinks it", dismissed on
+    WAX_GAINED); move lesson now counts SUCCESSFUL steps (Ev.MOVED),
+    not wall-grinds. Playtest also validated: teaching chain, 4-way
+    directional art, deterministic daily-dungeon replay.
+
+98. OPERATOR OVERRIDE, twice confirmed: the in-gameplay mute control is
+    REMOVED (first the MUTE text, then the speaker glyph offered as the
+    compliant middle ground). Music + soundscape are always on during
+    play; the menu SOUND toggle is the sole app-level audio control.
+    This overrides invariant 6's "a mute control is always visible" -
+    risks were stated (muted-context Reddit users, Devvit review) and
+    accepted. visibilitychange hard-mute and gesture-gated audio start
+    remain intact. Same session: toasts redesigned as manuscript leaves
+    (kind color moves to hairline+diamond accents, parchment italic
+    text, stacking - no overlap), lesson marker became a soft golden
+    glow POOL under its subject (wireframe diamond read as debug art),
+    marker breathes twice then fades, threshold beacons (entry amber /
+    stairs verdigris breathing + min-light floor), "The dark hunts the
+    light" stealth lesson fires on first close pursuit, deco candle
+    stubs vs wax-refill lookalike flagged as future polish.
+
+99. THE CANDLE-CLOCK (operator: "the menu candle should be the day...
+    make it absurdly gorgeous"). The menu hero candle IS the world
+    clock: paintMenuBackdrop(ctx,w,h,burn 0..1) burns it from fresh
+    pillar to a 28%-height slumped stub (fixed base, growing drip-runs,
+    collapsing crater lip past 0.6, <=1.7deg lean past 0.5, wax pool
+    ring -> broad glossy apron with frozen tongues over the ledge lip,
+    warm light dimming past 0.9). menu.ts drives it with REAL time
+    (dev dusk = local midnight; port anchors to server dusk; ?burn=
+    debug override), animates live wax beads crawling the flank
+    (quickening near dusk), gutters the flame past 0.85 burn, and at
+    the boundary plays the full ritual: flame dies -> thread of smoke
+    -> breath of dark -> fresh candle relights with the chime.
+    MenuGeom gains an optional candle body box for the melt layer.
+    Also D98 tail: one-candle law now stated plainly under REST UNTIL
+    DUSK + menu spent-state (BEGIN goes dark, server flips one flag);
+    epitaph names the killer; damage floaters (-N in seal red)
+    disambiguate candle-burn from monster bites; slime chase law
+    corridor-verified (gap grows 1 tile per 2 steps, zero hits).
+
+96. Deep-dive batch II (readability): importantTiles gating so tall
+    ground never buries the player or a visible entity; pointer cursor
+    diamond fades after 1200ms idle; long-press ring telegraphs the
+    400ms hold; light veil gains a pool-edge falloff band (the lit
+    world ends in a breath, not a cliff); lesson marker follows moving
+    subjects and keeps correct iso depth.
+
+97. Deep-dive batch III (interaction grammar): tap-to-move rewritten
+    around SIM_INTERACTABLE/WALKABLE static sets - self tile resolves
+    stairs/waystone/wait, adjacent resolves living->bump, usable->
+    INTERACT, walkable->MOVE, far taps path via dominant-axis
+    stepToward; smartInteract scans facing-then-NESW and turns before
+    acting; ENTER and salt throws pre-validate instead of burning wax
+    on a doomed action; every sim rejection now answers (reject cue +
+    throttled toast); exit needs a 3.2s confirm re-tap; snuff is a
+    450ms X hold; view toggle suppresses its toast when zoom barely
+    changes. Silly-wall fixed: "hard to interact until facing it" was
+    the top playtest complaint.
+
+100. M2 SERVER PORT LANDED (fleet, 9 agents, zero fix-forward):
+    src/shared/protocol.ts (zod, logV 2, floor wire codecs),
+    src/server/{core,data,http,rules,index} per docs/08 contract -
+    RedisLike + mock + Devvit adapter, Hono routes, one-candle state
+    machine, full-log replay validation, corpse/sign/bank flow; 145
+    route/data tests green, secret-leak guard green, replay corpus
+    untouched, Redis projection 147 MB @ 50k DAU vs 500 MB cap.
+    splash.html/splash.ts (no Phaser) + game.html entrypoints +
+    vite.devvit.config.ts. Dev harness gains /?plate=<name> standalone
+    story-painter preview (parallel artists, zero shared state).
+    Remaining to M2-done: client async-ports wiring (M2b), real
+    entrypoint byte budgets, then devvit upload to a PRIVATE test
+    subreddit - platform realities (real Redis, Reddit webview audio
+    policy, mobile GPUs, payload limits) are only testable hosted.
