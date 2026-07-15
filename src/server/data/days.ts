@@ -35,6 +35,7 @@ export interface SignEntry {
 }
 
 const kCurrent = `${KEY}day:current`;
+const kSeason = `${KEY}season`; // permanent hash — the Long Rescue outlives every day (D105)
 const kMeta = (d: number): string => `${KEY}day:${d}:meta`;
 const kShared = (d: number, f: number): string => `${KEY}day:${d}:shared:${f}`;
 const kSigns = (d: number, f: number): string => `${KEY}day:${d}:signs:${f}`;
@@ -137,6 +138,19 @@ export class DayRepo {
 
   async bumpFallen(day: number): Promise<number> {
     return this.r.hIncrBy(kMeta(day), "fallen", 1);
+  }
+
+  // ── The Long Rescue (D105): every victory = one candle given to her ──────
+
+  /** Idempotency rides the caller: finalizeRun's phase transition fires once. */
+  async addGift(): Promise<number> {
+    return this.r.hIncrBy(kSeason, "gifts", 1);
+  }
+
+  /** Candles given this season (0 when unset). Never expires, never resets. */
+  async giftCount(): Promise<number> {
+    const v = await this.r.hGet(kSeason, "gifts");
+    return v === undefined ? 0 : Number.parseInt(v, 10);
   }
 
   // ── additive M2 readers/writers (http routes need them; 08 §1.10 lists no

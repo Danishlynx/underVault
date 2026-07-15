@@ -83,10 +83,9 @@ const MEETING: Slide[] = [
   {
     paint: paintMeeting4,
     caption:
-      "“You ask what I kept. The Vault is the cold the world was made from. It was never hungry, little flame — only unlit.”\nShe smiles like a door unlocking. “Go up — the way up is shorter than the way down. It always was. Tell them the dark can be warmed.”",
+      "“You ask what I kept. The Vault is the cold the world was made from. It was never hungry, little flame — only unlit.”\nShe smiles like a door unlocking. “One candle warms a night. A hundred will warm the Gate open. Go up and tell them I am here — the dark can be warmed, and the way up is shorter than it was.”",
   },
 ];
-const MEETING_HOLD_MS = 12500; // reverent pace; a tap still advances
 
 let styled = false;
 function injectStyles(): void {
@@ -225,7 +224,9 @@ function openSlideshow(
     }, 220);
     dotEls.forEach((d, di) => d.classList.toggle("uv-story-on", di === i));
     window.clearTimeout(timer);
-    timer = window.setTimeout(() => show(index + 1), opts.holdMs);
+    // holdMs 0 = tap-paced only. The Meeting never auto-advances: the last
+    // thing an ending may do is turn its own page while someone is reading.
+    if (opts.holdMs > 0) timer = window.setTimeout(() => show(index + 1), opts.holdMs);
   };
 
   root.addEventListener("pointerup", (ev) => {
@@ -256,11 +257,11 @@ export function openStoryIntro(
   return openSlideshow(host, SLIDES, { skipLabel: "Skip the telling", holdMs: HOLD_MS }, onDone, audio);
 }
 
-/** The finale behind the Seal — no skip; Escape still releases it. */
+/** The finale behind the Seal — no skip, no clock; Escape still releases it. */
 export function openMeeting(
   host: HTMLElement,
   onDone: () => void,
   audio?: { play(cue: "sheet"): void },
 ): () => void {
-  return openSlideshow(host, MEETING, { skipLabel: null, holdMs: MEETING_HOLD_MS }, onDone, audio);
+  return openSlideshow(host, MEETING, { skipLabel: null, holdMs: 0 }, onDone, audio);
 }

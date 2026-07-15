@@ -1025,3 +1025,40 @@ candidates; flip them in the named data file, not in code.
     rests) starts the moment the Seal breaks; the vigil and Choir
     were always thinning this exact melody, so the finale resolves
     the game's whole musical sentence.
+
+105. THE LONG RESCUE IS REAL (resolves C9) + the season formulation.
+    SHIPPED NOW: (a) permanent uv:season hash, gifts field - every
+    VICTORY finalize adds one (idempotent via the phase transition);
+    /api/day and the minted postData serve gatePct = min(100, gifts)
+    - GATE GOAL IS 100, so the percent IS the candle count and every
+    number on the splash/menu is now true; (b) the ending recruits:
+    plate four's caption carries her ask ("One candle warms a night.
+    A hundred will warm the Gate open. Go up and tell them I am
+    here"), and the victory sheet states the player's place ("Yours
+    is the Nth candle given. When one hundred burn beside her, the
+    Gate opens from the inside - and she walks home"); (c) BUG: the
+    Meeting no longer auto-advances AT ALL (holdMs 0 = tap-paced) -
+    the victory sheet popped over the last page mid-read.
+    PROPOSED (operator-reviewed story, build post-jam):
+    - FINALE at 100 gifts: next dusk's mint fires the event - the
+      Gate opens from the inside; she walks up with the First Flame;
+      once-per-player finale telling; menu gains her taller candle
+      beside the daily one forever; monument plate lists every house
+      that gave a candle.
+    - FESTIVAL OF WICKS: the finale day only, every player gets TWO
+      candles (celebration, not the new law - one-candle stays).
+      Permanent thereafter: candles are "cut from a restored flame,"
+      +1 breath of Dark Grace for everyone.
+    - SEASON 2, THE UNKEPT DARK: inversion - her flame kept the
+      Vault asleep from the inside; with her home it has no keeper
+      and the cold climbs. New permanent meter THE HEARTH drains
+      daily; delvers refill it by delivering wax to cradle-shrines
+      (deeper = more; the empty cradle at the Bottom = most). If the
+      Hearth empties: COLD SNAP - next day's dungeon crueler (dark
+      penalty everywhere, buffed spawns) until refilled. Same daily
+      rhythm, inverted purpose: Season 1 climbed down to bring her
+      OUT; Season 2 climbs down to keep the cold IN. She lives in
+      town as the mentor voice (waystone hints, tutorial lines,
+      one house's candle blessed each dusk). Season 3 seed, one
+      line she says at the festival: "The Vault has a bottom. The
+      cold does not."

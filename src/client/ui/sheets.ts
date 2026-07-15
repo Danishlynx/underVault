@@ -276,7 +276,19 @@ export function openExitSheet(
   return close;
 }
 
-export function openVictorySheet(host: HTMLElement, summary: RunSummary, onDone: () => void): () => void {
+function ordinal(n: number): string {
+  const t = n % 100;
+  if (t >= 11 && t <= 13) return `${n}th`;
+  const u = n % 10;
+  return `${n}${u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th"}`;
+}
+
+export function openVictorySheet(
+  host: HTMLElement,
+  summary: RunSummary,
+  onDone: () => void,
+  giftNo?: number,
+): () => void {
   const close = openSheet(host, (sheet) => {
     sheet.appendChild(el("div", "uv-cause", "THE FIRST FLAME IS FED"));
     sheet.appendChild(el("hr", "uv-rule"));
@@ -288,6 +300,15 @@ export function openVictorySheet(host: HTMLElement, summary: RunSummary, onDone:
       ),
     );
     sheet.appendChild(el("p", "uv-dim", "She stayed. Someone had to. The town will remember who reached her first."));
+    // the Long Rescue (D105): the ending recruits — one victory is one candle
+    // toward the hundred that open the Gate from the inside
+    sheet.appendChild(
+      el(
+        "p",
+        "uv-gold",
+        `${giftNo !== undefined ? `Yours is the ${ordinal(giftNo)} candle given. ` : ""}When one hundred burn beside her, the Gate opens from the inside — and she walks home.`,
+      ),
+    );
     const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
     seal.addEventListener("click", () => {
       close();

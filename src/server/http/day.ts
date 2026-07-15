@@ -52,7 +52,9 @@ dayRoutes.get("/", async (c) => {
 
   const res: DayRes = {
     day: meta.day,
-    gatePct: Math.min(99, meta.day * 9), // M2 STAND-IN: replaced by gate-tick job at M3 (C9)
+    // the Long Rescue (D105, resolves C9): gifts given this season out of the
+    // 100 that open the Gate — the goal is 100, so the percent IS the count
+    gatePct: Math.min(100, await days.giftCount()),
     codexPct,
     fallenToday: fallen,
     teaser: omen.tellHint.slice(0, 140),

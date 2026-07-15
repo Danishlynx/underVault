@@ -374,6 +374,12 @@ async function finalizeRun(
   } else {
     generation = (await d.users.get(d.uid)).gen;
   }
+  if (state.status === Status.VICTORY) {
+    // the Long Rescue (D105): her flame grows by one candle, forever —
+    // once-only because finalizeRun only runs inside the phase transition
+    await d.days.addGift();
+    await d.metrics.incr(meta.day, "victories");
+  }
 
   // chalk persists here and at bank only (08 §1.7 / D17) — final floor's marks
   if (state.chalk.some((v) => v !== 0)) {

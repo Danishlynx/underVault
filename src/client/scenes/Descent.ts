@@ -2826,10 +2826,13 @@ export class DescentScene extends Phaser.Scene {
     this.audio.startMeetingTheme();
     openMeeting(host, () => {
       this.audio.play("victory");
+      // gate goal is 100, so the day's gatePct IS the season's candle count
+      // (D105) — this victory is the next one given
+      const giftNo = Math.min(100, this.ports.getGuildhall().gatePct + 1);
       openVictorySheet(host, this.runSummary(), () => {
         this.confirmRun();
         this.afterCeremony(true);
-      });
+      }, giftNo);
     }, this.audio);
   }
 

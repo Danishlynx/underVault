@@ -55,7 +55,7 @@ export async function mintDay(r: RedisLike, now: number): Promise<{ day: number;
       entry: "default",
       postData: {
         day,
-        gatePct: Math.min(99, day * 9), // M2 STAND-IN: replaced by gate-tick job at M3 (C9)
+        gatePct: Math.min(100, await days.giftCount()), // the Long Rescue (D105, resolves C9)
         codexPct,
         teaser: omen.tellHint.slice(0, 140),
       },

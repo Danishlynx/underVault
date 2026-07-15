@@ -215,13 +215,23 @@ describe("GET /api/day", () => {
     env.uid = null;
     const anon = zDayRes.parse(await (await app.request("/api/day")).json());
     expect(anon.day).toBe(DAY);
-    expect(anon.gatePct).toBe(9); // min(99, day*9) stand-in (C9)
+    expect(anon.gatePct).toBe(0); // the Long Rescue counter starts dark (D105)
     expect(anon.fallenToday).toBe(0);
     expect(anon.houseLine).toBeUndefined();
 
     env.uid = "t2_alpha";
     const auth = zDayRes.parse(await (await app.request("/api/day")).json());
     expect(auth.houseLine).toContain("No house sworn yet");
+
+    // the Long Rescue (D105): victories move the permanent season counter,
+    // and /api/day serves it as gatePct (goal 100 → percent IS the count)
+    const days = new DayRepo(mock);
+    await days.addGift();
+    await days.addGift();
+    await days.addGift();
+    const fed = zDayRes.parse(await (await app.request("/api/day")).json());
+    expect(fed.gatePct).toBe(3);
+    expect(await days.giftCount()).toBe(3);
   });
 });
 
