@@ -269,11 +269,14 @@ function animateFlame(img: Phaser.GameObjects.Image, key: string, time: number):
     img.setTexture(flameFrameKey(fk));
     flameFrame.set(img, fk);
   }
-  // continuous flicker BETWEEN discrete frames — squash/stretch + a base lean
+  // continuous flicker BETWEEN discrete frames — squash/stretch + a base lean.
+  // Low frequencies ONLY: the old 7-12Hz terms aliased into visible judder on
+  // phones that render this scene at ~20fps (Nyquist — they were undersampled).
+  // A calm 2-5Hz sway reads smooth at any frame rate and matches the menu flame.
   const w = time / 1000 + phase;
-  img.scaleX = base.x * (1 + Math.sin(w * 7.3) * 0.05 + Math.sin(w * 11.9 + 1.3) * 0.03);
-  img.scaleY = base.y * (1 + Math.sin(w * 6.1 + 0.7) * 0.07 + Math.sin(w * 9.7) * 0.04);
-  img.setAngle(Math.sin(w * 3.7) * 2.2 + Math.sin(w * 6.3 + 0.9) * 1.3);
+  img.scaleX = base.x * (1 + Math.sin(w * 3.1) * 0.045 + Math.sin(w * 5.3 + 1.3) * 0.022);
+  img.scaleY = base.y * (1 + Math.sin(w * 2.6 + 0.7) * 0.06 + Math.sin(w * 4.4) * 0.03);
+  img.setAngle(Math.sin(w * 1.9) * 1.9 + Math.sin(w * 3.3 + 0.9) * 0.9);
 }
 
 export function syncSourceGlows(

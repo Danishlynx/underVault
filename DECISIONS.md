@@ -1108,6 +1108,31 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+126. FLAME SMOOTHNESS + SNUFF LIGHT + TOAST CAP (operator on live mobile:
+    "flame animation feels off and 19fps, not smooth; when I snuff the
+    light is almost too low"). (a) FLAME JUDDER — animateFlame's continuous
+    wobble used 7-12 Hz sine terms; a phone rendering this scene at ~20fps
+    undersamples them (Nyquist), so they aliased into visible jitter.
+    Dropped to a calm 2-5 Hz sway (same cost): smooth at any frame rate,
+    matches the menu flame. (b) SNUFF TOO DARK — the sim radius when snuffed
+    is 0 (the whole risk of snuffing, and the Smoked Glass heirloom's only
+    edge) and is untouched for determinism; the render-side snuffGrade was
+    piling brightness x0.92 on an already-lightless scene. Lifted to 1.03
+    and eased the desaturate (-0.55 -> -0.42) so snuffed stays a drained
+    memory-view but is navigable. (c) TOAST PILE-UP (flagged by two
+    playtesters) — the toast column had no cap and anchored each new pill
+    below the lowest, so arrival/discovery bursts stacked 4-5 boxes down
+    over the play field, the FIRST STEPS sign and the CUP/SNUFF tray. Capped
+    at 3 with a top-anchored reflow (oldest retires fast, survivors slide
+    up) so it never marches down-screen. Also finished the copy pass the
+    sweep could not reach in render-locked files: HUD "THE DARK GRACE:"
+    colon, and the finale/Meeting climax lines regain their reveal beat with
+    periods (not the banned em-dash). NOTE: the ~19fps itself is GPU fill-
+    rate on that device (DPR-2 backbuffer + vignette pass + ADD overdraw),
+    not a CPU hog — the flame is smooth AT that rate now; a true fps lift
+    needs an adaptive-DPR valve (offered to operator; it trades against the
+    crispness they asked to keep).
+
 125. FULL-GAME POLISH SWEEP (operator: "run a lot of opus agents to
     check the whole game and polish it, fix the bug, play it, test the
     ending, lag, or every other aspect"). Five parallel playtesters

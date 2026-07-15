@@ -76,7 +76,7 @@ const MEETING: Slide[] = [
   {
     paint: paintMeeting2,
     caption:
-      "“Every dusk I fed it my flame so it would sleep. Every dusk it dreamed new laws. I could not leave, it would have followed me up.”\nHer tears dried to wax years ago. They shine anyway.",
+      "“Every dusk I fed it my flame so it would sleep. Every dusk it dreamed new laws. I could not leave. It would have followed me up.”\nHer tears dried to wax years ago. They shine anyway.",
   },
   {
     paint: paintMeeting3,
@@ -86,7 +86,7 @@ const MEETING: Slide[] = [
   {
     paint: paintMeeting4,
     caption:
-      "“You ask what I kept. The Vault is the cold the world was made from. It was never hungry, little flame, only unlit.”\nShe smiles like a door unlocking. “One candle warms a night. A hundred will warm the Gate open. Go up and tell them I am here, the dark can be warmed, and the way up is shorter than it was.”",
+      "“You ask what I kept. The Vault is the cold the world was made from. It was never hungry, little flame, only unlit.”\nShe smiles like a door unlocking. “One candle warms a night. A hundred will warm the Gate open. Go up and tell them I am here. The dark can be warmed, and the way up is shorter than it was.”",
   },
 ];
 
@@ -266,7 +266,7 @@ const FINALE: Slide[] = [
   {
     paint: paintFinale1,
     caption:
-      "On the hundredth candle, the Gate does not break. It unlocks, from the inside.\nIt was only ever waiting to be warm enough.",
+      "On the hundredth candle, the Gate does not break. It unlocks. From the inside.\nIt was only ever waiting to be warm enough.",
   },
   {
     paint: paintFinale2,

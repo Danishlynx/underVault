@@ -1719,7 +1719,7 @@ export class DescentScene extends Phaser.Scene {
   override update(time: number): void {
     this.hud.updateFrame(time);
     pulseGlows(this.glowPool, time);
-    if (time - this.lastGrainShift > 120) {
+    if (time - this.lastGrainShift > 200) {
       this.lastGrainShift = time;
       this.grain.setTilePosition(Math.random() * 128, Math.random() * 128);
     }

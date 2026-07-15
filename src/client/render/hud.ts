@@ -398,7 +398,7 @@ export class Hud {
     }
 
     if (state.graceLeft > 0) {
-      this.graceText.setText(`THE DARK GRACE, ${state.graceLeft}\nreach flame, or the way out`);
+      this.graceText.setText(`THE DARK GRACE: ${state.graceLeft}\nreach flame, or the way out`);
     } else {
       this.graceText.setText("");
     }
@@ -493,6 +493,7 @@ export class Hud {
 
   /** Toasts stack downward so two whispers never overlap (D98). */
   private activeToasts: Phaser.GameObjects.Container[] = [];
+  private readonly maxToasts = 3;
 
   /**
    * A whisper from the Vault (D98, operator: "make them professional"):
@@ -533,15 +534,25 @@ export class Hud {
     g.lineTo(-2.6, -h / 2);
     g.closePath();
     g.fillPath();
-    let top = 56;
-    for (const c of this.activeToasts) top = Math.max(top, c.y + 38);
-    const box = s.add.container(this.w >> 1, top + h / 2, [g, t]);
+    // cap the live stack (D126 — inspectors 4 & 5: floor-arrival / discovery
+    // bursts piled 4-5 toasts down over the play field, the FIRST STEPS sign
+    // and the bottom tray). Retire the oldest past the cap at once, then keep
+    // survivors anchored at the top so the column never marches down-screen.
+    while (this.activeToasts.length >= this.maxToasts) {
+      const old = this.activeToasts.shift();
+      if (old === undefined) break;
+      s.tweens.killTweensOf(old);
+      s.tweens.add({ targets: old, alpha: 0, duration: 140, onComplete: () => old.destroy() });
+    }
+    const box = s.add.container(this.w >> 1, 56 + h / 2, [g, t]);
     box.setScrollFactor(0);
     box.depth = 1002;
+    box.setData("h", h);
     this.root.add(box);
     this.activeToasts.push(box);
     box.setAlpha(0);
-    s.tweens.add({ targets: box, alpha: 1, y: "+=4", duration: 200, ease: "Sine.easeOut" });
+    this.reflowToasts();
+    s.tweens.add({ targets: box, alpha: 1, duration: 200, ease: "Sine.easeOut" });
     s.tweens.add({
       targets: box,
       alpha: 0,
@@ -550,7 +561,24 @@ export class Hud {
       onComplete: () => {
         this.activeToasts = this.activeToasts.filter((c) => c !== box);
         box.destroy();
+        this.reflowToasts();
       },
     });
+  }
+
+  /** Keep the toast column anchored at the top; slide survivors into their
+   *  slots when one retires so the stack can't drift down the play field. */
+  private reflowToasts(): void {
+    let y = 56;
+    for (const c of this.activeToasts) {
+      const ch = (c.getData("h") as number | undefined) ?? 34;
+      const targetY = y + ch / 2;
+      if (Math.abs(c.y - targetY) > 0.5) {
+        this.scene.tweens.add({ targets: c, y: targetY, duration: 130, ease: "Sine.easeOut" });
+      } else {
+        c.y = targetY;
+      }
+      y += ch + 6;
+    }
   }
 }

@@ -127,7 +127,11 @@ export function vignetteBreath(scene: Phaser.Scene, fx: WorldFx, floor: number):
 export function addSnuffGrade(cam: Phaser.Cameras.Scene2D.Camera): Phaser.Filters.ColorMatrix | null {
   if (!FX.snuffGrade) return null;
   const grade = cam.filters.internal.addColorMatrix();
-  grade.colorMatrix.saturate(-0.55).brightness(0.92, true);
+  // memory-view drain: desaturate toward grey, but DON'T pile extra darkness on
+  // an already-lightless snuffed scene (was brightness 0.92 — operator: "when I
+  // snuff the light is almost too low"). A hair of lift keeps it navigable while
+  // the sim radius (0, the whole risk of snuffing) is untouched for determinism.
+  grade.colorMatrix.saturate(-0.42).brightness(1.03, true);
   return grade;
 }
 
