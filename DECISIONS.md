@@ -1108,6 +1108,22 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+124. NETWORK LAG PASS (operator: "whole game is server lagging like
+    PUBG... graphics fine"; screenshot showed 3x "the Vault did not
+    answer"). Root causes + fixes: (a) RATE GATE — ACT_MIN_SPACING_MS
+    1000→300 (server + client MIN_SPACING_MS in lockstep, RETRY_DELAY
+    1000→400): the 1 s gate stacked on network latency, so rapid
+    rule-lookups hit the limit and timed out; descend (flush+fetch)
+    waited a full second before even starting. (b) RESOLUTION
+    FAILURES — resolveRuleAsync threw on the first flush blip, so the
+    rule never cached and the SAME interaction failed again ("did not
+    answer" loop that froze the world); now retries transient
+    flush/rate/network failures (5 attempts, backoff) before giving
+    up. (c) DPR REVERT 1.5→2 — the lag was the network, not the GPU;
+    dropping DPR only softened the art ("looking lowered resolution")
+    for nothing. Inherent unknown-rule + descend round-trips remain
+    (anti-cheat design) but are far shorter and no longer fail.
+
 123. HOSTED FEEL FIXES (live playtest: menu silent, movement laggy +
     dropped keys on BOTH mobile and desktop). Three causes, three
     fixes: (a) MENU MUSIC — unlock() did ctx.resume() only; many

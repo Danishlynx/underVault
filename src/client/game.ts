@@ -29,12 +29,12 @@ import { DescentScene } from "./scenes/Descent.js";
 export const PORTS_KEY = "uv-ports";
 
 /**
- * Effective device-pixel-ratio cap. 1.5× is the mobile crispness/perf balance
- * (D123): 2× rendered every filter (bloom + vignette) AND the whole scene at 4×
- * the fill rate, which tanked movement fps on real phone GPUs; 1.5× keeps most
- * of the sharpness for ~56% of that cost. Still far crisper than the 1× blur.
+ * Effective device-pixel-ratio cap. Back to 2× (D124): the movement lag was
+ * the server round-trips, NOT the GPU — dropping to 1.5× only softened the art
+ * for nothing (operator: "graphics fine, server lagging... it's looking lowered
+ * resolution"). 2× is crisp; the phone renders it fine.
  */
-export const UI_MAX_DPR = 1.5;
+export const UI_MAX_DPR = 2;
 
 /**
  * The single DPR factor everything renders at (game buffer, HUD compensation,

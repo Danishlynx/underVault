@@ -5,7 +5,12 @@ export const RUN_TTL_S = 93600; // 26 h  — run:{uid}:{d}
 export const CORPSE_TTL_S = 259200; // 72 h  — corpse lifetime (scores, not EXPIRE-only)
 export const CHRONICLE_TTL_S = 1209600; // 14 d  (M3)
 export const RUN_EXPIRY_MS = 2700000; // 45 min — token expiry after start (02 §7)
-export const ACT_MIN_SPACING_MS = 1000; // act-batch rate limit per token
+// act-batch rate limit per token. 1000 made descend (flush + fetch) and every
+// unknown-rule round-trip wait up to a full second on top of network latency —
+// felt like a freeze in the live playtest. 300 keeps a real anti-spam gate
+// (normal play flushes every 5 s, far under it) while cutting the perceived
+// lag ~3× (D124). Client MIN_SPACING_MS mirrors this — change both together.
+export const ACT_MIN_SPACING_MS = 300;
 export const GC_GRACE_S = 3600; // corpses removed only when expiryTs < now - GRACE (08 §3.1 determinism)
 export const ECHO_FLOOR_CAP = 50; // zRemRangeByRank cap (02 §5)
 export const ECHO_SERVE_MAX = 8; // echoes shipped per floor payload

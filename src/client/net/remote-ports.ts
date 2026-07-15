@@ -482,16 +482,29 @@ export async function createRemotePorts(): Promise<GamePorts> {
       if (hit !== undefined) return hit;
       // the pending batch INCLUDES the act that hit the unknown rule (the
       // driver pushes it via actApplied before awaiting) — the server replay
-      // consults the rule and returns it in ActRes.rules
-      await batcher.flush();
-      const effect = ruleCache.get(key);
-      if (effect === undefined) {
-        throw new Error(
-          `the vault did not reveal "${key}" — the triggering act must ride the flush ` +
-            "(push it via actApplied before awaiting resolveRuleAsync)",
-        );
+      // consults the rule and returns it in ActRes.rules.
+      // ROBUSTNESS (D124): on the live server a single flush can blip
+      // (transient rate/network) — retrying instead of throwing keeps the run
+      // fluid. A failed flush used to strand the rule and freeze the world with
+      // repeated "the Vault did not answer" toasts.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        let flushOk = false;
+        try {
+          await batcher.flush();
+          flushOk = true;
+        } catch {
+          // transient (rate/network) — retry after a backoff below
+        }
+        const effect = ruleCache.get(key);
+        if (effect !== undefined) return effect;
+        // a SUCCESSFUL flush that still didn't reveal the key means the server
+        // genuinely never consulted it — retrying cannot help, fail fast.
+        if (flushOk) break;
+        await new Promise<void>((resolve) => setTimeout(resolve, 250 + attempt * 250));
+        const late = ruleCache.get(key);
+        if (late !== undefined) return late;
       }
-      return effect;
+      throw new Error(`the vault did not reveal "${key}"`);
     },
 
     prefetchFloor(floor: number): void {

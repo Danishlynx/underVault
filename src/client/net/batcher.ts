@@ -40,9 +40,11 @@ import { ApiError, NetworkError } from "./api.js";
 
 export const FLUSH_AT_ACTS = 12;
 export const FLUSH_AFTER_MS = 5000;
-/** Client mirror of server ACT_MIN_SPACING_MS (08 §0.3) — do not lower. */
-export const MIN_SPACING_MS = 1000;
-export const RETRY_DELAY_MS = 1000;
+/** Client mirror of server ACT_MIN_SPACING_MS (08 §0.3). Lowered 1000→300
+ *  with the server (D124): the 1 s gate stacked on network latency and made
+ *  descend + rule-resolution feel frozen. Keep in lockstep with the server. */
+export const MIN_SPACING_MS = 300;
+export const RETRY_DELAY_MS = 400;
 /** Client mirror of server MAX_SEGMENT_STEPS (08 §0.3). */
 export const SEGMENT_MAX_STEPS = 256;
 
