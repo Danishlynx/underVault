@@ -778,102 +778,33 @@ export function paintMenuBackdrop(
     const mr = vigilRand(0xf1a3e5);
     const mcx = w * 0.1; // left of and behind the daily pillar
     const mcw = cw * 1.32; // broad — a mother among candles
-    const mBaseY = ledgeY - h * 0.014; // a step up-ledge: behind, not beside
-    const plinthH = h * 0.036;
-    const plinthW = mcw * 1.72;
-    const plinthTopY = mBaseY - plinthH;
+    // NO PLINTH (D111 — operator: "make it like the first candle"). The
+    // pedestal read as a floating saucer no matter how it was lit; she now
+    // seats onto the stone EXACTLY like the daily pillar — soft contact
+    // shadow, a firm seat at the foot, a wax pool hugging it. She just sits
+    // further back and left, so her ground line rides a touch higher.
+    const mBaseY = ledgeY - h * 0.022; // her ground line, a step back
     const mch = chFull * 1.6; // against the FRESH daily height, always
+    const plinthTopY = mBaseY; // her foot sits ON the stone — no lift, no gap
     const mTopY = plinthTopY - mch;
     const mHalf = mcw / 2;
     const mSpread = mcw * 0.14; // the heavy skirt flares the foot
-    // the STEP itself — the raised stone course she stands on. mBaseY sits
-    // above the ledge line, and without this mass the plinth floated in air
-    // (operator caught it). It runs down INTO the ledge and the frame's
-    // bottom settle, so her dais grows out of the same stone as everything.
-    const stepW = plinthW * 1.55;
-    const sx0 = mcx - stepW / 2;
-    const stepTop = mBaseY - h * 0.001;
-    const stepBot = ledgeY + h * 0.035;
-    const stepG = ctx.createLinearGradient(0, stepTop, 0, stepBot);
-    stepG.addColorStop(0, mix(C.void, C.surface, 0.62, 0.97));
-    stepG.addColorStop(0.35, mix(C.void, C.surface, 0.3, 0.97));
-    stepG.addColorStop(1, shade(C.void, 0.9, 0.97));
-    ctx.fillStyle = stepG;
-    ctx.fillRect(sx0, stepTop, stepW, stepBot - stepTop);
-    // her hearth catches the step's front lip
-    const lipG = ctx.createLinearGradient(sx0, 0, sx0 + stepW, 0);
-    lipG.addColorStop(0, mix(C.flame, C.bone, 0.5, 0));
-    lipG.addColorStop(0.5, mix(C.flame, C.bone, 0.42, 0.34));
-    lipG.addColorStop(1, mix(C.flame, C.bone, 0.5, 0));
-    ctx.strokeStyle = lipG;
-    ctx.lineWidth = 1;
-    line(sx0, stepTop + 0.5, sx0 + stepW, stepTop + 0.5);
-    // contact shadow — the plinth presses into the ledge stone (kept tight:
-    // a seat, not a saucer)
+    // soft contact shadow (the daily pillar's exact treatment, scaled to her)
     ctx.save();
-    ctx.translate(mcx, mBaseY + h * 0.003);
-    ctx.scale(1, 0.2);
-    const mContact = ctx.createRadialGradient(0, 0, 0, 0, 0, plinthW * 0.62);
-    mContact.addColorStop(0, shade(C.void, 0.55, 0.34)); // softer: a seat, not a gap
-    mContact.addColorStop(0.6, shade(C.void, 0.55, 0.16));
+    ctx.translate(mcx, mBaseY + mch * 0.008);
+    ctx.scale(1, 0.22);
+    const mContact = ctx.createRadialGradient(0, 0, 0, 0, 0, mcw * 1.3);
+    mContact.addColorStop(0, shade(C.void, 0.55, 0.72));
+    mContact.addColorStop(0.55, shade(C.void, 0.55, 0.4));
     mContact.addColorStop(1, shade(C.void, 0.55, 0));
     ctx.fillStyle = mContact;
-    ctx.fillRect(-plinthW, -plinthW, plinthW * 2, plinthW * 2);
+    ctx.fillRect(-mcw * 1.35, -mcw * 1.35, mcw * 2.7, mcw * 2.7);
     ctx.restore();
-    // the plinth — a low carved block: face, base course, slab lip. It lives
-    // inside the frame's bottom settle, so its stone runs a shade brighter
-    // than the ledge courses around it — her hearth-light explains the lift.
-    const px0 = mcx - plinthW / 2;
-    // her flame stands right over this stone — the pedestal is warmly lit, a
-    // clear pale block so she never floats above a black gap (D110)
-    const plinthG = ctx.createLinearGradient(0, plinthTopY, 0, mBaseY);
-    plinthG.addColorStop(0, mix(C.surface2, C.flame, 0.26, 0.99)); // hearth-warm crown
-    plinthG.addColorStop(0.45, mix(C.surface2, C.bone, 0.22, 0.99));
-    plinthG.addColorStop(1, mix(C.void, C.surface2, 0.66, 0.99));
-    ctx.fillStyle = plinthG;
-    ctx.fillRect(px0, plinthTopY, plinthW, plinthH);
-    // a radial hearth wash on the face — brightest under her foot, fading down
-    ctx.save();
+    // a firmer seat right at the foot — she SITS on the stone
+    ctx.fillStyle = shade(C.void, 0.55, 0.5);
     ctx.beginPath();
-    ctx.rect(px0, plinthTopY, plinthW, plinthH);
-    ctx.clip();
-    ctx.globalCompositeOperation = "lighter";
-    const pWash = ctx.createRadialGradient(mcx, plinthTopY, 0, mcx, plinthTopY, plinthW * 0.7);
-    pWash.addColorStop(0, shade(C.flame, 0.85, 0.2));
-    pWash.addColorStop(0.5, shade(C.flame, 0.8, 0.08));
-    pWash.addColorStop(1, shade(C.flame, 0.8, 0));
-    ctx.fillStyle = pWash;
-    ctx.fillRect(px0, plinthTopY, plinthW, plinthH);
-    ctx.restore();
-    ctx.fillStyle = mix(C.void, C.surface2, 0.72, 0.99); // base course, a hair wider
-    ctx.fillRect(px0 - w * 0.0035, mBaseY - plinthH * 0.28, plinthW + w * 0.007, plinthH * 0.28);
-    const slabH = Math.max(3, plinthH * 0.22);
-    ctx.fillStyle = mix(C.void, C.surface2, 0.95, 0.97); // the slab lips past the face
-    ctx.fillRect(px0 - w * 0.003, plinthTopY - slabH * 0.4, plinthW + w * 0.006, slabH);
-    ctx.strokeStyle = mix(C.flame, C.bone, 0.45, 0.45); // its edge catches her light
-    ctx.lineWidth = 1;
-    line(px0 - w * 0.003, plinthTopY - slabH * 0.4 + 0.5, px0 + plinthW + w * 0.003, plinthTopY - slabH * 0.4 + 0.5);
-    ctx.strokeStyle = shade(C.void, 0.55, 0.5); // shadow tucked under the lip
-    line(px0, plinthTopY + slabH * 0.65, px0 + plinthW, plinthTopY + slabH * 0.65);
-    // carved face: a groove either side of a small lozenge (token hues only)
-    const pfy = plinthTopY + plinthH * 0.56;
-    ctx.strokeStyle = shade(C.void, 0.6, 0.45);
-    line(px0 + plinthW * 0.12, pfy, px0 + plinthW * 0.38, pfy);
-    line(px0 + plinthW * 0.62, pfy, px0 + plinthW * 0.88, pfy);
-    ctx.strokeStyle = mix(C.void, C.boneDim, 0.55, 0.24);
-    line(px0 + plinthW * 0.12, pfy + 1, px0 + plinthW * 0.38, pfy + 1);
-    line(px0 + plinthW * 0.62, pfy + 1, px0 + plinthW * 0.88, pfy + 1);
-    ctx.save();
-    ctx.translate(mcx, pfy);
-    ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = shade(C.void, 0.6, 0.5);
-    ctx.fillRect(-plinthH * 0.15, -plinthH * 0.15, plinthH * 0.3, plinthH * 0.3);
-    ctx.fillStyle = mix(C.void, C.boneDim, 0.65, 0.4);
-    ctx.fillRect(-plinthH * 0.1, -plinthH * 0.1, plinthH * 0.2, plinthH * 0.2);
-    ctx.restore();
-    ctx.strokeStyle = shade(C.void, 0.7, 0.7); // cut-line, softer than the near pillar's
-    ctx.lineWidth = Math.max(1.2, s * 0.0028);
-    ctx.strokeRect(px0, plinthTopY, plinthW, plinthH);
+    ctx.ellipse(mcx + mcw * 0.03, mBaseY + mch * 0.004, mHalf + mSpread * 0.7, mch * 0.022, 0, 0, TAU);
+    ctx.fill();
     // her body — broad and stately: flanks bowing gently, the crown softened
     // by centuries of slow burning (no collapsed lip — she was never let
     // gutter), the foot flaring into the heavy skirt
@@ -990,24 +921,46 @@ export function paintMenuBackdrop(
     mdrip(mcx - mcw * 0.2, mTopY + mch * 0.028, mch * 0.16, mcw * 0.045, mFreshTop);
     mdrip(mcx + mcw * 0.3, mTopY + mch * 0.032, mch * 0.5, mcw * 0.055, mFreshTop);
     mdrip(mcx + mcw * 0.44, mTopY + mch * 0.055, mch * 0.24, mcw * 0.045);
-    // …and the heavy skirt at the foot: a frozen apron draping the slab,
-    // spilling partway down the plinth face
-    // her foot-wax fused to the slab: a snug warm cushion, NOT a wide saucer
-    // (D110 — the plate read floated her; hug the foot, don't extend past it)
-    ctx.fillStyle = mix(C.parchmentAged, C.flame, 0.16, 0.95);
-    ctx.beginPath();
-    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.4, h * 0.007, 0, 0, TAU);
+    // her wax pool — the tide-mark on the stone, exactly the daily pillar's
+    // treatment (D111): a calm warm lobed ring hugging the foot, painted flat.
+    // Restored, she never guttered, so the pool stays modest — no bright saucer.
+    const mPoolR = mHalf + mSpread * 0.75;
+    ctx.save();
+    ctx.translate(mcx + mcw * 0.04, mBaseY + mch * 0.006);
+    ctx.scale(1, 0.2);
+    const mPoolPts: Array<readonly [number, number]> = [];
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * TAU;
+      const r = mPoolR * (0.9 + mr() * 0.18);
+      mPoolPts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    const mPoolPath = (): void => {
+      const mid = (i: number): readonly [number, number] => {
+        const p = mPoolPts[i % 9]!;
+        const q = mPoolPts[(i + 1) % 9]!;
+        return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+      };
+      ctx.beginPath();
+      ctx.moveTo(mid(0)[0], mid(0)[1]);
+      for (let i = 1; i <= 9; i++) {
+        const p = mPoolPts[i % 9]!;
+        const m = mid(i);
+        ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]);
+      }
+      ctx.closePath();
+    };
+    const mPoolG = ctx.createRadialGradient(-mPoolR * 0.2, -mPoolR * 0.25, mPoolR * 0.06, 0, 0, mPoolR);
+    mPoolG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.22, 0.9));
+    mPoolG.addColorStop(0.55, mix(C.parchmentAged, C.boneDim, 0.5, 0.62));
+    mPoolG.addColorStop(1, mix(C.boneDim, C.void, 0.55, 0.3));
+    mPoolPath();
+    ctx.fillStyle = mPoolG;
     ctx.fill();
-    ctx.strokeStyle = shade(C.void, 0.7, 0.22);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.4, h * 0.007, 0, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.strokeStyle = shade(C.void, 0.7, 0.28); // the frozen lip
+    ctx.lineWidth = 1.2;
+    mPoolPath();
     ctx.stroke();
-    // tongues spilling over the slab lip — short runs that stay ON the face,
-    // never dangling past the plinth (they read as legs when they do)
-    mdrip(mcx - mHalf * 0.5, plinthTopY + h * 0.001, plinthH * 0.3, mcw * 0.044);
-    mdrip(mcx + mHalf * 0.06, plinthTopY + h * 0.001, plinthH * 0.44, mcw * 0.05);
-    mdrip(mcx + mHalf * 0.42, plinthTopY + h * 0.001, plinthH * 0.34, mcw * 0.04);
+    ctx.restore();
     // her wick — trimmed and sound: kept, not neglected
     const mWickY = mTopY + mch * 0.014;
     const mfx = mcx + mcw * 0.005;

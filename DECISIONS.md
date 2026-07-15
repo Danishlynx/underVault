@@ -1108,6 +1108,19 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+111. THE PLINTH IS GONE - she seats like the daily candle (operator,
+    after D110 still floated: "why cant you just make it like the
+    first candle, copy the first candle"). Correct call: the plinth
+    itself was the problem - no amount of lighting stopped a raised
+    slab from reading as a floating saucer under a big candle. Ripped
+    out the whole plinth/step/slab/lozenge/tongue apparatus; the
+    mother-candle now uses the daily pillar's exact seating - soft
+    contact shadow, a firm seat ellipse at the foot, a calm warm wax
+    pool hugging the base, foot ON the ground line (mBaseY, no lift).
+    The two candles are siblings on the same stone now; hers is just
+    bigger. LESSON: when a fix needs a third attempt, stop patching
+    the broken approach and copy the thing that already works.
+
 110. HER PEDESTAL READS AS STONE (operator: the mother-candle still
     floated). Root cause: the plinth block was painted near-void
     (mix toward surface2 at 0.92) so it vanished into the dark - the
