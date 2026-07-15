@@ -14,6 +14,17 @@
  * the ceiling is too far up to see (D83: the void stays pure); gold-ink
  * folio corners close the right and bottom.
  *
+ * THE CANDLE IS THE DAY'S CLOCK (D99): the caller passes `burn` 0..1 —
+ * freshly cut at dusk (the tall pillar), a guttering, weeping stub ~28% of
+ * the fresh height by the last hour. The BASE never moves; the top burns
+ * down. The melt story grows with the hour: more and longer frozen
+ * drip-runs, the crater lip sagging and collapsing gutter-side past 0.6, a
+ * ledge pool widening from a modest ring to a broad glossy apron with
+ * frozen rivulets over the ledge lip, a 1–2° slump past 0.5, the tally
+ * scratches swallowed by run-wax, and the warm response light dimming past
+ * 0.9 (the engine gutters the live flame to match). The returned geometry
+ * tracks the shrinking crater so the live flame always sits ON it.
+ *
  * Painted in the guildhall idiom: flat woodcut masses, fog-stop depth, token
  * colors via shade()/mix() only, a private seeded LCG for jitter. A shade
  * more luminous than gameplay — this is a poster, not fog-of-war — but the
@@ -48,18 +59,31 @@ function vigilRand(seed: number): () => number {
 
 const TAU = Math.PI * 2;
 
-/** Wick-tip anchor for the engine's live flame, as fractions of w/h. */
+/** Wick-tip anchor for the engine's live flame, plus the candle body's
+ *  bounding box (the live melt layer renders its crawling drips inside
+ *  it) — all fractions of w/h. flameY tracks the crater top as the
+ *  candle burns down. `candle` is ALWAYS returned; it is optional in the
+ *  type only because the caller's pre-paint placeholder geometry (menu.ts
+ *  BurnGeom) carries no box yet. */
 export interface MenuGeom {
   flameX: number;
   flameY: number;
   flameH: number;
+  candle?: { left: number; right: number; top: number; base: number };
 }
 
-export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: number): MenuGeom {
+export function paintMenuBackdrop(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  burn = 0,
+): MenuGeom {
   const C = COLOR_CSS;
   const rand = vigilRand(0x716117);
   const s = Math.min(w, h);
   const ink = shade(C.void, 0.7, 0.9);
+  // the day's clock (D99): 0 = freshly cut at dusk, 1 = dead stub
+  const b = Math.min(1, Math.max(0, burn));
 
   // ── geometry ─────────────────────────────────────────────────────────────
   // The Gate, far center-right; its crown dissolves into the vault dark
@@ -67,20 +91,38 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   const gx = w * 0.72;
   const gy = h * 0.4;
   const R = Math.min(s * 0.34, w * 0.24, h * 0.4);
-  // The candle, lower-left third, standing on the ledge. (Wick anchor is
-  // load-bearing — the live flame sits on it. Do not move.)
+  // The candle, lower-left third, standing on the ledge — the day burning
+  // down before the Gate. The BASE is fixed on the stone; the top sinks
+  // from the fresh pillar to a squat stub ~28% of its height. (Wick anchor
+  // is load-bearing — the live flame sits on it — and it TRACKS the crater
+  // as the candle shrinks. Never move the base.)
   const ledgeY = h * 0.865;
   const cx = w * 0.205;
   const cw = Math.min(h * 0.085, w * 0.1); // thick — nearly a pillar
-  const ch = h * 0.26;
+  const chFull = h * 0.26; // freshly cut at dusk
+  const ch = chFull * (1 - 0.72 * b); // burn 1 → 28% of the fresh height
   const topY = ledgeY - ch; // crater rim height
-  const wickLen = h * 0.021;
+  const sag = Math.max(0, (b - 0.6) / 0.4); // past 0.6 the lip collapses gutter-side
+  const leanRad = Math.max(0, (b - 0.5) / 0.5) * 0.03; // ≤ ~1.7° — old candles slump
+  const dim = 1 - 0.22 * Math.max(0, (b - 0.9) / 0.1); // response light gutters late
+  const cosL = Math.cos(leanRad);
+  const sinL = Math.sin(leanRad);
+  /** Rotate a candle-space point by the slump, about the fixed base. */
+  const leanPt = (x: number, y: number): readonly [number, number] => [
+    cx + (x - cx) * cosL - (y - ledgeY) * sinL,
+    ledgeY + (x - cx) * sinL + (y - ledgeY) * cosL,
+  ];
+  // the crater — deepening, drifting gutter-ward as the lip collapses
+  const craterCx = cx + cw * (0.02 + sag * 0.06);
+  const craterY = topY + ch * (0.028 + sag * 0.1);
+  const wickLen = h * 0.021 * (1 - 0.3 * b); // the stub keeps a shorter wick
   const wickTipX = cx + cw * 0.07; // the wick leans toward the Gate
   const wickTipY = topY - wickLen;
+  const [flameAX, flameAY] = leanPt(wickTipX, wickTipY); // post-slump anchor
   const FLAME_H = 0.07; // suggested live-flame height (fraction of h)
   // Where the live flame's luminous heart will hover — response light aims here.
-  const glowX = wickTipX;
-  const glowY = wickTipY - h * FLAME_H * 0.45;
+  const glowX = flameAX;
+  const glowY = flameAY - h * FLAME_H * 0.45;
   const breakX = w * 0.425; // where the ledge shears off into the gulf
 
   const line = (x0: number, y0: number, x1: number, y1: number): void => {
@@ -672,10 +714,11 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   for (const p of crest) ctx.lineTo(p.x, p.y);
   ctx.stroke();
   // …then candle-warmth, brightest beside the wax and falling off with
-  // distance in both directions — rim light with a visible source
+  // distance in both directions — rim light with a visible source (and it
+  // gutters with the flame in the day's last hours)
   const crestWarm = ctx.createLinearGradient(cx - w * 0.17, 0, cx + w * 0.24, 0);
   crestWarm.addColorStop(0, mix(C.flame, C.bone, 0.5, 0));
-  crestWarm.addColorStop(0.42, mix(C.flame, C.bone, 0.4, 0.5));
+  crestWarm.addColorStop(0.42, mix(C.flame, C.bone, 0.4, 0.5 * dim));
   crestWarm.addColorStop(1, mix(C.flame, C.bone, 0.5, 0));
   ctx.strokeStyle = crestWarm;
   ctx.beginPath();
@@ -689,7 +732,7 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   // the course joint nearest the candle catches a whisper of the same warmth
   const courseWarm = ctx.createLinearGradient(cx - w * 0.12, 0, cx + w * 0.16, 0);
   courseWarm.addColorStop(0, mix(C.flame, C.boneDim, 0.5, 0));
-  courseWarm.addColorStop(0.45, mix(C.flame, C.boneDim, 0.5, 0.16));
+  courseWarm.addColorStop(0.45, mix(C.flame, C.boneDim, 0.5, 0.16 * dim));
   courseWarm.addColorStop(1, mix(C.flame, C.boneDim, 0.5, 0));
   ctx.strokeStyle = courseWarm;
   line(cx - w * 0.12, courseY + 0.5, cx + w * 0.16, courseY + 0.5);
@@ -722,8 +765,120 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.beginPath();
   ctx.ellipse(cx + cw * 0.03, ledgeY + ch * 0.004, cw * 0.68, ch * 0.021, 0, 0, TAU);
   ctx.fill();
-  // (no pale apron ellipse here — a bright base under an unlit-bottom candle
-  // read as a saucer; the warm pool in §11 grades the light onto the stone)
+  // the wax pool — the day's tide-mark on the stone. Fresh: a modest dim
+  // ring hugging the foot (never a bright saucer — audit D-apron). By the
+  // last hours: a broad glossy apron, thick-lipped, with old tide-lines
+  // frozen in it and rivulets spilling over the ledge lip. Painted
+  // UNLEANED — wax lies flat however the pillar slumps above it.
+  const poolR = cw * (0.7 + 0.85 * b);
+  const poolRy = poolR * (0.16 + 0.1 * b);
+  const poolCx = cx + cw * 0.05;
+  const poolCy = ledgeY + poolRy * 0.22;
+  const poolA = 0.22 + 0.6 * b;
+  ctx.save();
+  ctx.translate(poolCx, poolCy);
+  ctx.scale(1, poolRy / poolR);
+  // wax never spreads in a circle — a lobed blob, smoothed through midpoints
+  const PN = 9;
+  const poolPts: Array<readonly [number, number]> = [];
+  for (let i = 0; i < PN; i++) {
+    const a = (i / PN) * TAU;
+    const r = poolR * (0.92 + rand() * 0.16);
+    poolPts.push([Math.cos(a) * r, Math.sin(a) * r]);
+  }
+  const poolPath = (): void => {
+    const mid = (i: number): readonly [number, number] => {
+      const p = poolPts[i % PN]!;
+      const q = poolPts[(i + 1) % PN]!;
+      return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    };
+    ctx.beginPath();
+    ctx.moveTo(mid(0)[0], mid(0)[1]);
+    for (let i = 1; i <= PN; i++) {
+      const p = poolPts[i % PN]!;
+      const m = mid(i);
+      ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]);
+    }
+    ctx.closePath();
+  };
+  const poolG = ctx.createRadialGradient(-poolR * 0.2, -poolR * 0.25, poolR * 0.06, 0, 0, poolR);
+  poolG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.22, poolA * 0.95));
+  poolG.addColorStop(0.55, mix(C.parchmentAged, C.boneDim, 0.5, poolA * 0.7));
+  poolG.addColorStop(1, mix(C.boneDim, C.void, 0.55, poolA * 0.35));
+  poolPath();
+  ctx.fillStyle = poolG;
+  ctx.fill();
+  // woodcut rim — the frozen lip of the apron…
+  ctx.strokeStyle = shade(C.void, 0.7, 0.22 + 0.26 * b);
+  ctx.lineWidth = 1.2;
+  poolPath();
+  ctx.stroke();
+  // …and a glossy inner lip where the low light lies on the fresh wax
+  ctx.save();
+  ctx.scale(0.94, 0.94);
+  poolPath();
+  ctx.strokeStyle = mix(C.parchment, C.flameHi, 0.35, (0.06 + 0.18 * b) * dim);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+  // old tide-lines — each pause of the melt leaves a lip, following the
+  // blob's own lobes (concentric circles read as a gramophone record)
+  for (let i = 0, tides = b > 0.75 ? 2 : 1; i < tides; i++) {
+    const tf = 0.58 + 0.22 * i + (rand() - 0.5) * 0.06;
+    ctx.save();
+    ctx.scale(tf, tf);
+    poolPath();
+    ctx.strokeStyle = mix(C.parchmentAged, C.bone, 0.4, 0.05 + 0.09 * b);
+    ctx.lineWidth = 1 / tf;
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+  // gloss — the guttering flame lies in the fresh wax like a wet mirror
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.translate(poolCx + cw * 0.1, poolCy);
+  ctx.scale(1, poolRy / poolR);
+  const glossG = ctx.createRadialGradient(0, 0, 0, 0, 0, poolR * 0.52);
+  glossG.addColorStop(0, shade(C.flameHi, 0.8, (0.08 + 0.15 * b) * dim));
+  glossG.addColorStop(1, shade(C.flameHi, 0.8, 0));
+  ctx.fillStyle = glossG;
+  ctx.fillRect(-poolR * 0.55, -poolR * 0.55, poolR * 1.1, poolR * 1.1);
+  ctx.restore();
+  // rivulets over the ledge lip — the apron overflows the crest and
+  // freezes running down the face
+  if (b > 0.3) {
+    for (let i = 0, rivN = 1 + Math.round(b * 3); i < rivN; i++) {
+      const rx = poolCx + (rand() - 0.5) * poolR * 1.5;
+      // hung from the apron's true rim — short sagging TONGUES of frozen
+      // wax, thick at the root (thin long ones read as stilts under a plate)
+      const relX = (rx - poolCx) / poolR;
+      const rimY = Math.sqrt(Math.max(0.05, 1 - relX * relX));
+      const y0 = poolCy + poolRy * (0.72 + rand() * 0.2) * rimY;
+      const len = h * (0.006 + rand() * 0.009) + h * 0.014 * b * rand();
+      const rw = Math.max(2, cw * 0.05 * (0.7 + rand() * 0.6));
+      const rivG = ctx.createLinearGradient(0, y0, 0, y0 + len);
+      rivG.addColorStop(0, mix(C.parchmentAged, C.boneDim, 0.3, 0.8));
+      rivG.addColorStop(1, mix(C.boneDim, C.void, 0.45, 0.55));
+      ctx.fillStyle = rivG;
+      ctx.beginPath();
+      ctx.moveTo(rx - rw / 2, y0);
+      ctx.lineTo(rx - rw * 0.34, y0 + len - rw * 0.5);
+      ctx.arc(rx, y0 + len - rw * 0.5, rw * 0.34, Math.PI, 0, true);
+      ctx.lineTo(rx + rw / 2, y0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(C.void, 0.7, 0.18);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  // the pillar slumps 1–2° past mid-burn — everything wax leans together,
+  // pivoting on the fixed base (the pool and stone stay level)
+  ctx.save();
+  ctx.translate(cx, ledgeY);
+  ctx.rotate(leanRad);
+  ctx.translate(-cx, -ledgeY);
   // the body — melted foot, eroded crater rim sagging toward the gutter side
   const cwHalf = cw / 2;
   const spread = cw * 0.09;
@@ -736,10 +891,20 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
       cx - cwHalf + cw * 0.02,
       ledgeY - ch * 0.62,
       cx - cw * 0.43,
-      topY + ch * 0.005,
+      topY + ch * (0.005 - sag * 0.055), // the high horn survives windward
     );
-    ctx.quadraticCurveTo(cx - cw * 0.1, topY - ch * 0.012, cx + cw * 0.08, topY + ch * 0.018);
-    ctx.quadraticCurveTo(cx + cw * 0.28, topY + ch * 0.035, cx + cw * 0.41, topY + ch * 0.03);
+    ctx.quadraticCurveTo(
+      cx - cw * 0.1,
+      topY - ch * 0.012 + sag * ch * 0.04,
+      cx + cw * 0.08,
+      topY + ch * (0.018 + sag * 0.1),
+    );
+    ctx.quadraticCurveTo(
+      cx + cw * 0.28,
+      topY + ch * (0.035 + sag * 0.16),
+      cx + cw * 0.41,
+      topY + ch * (0.03 + sag * 0.22), // …and the gutter lip collapses
+    );
     ctx.bezierCurveTo(
       cx + cwHalf + cw * 0.01,
       ledgeY - ch * 0.6,
@@ -771,8 +936,9 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   sideG.addColorStop(1, shade(C.void, 0.8, 0.16));
   ctx.fillStyle = sideG;
   ctx.fillRect(cx - cw, topY - ch * 0.05, cw * 2, ch * 1.1);
-  // tally scratches in the wax — someone counted nights here
-  ctx.strokeStyle = shade(C.boneDim, 0.85, 0.35);
+  // tally scratches in the wax — someone counted nights here. The day's
+  // run-wax swallows them: they fade as the ribbons thicken over them
+  ctx.strokeStyle = shade(C.boneDim, 0.85, 0.35 * (1 - 0.5 * b));
   ctx.lineWidth = 1;
   const tallyY = ledgeY - ch * 0.4;
   for (let i = 0; i < 6; i++) {
@@ -784,14 +950,23 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.strokeStyle = ink; // the woodcut cut-line
   ctx.lineWidth = Math.max(1.5, s * 0.0035);
   ctx.stroke();
-  // the crater — a melted well around the wick root
+  // the crater — a melted well around the wick root, deepening and
+  // drifting toward the collapsed lip as the day goes
   ctx.fillStyle = mix(C.parchmentAged, C.ink, 0.42);
   ctx.beginPath();
-  ctx.ellipse(cx + cw * 0.02, topY + ch * 0.028, cw * 0.27, ch * 0.016, 0, 0, TAU);
+  ctx.ellipse(craterCx, craterY, cw * (0.27 + sag * 0.08), ch * 0.016 + cw * 0.02 * b, 0, 0, TAU);
   ctx.fill();
   ctx.fillStyle = mix(C.ink, C.void, 0.3, 0.8);
   ctx.beginPath();
-  ctx.ellipse(cx + cw * 0.02, topY + ch * 0.03, cw * 0.15, ch * 0.009, 0, 0, TAU);
+  ctx.ellipse(
+    craterCx,
+    craterY + ch * 0.002,
+    cw * (0.15 + sag * 0.05),
+    ch * 0.009 + cw * 0.012 * b,
+    0,
+    0,
+    TAU,
+  );
   ctx.fill();
   // the drip skirt — fresh runs at the rim, old ribbons down the flanks
   const drip = (x: number, yTop: number, len: number, wr: number, top: string, bot: string): void => {
@@ -825,6 +1000,18 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   drip(cx - cw * 0.44, topY + ch * 0.05, ch * 0.52, cw * 0.05, oldTop, oldBot);
   drip(cx + cw * 0.44, topY + ch * 0.04, ch * 0.9, cw * 0.06, oldTop, oldBot);
   drip(cx + cw * 0.1, topY + ch * 0.06, ch * 0.44, cw * 0.045, oldTop, oldBot);
+  // …and the day's own runs: each burnt hour leaves another frozen ribbon,
+  // longer against the shrinking body — by the last hours they reach the
+  // foot and bury the tally band
+  for (let i = 0, extra = Math.round(b * 5); i < extra; i++) {
+    const ox = (rand() - 0.5) * 0.9;
+    const yT = topY + ch * (0.03 + rand() * 0.08);
+    const len = Math.min(
+      ledgeY - yT - ch * 0.015,
+      ch * (0.4 + rand() * 0.35) + ch * b * (0.3 + rand() * 0.35),
+    );
+    drip(cx + cw * ox, yT, Math.max(len, cw * 0.14), cw * (0.038 + rand() * 0.028), oldTop, oldBot);
+  }
   const skirt: ReadonlyArray<readonly [number, number, number]> = [
     // [x offset (cw), length (ch), halfWidth (cw)]
     [-0.36, 0.13, 0.055],
@@ -834,7 +1021,22 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
     [0.38, 0.16, 0.06],
   ];
   for (const [ox, ol, owr] of skirt) {
-    drip(cx + cw * ox, topY + ch * (0.02 + rand() * 0.02), ch * ol, cw * owr, freshTop, freshBot);
+    // the fresh rim-drips reach further down the shortening body late-day
+    const len = Math.min(ch * ol * (1 + 0.7 * b), ch * 0.92);
+    drip(cx + cw * ox, topY + ch * (0.02 + rand() * 0.02), len, cw * owr, freshTop, freshBot);
+  }
+  if (sag > 0) {
+    // the collapsed lip gutters — one broad molten run escapes it and
+    // feeds the pool below
+    const gy0 = topY + ch * (0.04 + sag * 0.2);
+    drip(
+      cx + cw * (0.3 + sag * 0.06),
+      gy0,
+      (ledgeY - gy0) * (0.55 + 0.43 * sag),
+      cw * (0.065 + sag * 0.035),
+      freshTop,
+      freshBot,
+    );
   }
   // the base settles into shadow — wax and ribbons together, clipped to the
   // silhouette, so the pillar is brightest where the flame will live
@@ -853,7 +1055,7 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.strokeStyle = mix(C.ink, C.void, 0.45);
   ctx.lineWidth = Math.max(2, h * 0.0045);
   ctx.beginPath();
-  ctx.moveTo(cx + cw * 0.01, topY + ch * 0.022);
+  ctx.moveTo(craterCx - cw * 0.01, craterY - ch * 0.004);
   ctx.quadraticCurveTo(cx + cw * 0.02, topY - wickLen * 0.55, wickTipX, wickTipY);
   ctx.stroke();
   // char crumb at the tip; one unburnt hair low on the shaft
@@ -865,34 +1067,41 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.lineWidth = 1;
   line(cx + cw * 0.012, topY + ch * 0.018, cx + cw * 0.02, topY - wickLen * 0.3);
   ctx.restore();
+  ctx.restore(); // end of the slump — stone, pool and light are level again
 
   // ── 11. response light — painted as if the live flame already burns ──────
+  // (past burn 0.9 the flame above is guttering — everything warm here
+  // carries the `dim` factor so the whole answer-light breathes out)
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   // ambient bloom around where the flame's heart will hover
   const ambient = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, h * 0.27);
-  ambient.addColorStop(0, shade(C.flame, 0.6, 0.16));
-  ambient.addColorStop(0.4, shade(C.ember, 0.55, 0.06));
+  ambient.addColorStop(0, shade(C.flame, 0.6, 0.16 * dim));
+  ambient.addColorStop(0.4, shade(C.ember, 0.55, 0.06 * dim));
   ambient.addColorStop(1, shade(C.ember, 0.55, 0));
   ctx.fillStyle = ambient;
   ctx.fillRect(glowX - h * 0.28, glowY - h * 0.28, h * 0.56, h * 0.56);
   // a hotter crown on the crater rim and fresh skirt — the wax nearest the
   // flame glows; the shaft below has already fallen back to shadow
-  const crown = ctx.createRadialGradient(wickTipX, topY + ch * 0.02, 0, wickTipX, topY + ch * 0.02, cw * 1.5);
-  crown.addColorStop(0, shade(C.flameHi, 0.7, 0.24));
+  const [crownX, crownY] = leanPt(craterCx, craterY - ch * 0.008);
+  const crown = ctx.createRadialGradient(crownX, crownY, 0, crownX, crownY, cw * 1.5);
+  crown.addColorStop(0, shade(C.flameHi, 0.7, 0.24 * dim));
   crown.addColorStop(1, shade(C.flameHi, 0.7, 0));
   ctx.fillStyle = crown;
-  ctx.fillRect(wickTipX - cw * 1.6, topY - cw * 1.6, cw * 3.2, cw * 3.2);
-  // the warm pool — a broad soft grade across the ledge stone, no hard edge
-  ctx.translate(cx + cw * 0.3, ledgeY + ch * 0.015);
+  ctx.fillRect(crownX - cw * 1.6, crownY - cw * 1.6, cw * 3.2, cw * 3.2);
+  // the warm pool — a broad soft grade across the ledge stone, no hard
+  // edge. Sized to the FRESH pillar (the stone doesn't shrink), drawing in
+  // only a little as the low flame lights less of the hall
+  const lightR = chFull * (1.4 - 0.45 * b);
+  ctx.translate(cx + cw * 0.3, ledgeY + chFull * 0.015);
   ctx.scale(1, 0.32);
-  const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, ch * 1.4);
-  pool.addColorStop(0, shade(C.flame, 0.65, 0.3));
-  pool.addColorStop(0.2, shade(C.flame, 0.6, 0.18));
-  pool.addColorStop(0.5, shade(C.ember, 0.55, 0.09));
+  const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, lightR);
+  pool.addColorStop(0, shade(C.flame, 0.65, 0.3 * dim));
+  pool.addColorStop(0.2, shade(C.flame, 0.6, 0.18 * dim));
+  pool.addColorStop(0.5, shade(C.ember, 0.55, 0.09 * dim));
   pool.addColorStop(1, shade(C.ember, 0.55, 0));
   ctx.fillStyle = pool;
-  ctx.fillRect(-ch * 1.45, -ch * 1.45, ch * 2.9, ch * 2.9);
+  ctx.fillRect(-lightR * 1.05, -lightR * 1.05, lightR * 2.1, lightR * 2.1);
   ctx.restore();
   // dust motes drifting where flame-light reaches — warm-tinted only
   // (flame/ember hues, never pale-on-dark), hugging the candle glow and the
@@ -999,5 +1208,17 @@ export function paintMenuBackdrop(ctx: CanvasRenderingContext2D, w: number, h: n
     ctx.restore();
   }
 
-  return { flameX: wickTipX / w, flameY: wickTipY / h, flameH: FLAME_H };
+  // the anchor rides the slumped wick tip; the box hugs the body (melt
+  // layer drips crawl inside it), its top a breath above the crater rim
+  return {
+    flameX: flameAX / w,
+    flameY: flameAY / h,
+    flameH: FLAME_H,
+    candle: {
+      left: (cx - cwHalf - spread) / w,
+      right: (cx + cwHalf + spread + ch * sinL) / w,
+      top: (topY - ch * 0.03) / h,
+      base: ledgeY / h,
+    },
+  };
 }

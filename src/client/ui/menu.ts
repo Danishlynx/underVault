@@ -18,12 +18,31 @@ import { shade, mix } from "../render/paint.js";
 import { paintMenuBackdrop, type MenuGeom } from "./menu/backdrop.js";
 import { paintGlassOverlay } from "./menu/glass.js";
 
+/** The DAY as burn fraction 0..1 (D99): the menu candle is the world's
+ *  clock — cut fresh at dusk, a weeping stub by the last hour. Dev dusk =
+ *  local midnight; the port anchors it to the server's day boundary.
+ *  Debug: ?burn=0.95 overrides. */
+function dayBurn(): number {
+  const o = new URLSearchParams(window.location.search).get("burn");
+  if (o !== null) return Math.min(1, Math.max(0, Number(o) || 0));
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return (now.getTime() - dayStart) / 86_400_000;
+}
+
+/** Extended geometry the burn-aware backdrop returns (candle body box,
+ *  fractions of w/h) — optional until the painter ships it. */
+type BurnGeom = MenuGeom & {
+  candle?: { left: number; right: number; top: number; base: number };
+};
+type BurnPainter = (ctx: CanvasRenderingContext2D, w: number, h: number, burn?: number) => BurnGeom;
+
 /** Structural slice of AudioGraph the menu needs (keeps this file decoupled). */
 export interface MenuAudio {
   unlock(): void;
   startMenuTheme(): void;
   stopMenuTheme(): void;
-  play(cue: "inspect" | "sheet"): void;
+  play(cue: "inspect" | "sheet" | "relight"): void;
   setMuted(m: boolean): void;
   readonly muted: boolean;
 }
@@ -43,6 +62,9 @@ export interface MenuVitals {
   codexPct: number;
   fallenToday: number;
   rumor: string;
+  /** today's candle already burned (one per day) — BEGIN goes dark (D98).
+   *  Dev adapter never sets it; the server port flips it for real. */
+  spent?: boolean;
 }
 
 // Private LCG (same law as the hall: never touch paint.ts crand()).
@@ -151,6 +173,15 @@ function injectStyles(): void {
 .uv-menu-items {
   margin-top: clamp(18px, 5vh, 44px);
   display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.uv-menu-spent, .uv-menu-spent:hover, .uv-menu-spent:focus-visible {
+  color: var(--disproven); cursor: default; text-shadow: 0 1px 8px var(--void);
+}
+.uv-menu-spent::before, .uv-menu-spent::after { display: none; }
+.uv-menu-dusk {
+  font-family: var(--font-display); font-style: italic;
+  font-size: var(--size-body-sm); color: var(--bone-dim);
+  text-shadow: 0 1px 6px var(--void);
 }
 .uv-menu-rumor {
   margin-top: clamp(14px, 3.5vh, 30px);
@@ -312,6 +343,11 @@ export function openMainMenu(
   flame.className = "uv-menu-flame uv-menu-stage";
   root.appendChild(flame);
 
+  // the wax weeps in real time (D99) — drips crawl the candle's flank
+  const melt = document.createElement("canvas");
+  melt.className = "uv-menu-flame uv-menu-stage";
+  root.appendChild(melt);
+
   // the pane (D86): glass between the viewer and the vigil — above the
   // scene and the flame, below the type
   const pane = document.createElement("canvas");
@@ -340,8 +376,15 @@ export function openMainMenu(
     items.appendChild(b);
     return b;
   };
-  const beginBtn = mkItem("Begin the Descent", true);
+  const spent = vitals?.spent === true;
+  const beginBtn = mkItem(spent ? "The candle is spent" : "Begin the Descent", true);
   beginBtn.classList.add("uv-menu-begin"); // harness hook
+  if (spent) {
+    beginBtn.disabled = true;
+    beginBtn.classList.add("uv-menu-spent");
+    const dusk = el("div", "uv-menu-dusk uv-menu-stage", "One candle a day. The next is cut at dusk.");
+    items.appendChild(dusk);
+  }
   const tellingBtn = mkItem("The Telling", false);
   const codexBtn = mkItem("The Codex", false);
   const soundBtn = mkItem(`Sound — ${audio.muted ? "off" : "on"}`, false);
@@ -371,8 +414,10 @@ export function openMainMenu(
   }
 
   // ── paint + layout ────────────────────────────────────────────────────
-  let geom: MenuGeom = { flameX: 0.24, flameY: 0.58, flameH: 0.09 };
+  let geom: BurnGeom = { flameX: 0.24, flameY: 0.58, flameH: 0.09 };
   let flamePx = 40; // geom.flameH in px, kept current by layout()
+  let burn = dayBurn(); // the candle IS the day (D99)
+  let meltBox = { x: 0, y: 0, w: 0, h: 0 };
   let closed = false;
 
   const layout = (): void => {
@@ -385,7 +430,7 @@ export function openMainMenu(
     const ctx = bg.getContext("2d");
     if (ctx !== null) {
       ctx.scale(dpr, dpr);
-      geom = paintMenuBackdrop(ctx, w, h);
+      geom = (paintMenuBackdrop as BurnPainter)(ctx, w, h, burn);
     }
     // live-flame canvas hugs the wick tip
     const fH = geom.flameH * h;
@@ -409,6 +454,27 @@ export function openMainMenu(
     glow.style.left = `${Math.round(geom.flameX * w - gr)}px`;
     glow.style.top = `${Math.round(geom.flameY * h - gr * 1.06)}px`;
     glow.style.background = `radial-gradient(circle, ${shade(C.flame, 1, 0.16)} 0%, ${shade(C.ember, 1, 0.07)} 42%, transparent 68%)`;
+    // the melt layer hugs the candle's body (lives once the painter
+    // ships the candle box; hidden until then)
+    if (geom.candle !== undefined) {
+      const cb = geom.candle;
+      meltBox = {
+        x: Math.round(cb.left * w) - 14,
+        y: Math.round(cb.top * h) - 10,
+        w: Math.round((cb.right - cb.left) * w) + 28,
+        h: Math.round((cb.base - cb.top) * h) + 24,
+      };
+      melt.width = Math.round(meltBox.w * dpr);
+      melt.height = Math.round(meltBox.h * dpr);
+      melt.style.width = `${meltBox.w}px`;
+      melt.style.height = `${meltBox.h}px`;
+      melt.style.left = `${meltBox.x}px`;
+      melt.style.top = `${meltBox.y}px`;
+      melt.getContext("2d")?.scale(dpr, dpr);
+      melt.style.display = "";
+    } else {
+      melt.style.display = "none";
+    }
     // the pane covers the full frame; repainted with the backdrop
     pane.width = Math.round(w * dpr);
     pane.height = Math.round(h * dpr);
@@ -437,17 +503,38 @@ export function openMainMenu(
   });
   ro.observe(host);
 
-  // ── the living flame ──────────────────────────────────────────────────
+  // ── the living flame, the weeping wax, the turning of the day (D99) ────
   let flameRaf = 0;
   let gust = 0;
   let gustTarget = 0;
   let nextGustAt = 1.5;
+  interface Drip { u: number; y: number; v: number; r: number }
+  const drips: Drip[] = [];
+  let nextDripAt = 4 + Math.random() * 6;
+  let phase: "alive" | "dying" | "dark" | "reborn" = "alive";
+  let phaseAt = 0;
+  let lastClock = 0;
   const t0 = performance.now();
   const tick = (): void => {
     if (closed) return;
     flameRaf = window.requestAnimationFrame(tick);
     if (document.hidden) return;
     const t = (performance.now() - t0) / 1000;
+
+    // the world clock: burn creeps with real time; past dusk the candle
+    // dies, the dark holds its breath, and a fresh one is cut
+    if (phase === "alive" && t - lastClock > 20) {
+      lastClock = t;
+      const nb = dayBurn();
+      if (nb < burn - 0.5) {
+        phase = "dying";
+        phaseAt = t;
+      } else if (Math.abs(nb - burn) > 0.004) {
+        burn = nb;
+        layout();
+      }
+    }
+
     if (t > nextGustAt) {
       gustTarget = (Math.random() - 0.5) * 1.6;
       nextGustAt = t + 1.2 + Math.random() * 3.4;
@@ -455,11 +542,93 @@ export function openMainMenu(
     gust += (gustTarget - gust) * 0.03;
     gustTarget *= 0.995;
     const sway = Math.sin(t * 2.3) * 0.35 + Math.sin(t * 5.1 + 1.7) * 0.22 + gust;
-    const flick = 1 + Math.sin(t * 9.7) * 0.04 + Math.sin(t * 13.3 + 0.6) * 0.05;
+    // in its final hours the flame gutters — smaller, more anxious
+    const g = Math.min(1, Math.max(0, (burn - 0.85) / 0.15));
+    const flick = 1 + Math.sin(t * 9.7) * 0.04 + Math.sin(t * 13.3 + 0.6) * 0.05 + Math.sin(t * 23.7) * 0.08 * g;
+    let scale = 1 - 0.28 * g;
+    if (phase === "dying") {
+      const p = Math.min(1, (t - phaseAt) / 0.7);
+      scale *= 1 - p;
+      if (p >= 1) {
+        phase = "dark";
+        phaseAt = t;
+      }
+    } else if (phase === "dark") {
+      scale = 0;
+      if (t - phaseAt > 1.4) {
+        burn = dayBurn();
+        layout();
+        phase = "reborn";
+        phaseAt = t;
+        if (woken) audio.play("relight");
+      }
+    } else if (phase === "reborn") {
+      const p = Math.min(1, (t - phaseAt) / 0.8);
+      scale = p < 0.7 ? (p / 0.7) * 1.15 : 1.15 - 0.15 * ((p - 0.7) / 0.3);
+      if (p >= 1) phase = "alive";
+    }
+
     const fctx = flame.getContext("2d");
     if (fctx === null) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    drawFlame(fctx, flame.width / dpr, flame.height / dpr, flamePx, t, sway, flick);
+    const fw = flame.width / dpr;
+    const fh = flame.height / dpr;
+    if (scale <= 0.01) {
+      // only a thread of smoke where the flame stood
+      fctx.clearRect(0, 0, fw, fh);
+      const sp = Math.min(1, (t - phaseAt) / 1.4);
+      const sx = fw / 2;
+      const sy = fh - flamePx * 0.35;
+      fctx.strokeStyle = shade(C.boneDim, 1, 0.28 * (1 - sp));
+      fctx.lineWidth = 1.4;
+      fctx.beginPath();
+      fctx.moveTo(sx, sy);
+      fctx.bezierCurveTo(sx + 3, sy - 14 - sp * 22, sx - 4, sy - 26 - sp * 30, sx + 2, sy - 38 - sp * 40);
+      fctx.stroke();
+    } else {
+      drawFlame(fctx, fw, fh, flamePx * scale, t, sway, flick);
+    }
+
+    // the wax weeps: beads crawl the flank, faster as dusk nears
+    const mctx = melt.getContext("2d");
+    if (mctx !== null && geom.candle !== undefined && melt.style.display !== "none") {
+      const mw = meltBox.w;
+      const mh = meltBox.h;
+      mctx.clearRect(0, 0, mw, mh);
+      if (phase === "alive" && t > nextDripAt && drips.length < 3) {
+        const side = Math.random() < 0.5;
+        drips.push({
+          u: side ? 0.12 + Math.random() * 0.14 : 0.74 + Math.random() * 0.14,
+          y: 10,
+          v: 5 + Math.random() * 8,
+          r: 1.6 + Math.random() * 1.3,
+        });
+        nextDripAt = t + (g > 0 ? 2.5 + Math.random() * 3 : 6 + Math.random() * 8);
+      }
+      for (let i = drips.length - 1; i >= 0; i--) {
+        const d = drips[i]!;
+        d.y += d.v * (1 / 60) * (0.6 + 0.4 * Math.sin(t * 1.7 + d.u * 9) ** 2);
+        const dx = (d.u + Math.sin(d.y * 0.05 + d.u * 20) * 0.012) * mw;
+        const trail = mctx.createLinearGradient(dx, d.y - 34, dx, d.y);
+        trail.addColorStop(0, shade(C.parchment, 1, 0));
+        trail.addColorStop(1, shade(C.parchment, 1.06, 0.28));
+        mctx.strokeStyle = trail;
+        mctx.lineWidth = d.r * 1.5;
+        mctx.beginPath();
+        mctx.moveTo(dx, Math.max(6, d.y - 34));
+        mctx.lineTo(dx, d.y);
+        mctx.stroke();
+        const bead = mctx.createRadialGradient(dx - d.r * 0.3, d.y - d.r * 0.3, 0, dx, d.y, d.r * 1.8);
+        bead.addColorStop(0, mix(C.parchment, C.flameHi, 0.4, 0.95));
+        bead.addColorStop(0.7, shade(C.parchment, 0.9, 0.75));
+        bead.addColorStop(1, shade(C.parchment, 0.7, 0));
+        mctx.fillStyle = bead;
+        mctx.beginPath();
+        mctx.ellipse(dx, d.y, d.r, d.r * 1.5, 0, 0, Math.PI * 2);
+        mctx.fill();
+        if (d.y > mh - 12) drips.splice(i, 1);
+      }
+    }
   };
   if (!REDUCED()) tick();
 
@@ -494,6 +663,7 @@ export function openMainMenu(
   const activate = (b: HTMLButtonElement): void => {
     if (closed) return;
     if (b === beginBtn) {
+      if (spent) return; // the day is over — the keyboard obeys too (D98)
       handlers.onBegin();
       return;
     }
