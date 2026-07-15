@@ -15,6 +15,9 @@ import { paintCandlemaid } from "./story/candlemaid.js";
 import { paintDelvers } from "./story/delvers.js";
 import { paintWaystone } from "./story/waystone.js";
 import { paintDescent } from "./story/descent.js";
+import { paintMeeting1 } from "./story/meeting1.js";
+import { paintMeeting2 } from "./story/meeting2.js";
+import { paintMeeting3 } from "./story/meeting3.js";
 
 interface Slide {
   paint: (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
@@ -55,6 +58,24 @@ const SLIDES: Slide[] = [
 ];
 
 const HOLD_MS = 6500; // gentle auto-advance; any tap moves on sooner
+
+// The Meeting — what waits behind the Seal (D101). No skip: this is the
+// game's answer, and the player broke twenty-five floors to hear it.
+const MEETING: Slide[] = [
+  {
+    paint: paintMeeting1,
+    caption: "She does not turn.\n“Do they still cut their candles from mine?”",
+  },
+  {
+    paint: paintMeeting2,
+    caption: "“Then they remember me. Give me what is left of yours.”",
+  },
+  {
+    paint: paintMeeting3,
+    caption: "“The way up is shorter than the way down. It always was.”",
+  },
+];
+const MEETING_HOLD_MS = 11000; // reverent pace; a tap still advances
 
 let styled = false;
 function injectStyles(): void {
@@ -118,8 +139,10 @@ function injectStyles(): void {
   document.head.appendChild(style);
 }
 
-export function openStoryIntro(
+function openSlideshow(
   host: HTMLElement,
+  slides: Slide[],
+  opts: { skipLabel: string | null; holdMs: number },
   onDone: () => void,
   audio?: { play(cue: "sheet"): void },
 ): () => void {
@@ -133,14 +156,15 @@ export function openStoryIntro(
   root.appendChild(caption);
   const dots = el("div", "uv-story-dots");
   const dotEls: HTMLElement[] = [];
-  for (let i = 0; i < SLIDES.length; i++) {
+  for (let i = 0; i < slides.length; i++) {
     const d = el("span", "uv-story-dot");
     dotEls.push(d);
     dots.appendChild(d);
   }
   root.appendChild(dots);
-  const skip = el("button", "uv-story-skip", "Skip the telling") as HTMLButtonElement;
+  const skip = el("button", "uv-story-skip", opts.skipLabel ?? "") as HTMLButtonElement;
   skip.type = "button";
+  if (opts.skipLabel === null) skip.style.display = "none";
   root.appendChild(skip);
 
   let index = -1;
@@ -171,13 +195,13 @@ export function openStoryIntro(
 
   const show = (i: number): void => {
     if (closed) return;
-    if (i >= SLIDES.length) {
+    if (i >= slides.length) {
       finish();
       return;
     }
     index = i;
     if (i > 0) audio?.play("sheet"); // a page turns in the telling (D90)
-    const slide = SLIDES[i]!;
+    const slide = slides[i]!;
     const back = 1 - front;
     paintSlide(canvases[back]!, slide);
     canvases[back]!.classList.add("uv-story-show");
@@ -190,7 +214,7 @@ export function openStoryIntro(
     }, 220);
     dotEls.forEach((d, di) => d.classList.toggle("uv-story-on", di === i));
     window.clearTimeout(timer);
-    timer = window.setTimeout(() => show(index + 1), HOLD_MS);
+    timer = window.setTimeout(() => show(index + 1), opts.holdMs);
   };
 
   root.addEventListener("pointerup", (ev) => {
@@ -211,4 +235,21 @@ export function openStoryIntro(
     window.removeEventListener("keydown", onKey);
     finish();
   };
+}
+
+export function openStoryIntro(
+  host: HTMLElement,
+  onDone: () => void,
+  audio?: { play(cue: "sheet"): void },
+): () => void {
+  return openSlideshow(host, SLIDES, { skipLabel: "Skip the telling", holdMs: HOLD_MS }, onDone, audio);
+}
+
+/** The finale behind the Seal — no skip; Escape still releases it. */
+export function openMeeting(
+  host: HTMLElement,
+  onDone: () => void,
+  audio?: { play(cue: "sheet"): void },
+): () => void {
+  return openSlideshow(host, MEETING, { skipLabel: null, holdMs: MEETING_HOLD_MS }, onDone, audio);
 }

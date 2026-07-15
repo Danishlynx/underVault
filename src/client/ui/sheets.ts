@@ -278,16 +278,16 @@ export function openExitSheet(
 
 export function openVictorySheet(host: HTMLElement, summary: RunSummary, onDone: () => void): () => void {
   const close = openSheet(host, (sheet) => {
-    sheet.appendChild(el("div", "uv-cause", "THE BOTTOM"));
+    sheet.appendChild(el("div", "uv-cause", "THE FIRST FLAME IS FED"));
     sheet.appendChild(el("hr", "uv-rule"));
     sheet.appendChild(
       el(
         "p",
         "uv-gold",
-        `Floor XXV. Day ${summary.day}. The Seal knew your name — ${summary.discoveries} truths carried, and the Vault goes no deeper.`,
+        `Floor XXV. Day ${summary.day}. Five truths opened the Seal; your candle's last wax went to hers. The Vault goes no deeper — and she keeps the flame your town still lights its wicks from.`,
       ),
     );
-    sheet.appendChild(el("p", "uv-dim", "Season 2 will remember who came first."));
+    sheet.appendChild(el("p", "uv-dim", "She stayed. Someone had to. The town will remember who reached her first."));
     const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
     seal.addEventListener("click", () => {
       close();
