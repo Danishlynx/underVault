@@ -273,14 +273,15 @@ export class Hud {
     h = h / f;
     this.w = w;
     this.h = h;
-    // D126: on touch devices lift the bar clear of mobile-browser bottom
-    // chrome (Chrome's nav bar overlaps embedded webviews and hid CUP/SNUFF
-    // entirely on mobile web — the only snuff/cup path a phone has). The
-    // Reddit app is fullscreen so the lift just breathes; mobile web survives.
-    const touchLift =
-      typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? 34 : 0;
-    this.barY = h - HUD.bottomBarH - touchLift;
-    this.meterH = Math.min(300, h - METER_Y - HUD.bottomBarH - touchLift - 16);
+    // D126: lift the bar clear of the embed's clipped bottom edge. Browser
+    // chrome / Reddit's embed frame overlap the webview's last rows on BOTH
+    // mobile and desktop web, hiding CUP/SNUFF/LIGHT entirely (the only
+    // pointer path to those verbs). Touch gets the full lift; desktop a
+    // smaller one. Fullscreen app embeds just gain breathing room.
+    const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+    const lift = coarse ? 34 : 18;
+    this.barY = h - HUD.bottomBarH - lift;
+    this.meterH = Math.min(300, h - METER_Y - HUD.bottomBarH - lift - 16);
 
     this.plaque.setPosition(16, 16);
     this.plaqueInner.setPosition(20, 20);
@@ -307,11 +308,18 @@ export class Hud {
     const midY = this.barY + (HUD.bottomBarH >> 1);
     this.cupBtn.setPosition(52, midY);
     this.cupFill.setPosition(52, midY);
-    // slots centered between the two round buttons
+    // slots centered between the two round buttons — and SCALED to fit that
+    // span on narrow phones (D126: at ~360-400 logical width the full-size
+    // grid marched under the SNUFF circle)
     const slotsW = 6 * (HUD.slotCell + 4) - 4;
-    const gridX = Math.max(100, (w - slotsW) >> 1);
+    const spanL = 52 + 44; // right edge of CUP's circle + breathing
+    const spanR = w - 44 - 44; // left edge of SNUFF's circle + breathing
+    const fit = Math.max(0.55, Math.min(1, (spanR - spanL) / slotsW));
+    const gridX = spanL + Math.max(0, (spanR - spanL - slotsW * fit) / 2);
     for (let i = 0; i < 6; i++) {
-      this.slots[i]!.setPosition(gridX + i * (HUD.slotCell + 4), this.barY + 12);
+      const cell = this.slots[i]!;
+      cell.setScale(fit);
+      cell.setPosition(gridX + i * (HUD.slotCell + 4) * fit, this.barY + 12 + ((1 - fit) * HUD.slotCell) / 2);
     }
     // w-44 not w-52 (D97): the circle overlapped slot 6 by 8px at 480 wide
     this.snuffBtn.setPosition(w - 44, midY);
