@@ -832,11 +832,14 @@ export function paintMenuBackdrop(
       );
       ctx.closePath();
     };
+    // she stays LIT to the foot (D112): the restored First Flame — her body
+    // must NOT fade to void at the base, or the lit shaft ends above the pool
+    // and she reads as floating. Bone all the way down, warm at the crown.
     const mBodyG = ctx.createLinearGradient(0, mTopY, 0, plinthTopY);
     mBodyG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.34)); // her flame's warmth
-    mBodyG.addColorStop(0.2, mix(C.parchmentAged, C.bone, 0.28));
-    mBodyG.addColorStop(0.55, mix(C.bone, C.boneDim, 0.55));
-    mBodyG.addColorStop(1, mix(C.boneDim, C.void, 0.5));
+    mBodyG.addColorStop(0.25, mix(C.parchmentAged, C.bone, 0.24));
+    mBodyG.addColorStop(0.7, mix(C.bone, C.boneDim, 0.32));
+    mBodyG.addColorStop(1, mix(C.bone, C.boneDim, 0.5)); // still bone at the foot, not void
     mbody();
     ctx.fillStyle = mBodyG;
     ctx.fill();
@@ -924,10 +927,10 @@ export function paintMenuBackdrop(
     // her wax pool — the tide-mark on the stone, exactly the daily pillar's
     // treatment (D111): a calm warm lobed ring hugging the foot, painted flat.
     // Restored, she never guttered, so the pool stays modest — no bright saucer.
-    const mPoolR = mHalf + mSpread * 0.75;
+    const mPoolR = mHalf + mSpread * 0.9;
     ctx.save();
-    ctx.translate(mcx + mcw * 0.04, mBaseY + mch * 0.006);
-    ctx.scale(1, 0.2);
+    ctx.translate(mcx + mcw * 0.04, mBaseY - mch * 0.004); // sits INTO the foot
+    ctx.scale(1, 0.22);
     const mPoolPts: Array<readonly [number, number]> = [];
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * TAU;

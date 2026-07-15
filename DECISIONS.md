@@ -1108,6 +1108,19 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+112. THE REAL FLOAT CAUSE - her body faded to void (operator, 4th
+    time: "its still flying in air, just keep it on platform"). The
+    seating was fine; the mother-candle's body GRADIENT dimmed to
+    near-void over its bottom ~40% (mix(boneDim, void, 0.5) at the
+    foot), so her lit shaft visibly ended ~150px above the ground and
+    the wax pool sat down in that darkness looking detached. Fix: she
+    is the restored First Flame - her body stays BONE-lit all the way
+    to the foot (no void fade), and the pool lifted to sit into the
+    foot. She finally reads as sitting in her wax on the ledge, a
+    grounded sibling of the daily candle. (The daily candle can fade
+    dark at its foot because it's shorter and its pool is larger;
+    hers could not.)
+
 111. THE PLINTH IS GONE - she seats like the daily candle (operator,
     after D110 still floated: "why cant you just make it like the
     first candle, copy the first candle"). Correct call: the plinth
