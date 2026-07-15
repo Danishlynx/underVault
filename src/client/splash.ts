@@ -27,8 +27,12 @@ const C = {
   ember: "#c9701e",
   verdigris: "#4fb39a",
   verdigrisDim: "#2e6b5c",
+  parchment: "#eae0c9",
   parchmentAged: "#d6c7a3",
   bone: "#b7ae9c",
+  boneDim: "#7e786c",
+  ink: "#2a2520",
+  inkSoft: "#4a443b",
   goldInk: "#c8a24b",
 } as const;
 
@@ -62,6 +66,210 @@ function splashRand(seed: number): () => number {
   };
 }
 
+// ── the vigil candle (backdrop.ts "The Vigil" vocabulary, phaser-free) ──────
+// A LIT tallow candle in the guildhall idiom: soft contact shadow, a firm
+// seat on the stone, a lobed wax pool with a woodcut rim + glossy lip, a
+// tapered drip-skirted body carrying an ink cut-line, a melted crater, a
+// charred wick and a painted teardrop flame. This is the splash's warm
+// foreground anchor — the amber half of the two-hue law made flesh. Returns
+// the flame's luminous heart so the caller can lay its response light.
+const TAU = Math.PI * 2;
+function paintCandle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  ledgeY: number,
+  ch: number,
+  cw: number,
+  s: number,
+  rand: () => number,
+): { wx: number; wy: number; fr: number } {
+  const ink = shade(C.void, 0.62, 0.9);
+  const topY = ledgeY - ch;
+  const cwHalf = cw / 2;
+  const spread = cw * 0.09;
+  const line = (x0: number, y0: number, x1: number, y1: number): void => {
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+  };
+
+  // soft contact shadow — the candle presses into its own dark
+  ctx.save();
+  ctx.translate(cx, ledgeY + ch * 0.012);
+  ctx.scale(1, 0.22);
+  const contact = ctx.createRadialGradient(0, 0, 0, 0, 0, cw * 1.5);
+  contact.addColorStop(0, shade(C.void, 0.5, 0.72));
+  contact.addColorStop(0.55, shade(C.void, 0.5, 0.4));
+  contact.addColorStop(1, shade(C.void, 0.5, 0));
+  ctx.fillStyle = contact;
+  ctx.fillRect(-cw * 1.5, -cw * 1.5, cw * 3, cw * 3);
+  ctx.restore();
+  // and a firmer seat right at the foot — the candle SITS on the stone
+  ctx.fillStyle = shade(C.void, 0.5, 0.5);
+  ctx.beginPath();
+  ctx.ellipse(cx + cw * 0.03, ledgeY + ch * 0.004, cw * 0.66, ch * 0.02, 0, 0, TAU);
+  ctx.fill();
+
+  // the wax pool — the day's tide-mark, a lobed blob smoothed through midpoints
+  const poolR = cw * 0.86;
+  const poolRy = poolR * 0.2;
+  const poolCx = cx + cw * 0.05;
+  const poolCy = ledgeY + poolRy * 0.2;
+  ctx.save();
+  ctx.translate(poolCx, poolCy);
+  ctx.scale(1, poolRy / poolR);
+  const PN = 9;
+  const pts: Array<readonly [number, number]> = [];
+  for (let i = 0; i < PN; i++) {
+    const a = (i / PN) * TAU;
+    const r = poolR * (0.9 + rand() * 0.18);
+    pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+  }
+  const poolPath = (): void => {
+    const mid = (i: number): readonly [number, number] => {
+      const p = pts[i % PN]!;
+      const q = pts[(i + 1) % PN]!;
+      return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    };
+    ctx.beginPath();
+    const m0 = mid(0);
+    ctx.moveTo(m0[0], m0[1]);
+    for (let i = 1; i <= PN; i++) {
+      const p = pts[i % PN]!;
+      const m = mid(i);
+      ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]);
+    }
+    ctx.closePath();
+  };
+  const poolG = ctx.createRadialGradient(-poolR * 0.2, -poolR * 0.25, poolR * 0.06, 0, 0, poolR);
+  poolG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.22, 0.9));
+  poolG.addColorStop(0.55, mix(C.parchmentAged, C.boneDim, 0.5, 0.62));
+  poolG.addColorStop(1, mix(C.boneDim, C.void, 0.55, 0.3));
+  poolPath();
+  ctx.fillStyle = poolG;
+  ctx.fill();
+  ctx.strokeStyle = shade(C.void, 0.7, 0.28); // woodcut rim
+  ctx.lineWidth = 1.2;
+  poolPath();
+  ctx.stroke();
+  ctx.save(); // glossy inner lip where the low light lies on the fresh wax
+  ctx.scale(0.94, 0.94);
+  poolPath();
+  ctx.strokeStyle = mix(C.parchment, C.flameHi, 0.35, 0.16);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+
+  // the body — melted foot, eroded crater rim; the flame lives at the TOP so
+  // the wax warms toward the crown and cools into the ledge's dark at the foot
+  const body = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(cx - cwHalf - spread, ledgeY);
+    ctx.bezierCurveTo(cx - cwHalf - spread * 0.4, ledgeY - ch * 0.3, cx - cwHalf + cw * 0.02, ledgeY - ch * 0.62, cx - cw * 0.43, topY + ch * 0.02);
+    ctx.quadraticCurveTo(cx - cw * 0.1, topY - ch * 0.012, cx + cw * 0.08, topY + ch * 0.02);
+    ctx.quadraticCurveTo(cx + cw * 0.28, topY + ch * 0.04, cx + cw * 0.41, topY + ch * 0.035);
+    ctx.bezierCurveTo(cx + cwHalf + cw * 0.01, ledgeY - ch * 0.6, cx + cwHalf + spread * 0.5, ledgeY - ch * 0.26, cx + cwHalf + spread, ledgeY);
+    ctx.closePath();
+  };
+  const bodyG = ctx.createLinearGradient(0, topY, 0, ledgeY);
+  bodyG.addColorStop(0, mix(C.parchment, C.flame, 0.3)); // crown warmed by the flame
+  bodyG.addColorStop(0.18, mix(C.parchmentAged, C.flame, 0.12));
+  bodyG.addColorStop(0.5, mix(C.bone, C.boneDim, 0.45));
+  bodyG.addColorStop(1, mix(C.boneDim, C.void, 0.55));
+  body();
+  ctx.fillStyle = bodyG;
+  ctx.fill();
+  ctx.save(); // side shade clipped to the wax — round the pillar off
+  body();
+  ctx.clip();
+  const sideG = ctx.createLinearGradient(cx - cwHalf, 0, cx + cwHalf, 0);
+  sideG.addColorStop(0, shade(C.void, 0.8, 0.32));
+  sideG.addColorStop(0.35, shade(C.void, 0.8, 0));
+  sideG.addColorStop(0.8, shade(C.void, 0.8, 0));
+  sideG.addColorStop(1, shade(C.void, 0.8, 0.18));
+  ctx.fillStyle = sideG;
+  ctx.fillRect(cx - cw, topY - ch * 0.05, cw * 2, ch * 1.1);
+  ctx.strokeStyle = shade(C.boneDim, 0.85, 0.3); // tally scratches
+  ctx.lineWidth = 1;
+  const tallyY = ledgeY - ch * 0.42;
+  for (let i = 0; i < 5; i++) {
+    const tx = cx - cw * 0.24 + i * cw * 0.1;
+    line(tx, tallyY, tx - cw * 0.02, tallyY + ch * 0.045);
+  }
+  ctx.restore();
+  body();
+  ctx.strokeStyle = ink; // the woodcut cut-line
+  ctx.lineWidth = Math.max(1.4, s * 0.0032);
+  ctx.stroke();
+
+  // the crater — a melted well around the wick root
+  const craterCx = cx + cw * 0.03;
+  const craterY = topY + ch * 0.03;
+  ctx.fillStyle = mix(C.parchmentAged, C.ink, 0.42);
+  ctx.beginPath();
+  ctx.ellipse(craterCx, craterY, cw * 0.28, ch * 0.02, 0, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = mix(C.ink, C.void, 0.3, 0.8);
+  ctx.beginPath();
+  ctx.ellipse(craterCx, craterY + ch * 0.002, cw * 0.15, ch * 0.011, 0, 0, TAU);
+  ctx.fill();
+
+  // the drip skirt — old ribbons behind, fresh rim-runs in front
+  const drip = (x: number, yTop: number, len: number, wr: number, top: string, bot: string): void => {
+    const g = ctx.createLinearGradient(0, yTop, 0, yTop + len);
+    g.addColorStop(0, top);
+    g.addColorStop(1, bot);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - wr, yTop);
+    ctx.bezierCurveTo(x - wr * 1.06, yTop + len * 0.42, x - wr * 0.86, yTop + len - wr * 1.5, x - wr * 0.72, yTop + len - wr);
+    ctx.arc(x, yTop + len - wr, wr * 0.72, Math.PI, 0, true);
+    ctx.bezierCurveTo(x + wr * 0.9, yTop + len - wr * 1.6, x + wr * 1.06, yTop + len * 0.4, x + wr, yTop);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(C.void, 0.7, 0.4);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  };
+  const freshTop = mix(C.parchment, C.flame, 0.16);
+  const freshBot = mix(C.parchmentAged, C.boneDim, 0.4);
+  const oldTop = mix(C.parchmentAged, C.bone, 0.4);
+  const oldBot = mix(C.boneDim, C.void, 0.45);
+  drip(cx - cw * 0.44, topY + ch * 0.05, ch * 0.5, cw * 0.05, oldTop, oldBot);
+  drip(cx + cw * 0.44, topY + ch * 0.04, ch * 0.62, cw * 0.06, oldTop, oldBot);
+  const skirt: ReadonlyArray<readonly [number, number, number]> = [
+    [-0.34, 0.14, 0.055],
+    [-0.16, 0.2, 0.07],
+    [0.04, 0.1, 0.05],
+    [0.22, 0.26, 0.075],
+    [0.4, 0.16, 0.06],
+  ];
+  for (const [ox, ol, owr] of skirt) {
+    drip(cx + cw * ox, topY + ch * (0.02 + rand() * 0.02), ch * ol, cw * owr, freshTop, freshBot);
+  }
+
+  // the charred wick — the flame itself is a CSS-animated div overlaid at the
+  // wick tip (splash.html), so it truly LIVES, matching the loader/menu flame.
+  // The painter's job ends at the wick; the caller lays the response glow and
+  // exposes this anchor. (A short lit wick-stub reads warm under the div.)
+  const wickLen = ch * 0.085;
+  const wickTipX = cx + cw * 0.05;
+  const wickTipY = topY - wickLen;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.strokeStyle = mix(C.ink, C.flame, 0.35);
+  ctx.lineWidth = Math.max(1.6, s * 0.003);
+  ctx.beginPath();
+  ctx.moveTo(craterCx, craterY - ch * 0.004);
+  ctx.quadraticCurveTo(cx + cw * 0.02, topY - wickLen * 0.55, wickTipX, wickTipY);
+  ctx.stroke();
+  ctx.restore();
+  // flame scale follows the candle's girth, so the stub burns a smaller flame
+  return { wx: wickTipX, wy: wickTipY, fr: Math.max(3, cw * 0.28) };
+}
+
 // ── THE ANTECHAMBER OF THE GREAT GATE ──────────────────────────────────────
 interface SeamGeom {
   x: number;
@@ -69,8 +277,19 @@ interface SeamGeom {
   h: number;
   w: number;
 }
+// Where the living CSS flames sit — wick tip (x,y) and a flame scale (s), all
+// in CSS px. splash.html positions its animated flame divs from these.
+interface FlameGeom {
+  x: number;
+  y: number;
+  s: number;
+}
+interface SceneGeom {
+  seam: SeamGeom;
+  flames: readonly FlameGeom[];
+}
 
-function paintScene(ctx: CanvasRenderingContext2D, w: number, h: number): SeamGeom {
+function paintScene(ctx: CanvasRenderingContext2D, w: number, h: number): SceneGeom {
   const rand = splashRand(0x6a7e0517);
   const cx = w / 2;
   const s = Math.min(w, h);
@@ -79,7 +298,6 @@ function paintScene(ctx: CanvasRenderingContext2D, w: number, h: number): SeamGe
   const baseY = h * (0.6 + 0.2 * wide); // Gate base = top of the steps
   const R = Math.min(w * 0.4, baseY * 0.7); // Gate radius (top crushes off-frame)
   const gcy = baseY - R;
-  const INK = shade(C.void, 0.6, 0.9);
 
   const line = (x0: number, y0: number, x1: number, y1: number): void => {
     ctx.beginPath();
@@ -252,6 +470,18 @@ function paintScene(ctx: CanvasRenderingContext2D, w: number, h: number): SeamGe
 
   // ── 8. THE SEAM — verdigris breath down the Gate's center ───────────────
   const seamTop = Math.max(gcy - R * 0.9, h * 0.16);
+  // a soft tall column of leaked light behind the seam — the crack breathes
+  // (the cool half of the two-hue law, kept to the Gate center only)
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.translate(cx, gcy);
+  ctx.scale(1, 6);
+  const leakGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.17);
+  leakGlow.addColorStop(0, mix(C.verdigrisDim, C.verdigris, 0.5, 0.2));
+  leakGlow.addColorStop(1, mix(C.verdigrisDim, C.verdigris, 0.5, 0));
+  ctx.fillStyle = leakGlow;
+  ctx.fillRect(-R * 0.2, -R * 0.2, R * 0.4, R * 0.4);
+  ctx.restore();
   const seamGrad = (aTop: number, aMid: number, aBot: number, col: string): CanvasGradient => {
     const g = ctx.createLinearGradient(0, seamTop, 0, baseY);
     const midT = Math.min(0.9, Math.max(0.1, (gcy - seamTop) / (baseY - seamTop)));
@@ -488,11 +718,145 @@ function paintScene(ctx: CanvasRenderingContext2D, w: number, h: number): SeamGe
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, w, h);
   }
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
-  return { x: cx, top: seamTop, h: baseY - seamTop, w: Math.max(16, R * 0.16) };
+  // ── 15. THE FOREGROUND VIGIL — a delver's candle at the antechamber's edge
+  // Painted last so it keeps its warmth above the crush and vignette: the
+  // scene's nearest object and its warm anchor, seated on a broken shelf in
+  // the lower-left (the Gate's cold symmetry answered by one hand-lit flame).
+  const vch = h * (0.2 - wide * 0.06);
+  const vcw = Math.min(vch * 0.34, w * 0.08);
+  const vcx = w * (0.14 + wide * 0.02);
+  const vLedgeY = h * (0.9 - wide * 0.02);
+  // the worn stone shelf it stands on — jutting from the left, lip warm-lit
+  const shelfR = vcx + vcw * 3.4;
+  const shelfG = ctx.createLinearGradient(0, vLedgeY - s * 0.01, 0, h);
+  shelfG.addColorStop(0, mix(C.void, C.surface2, 0.55, 0.97));
+  shelfG.addColorStop(0.45, mix(C.void, C.surface, 0.3, 0.98));
+  shelfG.addColorStop(1, shade(C.void, 0.72, 1));
+  ctx.fillStyle = shelfG;
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  ctx.lineTo(0, vLedgeY + s * 0.01);
+  ctx.quadraticCurveTo(vcx, vLedgeY - s * 0.006, shelfR, vLedgeY + s * 0.012);
+  ctx.lineTo(shelfR + s * 0.01, h);
+  ctx.closePath();
+  ctx.fill();
+  const crestWarm = ctx.createLinearGradient(vcx - vcw * 2.4, 0, shelfR, 0);
+  crestWarm.addColorStop(0, mix(C.flame, C.bone, 0.5, 0));
+  crestWarm.addColorStop(0.42, mix(C.flame, C.bone, 0.42, 0.45));
+  crestWarm.addColorStop(1, mix(C.flame, C.bone, 0.5, 0));
+  ctx.strokeStyle = crestWarm;
+  ctx.lineWidth = Math.max(1, s * 0.0022);
+  ctx.beginPath();
+  ctx.moveTo(0, vLedgeY + s * 0.01);
+  ctx.quadraticCurveTo(vcx, vLedgeY - s * 0.006, shelfR, vLedgeY + s * 0.012);
+  ctx.stroke();
+  // the cluster: a tall vigil and a squat stub set a little forward
+  const main = paintCandle(ctx, vcx, vLedgeY, vch, vcw, s, rand);
+  const stub = paintCandle(ctx, vcx + vcw * 1.75, vLedgeY + s * 0.004, vch * 0.44, vcw * 0.64, s, rand);
+  // response light — as if both flames already burn (lighter composite). The
+  // heart hovers a flame-scale above the wick, where the CSS flame div sits.
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const [c, k] of [
+    [main, 1],
+    [stub, 0.5],
+  ] as const) {
+    const fx = c.wx;
+    const fy = c.wy - c.fr;
+    const rr = vch * 1.5 * (0.6 + 0.4 * k);
+    const amb = ctx.createRadialGradient(fx, fy, 0, fx, fy, rr);
+    amb.addColorStop(0, shade(C.flame, 0.6, 0.24 * k));
+    amb.addColorStop(0.4, shade(C.ember, 0.55, 0.08 * k));
+    amb.addColorStop(1, shade(C.ember, 0.55, 0));
+    ctx.fillStyle = amb;
+    ctx.fillRect(fx - rr, fy - rr, rr * 2, rr * 2);
+    const mr = vch * 0.66 * (0.6 + 0.4 * k); // a medium bathe over the wax
+    const med = ctx.createRadialGradient(fx, fy, 0, fx, fy, mr);
+    med.addColorStop(0, shade(C.flame, 0.65, 0.22 * k));
+    med.addColorStop(0.5, shade(C.ember, 0.55, 0.07 * k));
+    med.addColorStop(1, shade(C.ember, 0.55, 0));
+    ctx.fillStyle = med;
+    ctx.fillRect(fx - mr, fy - mr, mr * 2, mr * 2);
+    const hr = c.fr * 3.6;
+    const hot = ctx.createRadialGradient(fx, fy, 0, fx, fy, hr);
+    hot.addColorStop(0, shade(C.flameHi, 1, 0.5 * k));
+    hot.addColorStop(0.45, shade(C.flame, 0.9, 0.16 * k));
+    hot.addColorStop(1, shade(C.flame, 0.9, 0));
+    ctx.fillStyle = hot;
+    ctx.fillRect(fx - hr, fy - hr, hr * 2, hr * 2);
+  }
+  // a broad warm pool laid across the shelf stone, reaching out into the
+  // antechamber floor — no hard edge
+  ctx.translate(vcx + vcw * 0.9, vLedgeY + s * 0.004);
+  ctx.scale(1, 0.3);
+  const poolR2 = vch * 1.75;
+  const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, poolR2);
+  pool.addColorStop(0, shade(C.flame, 0.65, 0.3));
+  pool.addColorStop(0.22, shade(C.flame, 0.6, 0.16));
+  pool.addColorStop(0.5, shade(C.ember, 0.55, 0.08));
+  pool.addColorStop(1, shade(C.ember, 0.55, 0));
+  ctx.fillStyle = pool;
+  ctx.fillRect(-poolR2, -poolR2, poolR2 * 2, poolR2 * 2);
+  ctx.restore();
+
+  // ── 16. THE FOLIO — gold-ink corner brackets close the leaf (guildhall
+  // iconography): the feed card read as a page torn from the Codex ─────────
+  const m = Math.max(9, s * 0.022);
+  const armX = Math.max(22, w * 0.1);
+  const armY = Math.max(22, h * 0.072);
+  const corners: ReadonlyArray<readonly [number, number, number, number]> = [
+    [m, m, 1, 1],
+    [w - m, m, -1, 1],
+    [m, h - m, 1, -1],
+    [w - m, h - m, -1, -1],
+  ];
+  for (const [bx, by, dx, dy] of corners) {
+    ctx.strokeStyle = mix(C.void, C.goldInk, 0.55, 0.5);
+    ctx.lineWidth = 1;
+    line(bx, by, bx + dx * armX, by);
+    line(bx, by, bx, by + dy * armY);
+    const o = Math.max(4, s * 0.009);
+    ctx.strokeStyle = mix(C.void, C.goldInk, 0.6, 0.26);
+    line(bx + dx * o, by + dy * o, bx + dx * armX * 0.66, by + dy * o);
+    line(bx + dx * o, by + dy * o, bx + dx * o, by + dy * armY * 0.66);
+    ctx.save(); // corner diamond bloom
+    ctx.translate(bx, by);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = shade(C.void, 0.5, 0.9);
+    ctx.fillRect(-7, -7, 14, 14);
+    ctx.fillStyle = mix(C.goldInk, C.void, 0, 0.55);
+    ctx.fillRect(-3.2, -3.2, 6.4, 6.4);
+    ctx.restore();
+    ctx.strokeStyle = mix(C.goldInk, C.bone, 0.3, 0.42); // inward flourish curl
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(bx + dx * 12, by);
+    ctx.quadraticCurveTo(bx + dx * 27, by - dy * 4, bx + dx * 42, by + dy * 5);
+    ctx.stroke();
+  }
+  // folio diamonds at the edge midpoints
+  ctx.fillStyle = mix(C.goldInk, C.void, 0, 0.3);
+  for (const [dx2, dy2] of [
+    [w / 2, m],
+    [w / 2, h - m],
+    [m, h / 2],
+    [w - m, h / 2],
+  ] as const) {
+    ctx.save();
+    ctx.translate(dx2, dy2);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-3, -3, 6, 6);
+    ctx.restore();
+  }
+
+  return {
+    seam: { x: cx, top: seamTop, h: baseY - seamTop, w: Math.max(16, R * 0.16) },
+    flames: [
+      { x: main.wx, y: main.wy, s: main.fr },
+      { x: stub.wx, y: stub.wy, s: stub.fr },
+    ],
+  };
 }
 
 // ── scene mount: dpr-aware, ResizeObserver + rAF debounce, painted once ────
@@ -512,11 +876,18 @@ function mountScene(): void {
     const ctx = cv.getContext("2d");
     if (ctx === null) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const seam = paintScene(ctx, cw, ch);
+    const geom = paintScene(ctx, cw, ch);
+    const seam = geom.seam;
     root.style.setProperty("--seam-x", `${seam.x}px`);
     root.style.setProperty("--seam-top", `${seam.top}px`);
     root.style.setProperty("--seam-h", `${seam.h}px`);
     root.style.setProperty("--seam-w", `${seam.w}px`);
+    geom.flames.forEach((f, i) => {
+      const n = i + 1;
+      root.style.setProperty(`--f${n}-x`, `${f.x}px`);
+      root.style.setProperty(`--f${n}-y`, `${f.y}px`);
+      root.style.setProperty(`--f${n}-s`, `${f.s}px`);
+    });
     document.body.classList.add("uv-ready");
   };
   const queue = (): void => {

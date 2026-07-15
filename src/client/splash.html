@@ -71,15 +71,138 @@
         mix-blend-mode: screen;
         pointer-events: none;
         z-index: 1;
-        animation: uv-breathe 5.2s ease-in-out infinite alternate;
-        will-change: opacity;
+        animation: uv-breathe 4.6s ease-in-out infinite alternate;
+        will-change: opacity, filter;
       }
+      /* the crack breathes: opacity, brightness and a hair of bloom together */
       @keyframes uv-breathe {
         from {
-          opacity: 0.45;
+          opacity: 0.4;
+          filter: blur(0.6px) brightness(0.85);
         }
         to {
           opacity: 1;
+          filter: blur(0) brightness(1.3);
+        }
+      }
+
+      /* ── a warm breath pulsing low over the step candle-field ───────── */
+      #uv-fieldglow {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 44%;
+        z-index: 1;
+        pointer-events: none;
+        background: radial-gradient(
+          120% 100% at 50% 122%,
+          rgba(245, 169, 63, 0.15),
+          rgba(201, 112, 30, 0.05) 46%,
+          rgba(201, 112, 30, 0) 72%
+        );
+        mix-blend-mode: screen;
+        animation: uv-field 6.4s ease-in-out infinite alternate;
+        will-change: opacity;
+      }
+      @keyframes uv-field {
+        from {
+          opacity: 0.5;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* ── the living vigil flames — CSS teardrops overlaid on the painted
+           wicks (positions fed by splash.ts), the loader/menu flame quality ── */
+      .uv-vigil {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 2;
+        pointer-events: none;
+        will-change: transform;
+      }
+      #uv-vigil-1 {
+        --vf-s: var(--f1-s, 12px);
+        transform: translate(var(--f1-x, -300px), var(--f1-y, 0px)) translate(-50%, -100%);
+      }
+      #uv-vigil-2 {
+        --vf-s: var(--f2-s, 8px);
+        transform: translate(var(--f2-x, -300px), var(--f2-y, 0px)) translate(-50%, -100%);
+      }
+      .uv-vigil i {
+        display: block;
+        width: calc(var(--vf-s, 12px) * 1.3);
+        height: calc(var(--vf-s, 12px) * 2.4);
+        border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        background: linear-gradient(#fff6da, #ffd98a 28%, #f5a93f 60%, #b4560f);
+        box-shadow:
+          0 0 calc(var(--vf-s, 12px) * 3.4) calc(var(--vf-s, 12px) * 0.2) rgba(201, 112, 30, 0.3),
+          0 0 calc(var(--vf-s, 12px) * 2) calc(var(--vf-s, 12px) * 0.55) rgba(245, 169, 63, 0.55),
+          0 0 calc(var(--vf-s, 12px) * 0.55) rgba(255, 246, 218, 0.75);
+        transform-origin: 50% 92%;
+        animation: uv-flicker 1.7s ease-in-out infinite;
+        will-change: transform, opacity;
+      }
+      #uv-vigil-2 i {
+        animation-duration: 2.1s;
+        animation-delay: -0.7s;
+      }
+      @keyframes uv-flicker {
+        0%,
+        100% {
+          transform: scale(1) rotate(-1.2deg);
+          opacity: 0.9;
+        }
+        50% {
+          transform: scale(1.09, 0.93) rotate(1.6deg);
+          opacity: 1;
+        }
+      }
+
+      /* ── embers stirred off the vigil flames (anchored at the main wick) ── */
+      #uv-vigil-embers {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 2;
+        pointer-events: none;
+        transform: translate(var(--f1-x, -300px), var(--f1-y, 0px));
+      }
+      #uv-vigil-embers i {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--flame-hi);
+        box-shadow: 0 0 6px 1px rgba(245, 169, 63, 0.6);
+        opacity: 0;
+        animation: uv-vigil-rise var(--dur, 5s) ease-out infinite;
+        animation-delay: var(--delay, 0s);
+        will-change: transform, opacity;
+      }
+      #uv-vigil-embers i:nth-child(1) { --dx: -11px; --dur: 4.7s; --delay: -0.5s; }
+      #uv-vigil-embers i:nth-child(2) { --dx: 9px; --dur: 5.6s; --delay: -2.3s; width: 2px; height: 2px; }
+      #uv-vigil-embers i:nth-child(3) { --dx: -6px; --dur: 4.1s; --delay: -3.4s; width: 2px; height: 2px; }
+      #uv-vigil-embers i:nth-child(4) { --dx: 13px; --dur: 6.2s; --delay: -1.2s; }
+      @keyframes uv-vigil-rise {
+        0% {
+          transform: translate3d(0, -6px, 0) scale(1);
+          opacity: 0;
+        }
+        16% {
+          opacity: 0.95;
+        }
+        70% {
+          opacity: 0.5;
+        }
+        100% {
+          transform: translate3d(var(--dx, 6px), -112px, 0) scale(0.35);
+          opacity: 0;
         }
       }
 
@@ -214,11 +337,21 @@
         font-size: clamp(40px, 19vmin, 112px);
         line-height: 0.92;
         font-weight: normal;
-        background: linear-gradient(180deg, #ffd98a 0%, #c8a24b 42%, #8a6a2a 78%, #c8a24b 100%);
+        /* illuminated gold: a bright leaf highlight up top, deep burnish below */
+        background: linear-gradient(
+          180deg,
+          #ffe7b0 0%,
+          #ffd98a 20%,
+          #c8a24b 50%,
+          #7a5c22 82%,
+          #b78e3c 100%
+        );
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
-        filter: drop-shadow(0 0 16px rgba(245, 169, 63, 0.3)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.7));
+        /* warm halo + a 1px letterpress highlight + a cut drop-shadow */
+        filter: drop-shadow(0 0 20px rgba(245, 169, 63, 0.35)) drop-shadow(0 1px 0 rgba(255, 231, 176, 0.45))
+          drop-shadow(0 3px 3px rgba(0, 0, 0, 0.78));
       }
 
       #uv-teaser {
@@ -267,8 +400,18 @@
         text-transform: uppercase;
         color: var(--bone-dim);
       }
-      #uv-gate-num { color: var(--flame); }
-      #uv-codex-num { color: var(--verdigris); }
+      #uv-gate-num {
+        color: var(--flame);
+        text-shadow:
+          0 0 10px rgba(245, 169, 63, 0.35),
+          0 1px 1px rgba(0, 0, 0, 0.6);
+      }
+      #uv-codex-num {
+        color: var(--verdigris);
+        text-shadow:
+          0 0 10px rgba(79, 179, 154, 0.32),
+          0 1px 1px rgba(0, 0, 0, 0.6);
+      }
 
       /* ── the hero: match-strike seal button ────────────────────────── */
       #uv-descend {
@@ -399,12 +542,21 @@
 
       /* ── §5 reduced-motion law: embers hidden, seam steady, fades ──── */
       @media (prefers-reduced-motion: reduce) {
-        #uv-embers {
+        #uv-embers,
+        #uv-vigil-embers {
           display: none;
         }
         #uv-seam {
           animation: none;
           opacity: 0.75;
+        }
+        /* the vigil flames stay lit, just still */
+        .uv-vigil i {
+          animation: none;
+        }
+        #uv-fieldglow {
+          animation: none;
+          opacity: 0.8;
         }
         #uv-descend::before {
           animation: none;
@@ -428,8 +580,12 @@
   </head>
   <body>
     <canvas id="uv-scene" aria-hidden="true"></canvas>
+    <div id="uv-fieldglow" aria-hidden="true"></div>
     <div id="uv-seam" aria-hidden="true"></div>
     <div id="uv-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="uv-vigil" id="uv-vigil-1" aria-hidden="true"><i></i></div>
+    <div class="uv-vigil" id="uv-vigil-2" aria-hidden="true"><i></i></div>
+    <div id="uv-vigil-embers" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <main>
       <h1>The Undervault</h1>
       <div id="uv-daybox">
