@@ -786,6 +786,28 @@ export function paintMenuBackdrop(
     const mTopY = plinthTopY - mch;
     const mHalf = mcw / 2;
     const mSpread = mcw * 0.14; // the heavy skirt flares the foot
+    // the STEP itself — the raised stone course she stands on. mBaseY sits
+    // above the ledge line, and without this mass the plinth floated in air
+    // (operator caught it). It runs down INTO the ledge and the frame's
+    // bottom settle, so her dais grows out of the same stone as everything.
+    const stepW = plinthW * 1.55;
+    const sx0 = mcx - stepW / 2;
+    const stepTop = mBaseY - h * 0.001;
+    const stepBot = ledgeY + h * 0.035;
+    const stepG = ctx.createLinearGradient(0, stepTop, 0, stepBot);
+    stepG.addColorStop(0, mix(C.void, C.surface, 0.62, 0.97));
+    stepG.addColorStop(0.35, mix(C.void, C.surface, 0.3, 0.97));
+    stepG.addColorStop(1, shade(C.void, 0.9, 0.97));
+    ctx.fillStyle = stepG;
+    ctx.fillRect(sx0, stepTop, stepW, stepBot - stepTop);
+    // her hearth catches the step's front lip
+    const lipG = ctx.createLinearGradient(sx0, 0, sx0 + stepW, 0);
+    lipG.addColorStop(0, mix(C.flame, C.bone, 0.5, 0));
+    lipG.addColorStop(0.5, mix(C.flame, C.bone, 0.42, 0.34));
+    lipG.addColorStop(1, mix(C.flame, C.bone, 0.5, 0));
+    ctx.strokeStyle = lipG;
+    ctx.lineWidth = 1;
+    line(sx0, stepTop + 0.5, sx0 + stepW, stepTop + 0.5);
     // contact shadow — the plinth presses into the ledge stone (kept tight:
     // a seat, not a saucer)
     ctx.save();
