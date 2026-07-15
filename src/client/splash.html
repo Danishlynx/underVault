@@ -354,6 +354,19 @@
           drop-shadow(0 3px 3px rgba(0, 0, 0, 0.78));
       }
 
+      /* the plain-language hook: the one line a scroller needs to grasp the
+         game before the flavour teaser and the CTA (comprehension pass) */
+      #uv-pitch {
+        margin: 0;
+        max-width: 34ch;
+        font-size: clamp(12px, 1.7vmin + 6px, 18px);
+        line-height: 1.4;
+        color: var(--bone);
+        text-shadow:
+          0 0 6px rgba(11, 10, 16, 1),
+          0 1px 8px rgba(11, 10, 16, 0.95);
+      }
+
       #uv-teaser {
         margin: 0;
         font-style: italic;
@@ -593,6 +606,7 @@
         <p id="uv-day">&hellip;</p>
       </div>
       <p id="uv-teaser"></p>
+      <p id="uv-pitch">One candle a day. Learn the dungeon's hidden rules together, and what you discover outlives you.</p>
       <div id="uv-stats">
         <span class="uv-plaque">
           <b id="uv-gate-num"><span id="uv-gate">&ndash;</span><small>%</small></b>

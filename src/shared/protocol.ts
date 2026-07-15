@@ -185,6 +185,17 @@ export const zEndReq = z.object({
   echoFrames: z.array(z.tuple([zU16, zU16, zU8])).max(64), // cosmetic; values clamped server-side
 });
 export type EndReq = z.infer<typeof zEndReq>;
+
+// ── /api/run/house — found/persist a house name (lineage survives reload) ──
+export const zHouseReq = z.object({
+  house: z.string().min(1).max(24),
+});
+export type HouseReq = z.infer<typeof zHouseReq>;
+export const zHouseRes = z.object({
+  house: z.string().max(24),
+});
+export type HouseRes = z.infer<typeof zHouseRes>;
+
 export const zEndRes = z.object({
   day: zU32, floor: zU8, cause: zU8, generation: zU16,
   epitaphLine: z.string().max(140),

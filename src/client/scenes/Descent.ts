@@ -487,6 +487,7 @@ export class DescentScene extends Phaser.Scene {
         // the changed world (D108): the season completed — for everyone once
         // the counter fills, immediately for whoever witnessed the finale
         rescued: g.gatePct >= 100 || this.registry.get(RESCUED_KEY) === true,
+        houseLine: g.houseLine,
       },
     );
   }

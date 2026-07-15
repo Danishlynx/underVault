@@ -23,6 +23,7 @@ import {
   zDayRes,
   zDescendRes,
   zEndRes,
+  zHouseRes,
   zErrRes,
   zStartRes,
   type ActReq,
@@ -34,6 +35,7 @@ import {
   type DescendRes,
   type EndReq,
   type EndRes,
+  type HouseRes,
   type ErrCodeT,
   type StartRes,
 } from "../../shared/protocol.js";
@@ -138,6 +140,11 @@ export function apiRunBank(req: BankReq): Promise<BankRes> {
 
 export function apiRunEnd(req: EndReq): Promise<EndRes> {
   return post("/api/run/end", req, zEndRes);
+}
+
+/** Persist the founded house (first-write-wins server-side; survives reload). */
+export function apiSetHouse(house: string): Promise<HouseRes> {
+  return post("/api/run/house", { house }, zHouseRes);
 }
 
 export function apiCodex(page: number): Promise<CodexRes> {

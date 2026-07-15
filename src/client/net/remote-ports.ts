@@ -47,6 +47,7 @@ import {
   apiRunDescend,
   apiRunEnd,
   apiRunStart,
+  apiSetHouse,
 } from "./api.js";
 import { ActBatcher } from "./batcher.js";
 import type {
@@ -463,7 +464,8 @@ export async function createRemotePorts(): Promise<GamePorts> {
     },
 
     setHouse(name: string): void {
-      model.setHouse(name); // local until /api/lineage lands (M3)
+      model.setHouse(name); // local immediacy for the epitaph flow
+      void apiSetHouse(name).catch(() => undefined); // persist server-side (D130): the house survives reload
     },
 
     heirloomDue(): boolean {

@@ -81,6 +81,8 @@ export interface MenuVitals {
   spent?: boolean;
   /** the Long Rescue is complete — she is home; the menu changes forever (D108) */
   rescued?: boolean;
+  /** the player's sworn house banner ("⚑ House X · X II awaits"); shown when real */
+  houseLine?: string;
 }
 
 // Private LCG (same law as the hall: never touch paint.ts crand()).
@@ -219,6 +221,12 @@ function injectStyles(): void {
   font-size: var(--size-body-sm);
   color: var(--bone); opacity: 0.92;
   text-shadow: 0 0 4px var(--void), 0 1px 6px var(--void);
+}
+.uv-menu-house {
+  font-family: var(--font-body); font-size: 11px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--gold-ink); opacity: 0.9;
+  text-shadow: 0 0 4px var(--void), 0 1px 5px var(--void);
 }
 .uv-menu-vitals {
   font-family: var(--font-body); font-size: 11px;
@@ -435,6 +443,9 @@ export function openMainMenu(
   let dailyEl: HTMLElement | null = null;
   if (vitals !== undefined) {
     dailyEl = el("div", "uv-menu-daily uv-menu-stage");
+    if (vitals.houseLine !== undefined && vitals.houseLine.startsWith("⚑")) {
+      dailyEl.appendChild(el("div", "uv-menu-house", vitals.houseLine));
+    }
     dailyEl.appendChild(el("div", "uv-menu-rumor", vitals.rumor));
     dailyEl.appendChild(
       el(

@@ -22,6 +22,8 @@ import {
   zDescendReq,
   zEndReq,
   zEndRes,
+  zHouseReq,
+  zHouseRes,
   zStartReq,
   type BankRes,
   type CorpseYieldWire,
@@ -788,4 +790,16 @@ runRoutes.post("/end", async (c) => {
     false,
   );
   return c.json(endRes);
+});
+
+// Persist the founded house so lineage survives reload (fixes the epitaph's
+// "the line endures" promise). First-write-wins (ensureHouse hSetNX) — a house,
+// once sworn, endures across reloads and days; idempotent re-founding returns
+// the house on record. gen is bumped separately by onDeath at /end.
+runRoutes.post("/house", async (c) => {
+  const d = deps(c);
+  const req = zHouseReq.parse(await jsonBody(c));
+  const name = req.house.trim().replace(/[^\p{L}\p{N} '-]/gu, "").slice(0, 20);
+  const house = name === "" ? (await d.users.get(d.uid)).house : await d.users.ensureHouse(d.uid, name);
+  return c.json(zHouseRes.parse({ house }));
 });

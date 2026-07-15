@@ -1108,6 +1108,22 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+130. LINEAGE PERSISTS + THE HOOK ON THE CARD (necessary-bundle, pre-
+    submission). (A) SPLASH HOOK: the feed card explained no premise (audit:
+    "a scroller sees a pretty gate with no meaning"); added one plain line
+    under the teaser — "One candle a day. Learn the dungeon's hidden rules
+    together, and what you discover outlives you." (B) HOUSE SURVIVES
+    RELOAD: the epitaph promised "the line endures, House X II will wake at
+    dusk" but setHouse was client-local (audit broken-promise), so a founded
+    house vanished on reload. New POST /api/run/house persists it via
+    UserRepo.ensureHouse (hSetNX first-write-wins, idempotent); remote-ports
+    setHouse now fires apiSetHouse alongside the local model; zHouseReq/Res
+    zod-validated; the name is allowlist-sanitized. The menu now shows the
+    house banner (MenuVitals.houseLine -> .uv-menu-house gold line, only for a
+    real "⚑ House" line). Heirloom-in-prod (the picker no-op) deferred, lower
+    value. Gate green. (Excised a stray NUL byte the sanitize regex first
+    introduced — replaced with a \p{L}/\p{N} allowlist.)
+
 129. THE SHEETS ARE ILLUMINATED (operator: "make all these cards in game
     eye candy like our menu"). The in-game DOM sheets (Waystone, Codex,
     Epitaph, Victory, Heirloom) were a flat parchment card beside the
