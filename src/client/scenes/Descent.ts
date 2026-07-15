@@ -49,6 +49,7 @@ import { PORTS_KEY, uiScale } from "../game.js";
 import type { EchoRecord, FloorPayloadLike, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import {
+  drawLiveFlame,
   ensureBiomeSkin,
   entityTextureFor,
   floorDecoFor,
@@ -1718,6 +1719,7 @@ export class DescentScene extends Phaser.Scene {
   // ── Frame loop ───────────────────────────────────────────────────────────
   override update(time: number): void {
     this.hud.updateFrame(time);
+    drawLiveFlame(time); // redraw the one shared flame silhouette for this frame
     pulseGlows(this.glowPool, time);
     if (time - this.lastGrainShift > 200) {
       this.lastGrainShift = time;

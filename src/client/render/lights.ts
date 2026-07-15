@@ -13,7 +13,7 @@ import { COLOR } from "../../../design/tokens/tokens.js";
 import { Tile, type SimState } from "../../shared/sim/types.js";
 import { BRAZIER_RADIUS, FIRE_LIGHT_RADIUS } from "../../shared/sim/constants.js";
 import { depthOf, gridToScreen, Layer, TILE_H, TILE_W } from "./iso.js";
-import { FLAME_ORIGIN_Y, FLAME_TEX, flameFrameKey } from "./tilemap.js";
+import { FLAME_ORIGIN_Y, FLAME_TEX, LIVE_FLAME_KEY } from "./tilemap.js";
 
 // ── Token-derived tint ramp ────────────────────────────────────────────────
 export function lerpColor(a: number, b: number, t: number): number {
@@ -232,7 +232,7 @@ const hazeMap = new WeakMap<Phaser.GameObjects.Image, Phaser.Filters.Displacemen
 
 // ── Living flames (D110): braziers/wax candles were static paintings whose
 // only motion was a glow pulse. We overlay the menu's teardrop flame (built
-// as frames in tilemap.buildFlameFrames) on every lit source and animate it
+// the shared live texture tilemap.drawLiveFlame) on every lit source and animate it
 // here — frame-swap for silhouette change plus a light transform wobble.
 // Pure presentation; the sim never learns. Reduced-motion holds a still pose.
 const REDUCED_FLAME =
@@ -256,27 +256,19 @@ const FLAME_SPECS: Record<number, FlameSpec> = {
 // base scale (from setDisplaySize) + current frame, per flame image, so the
 // per-frame wobble multiplies a stable base and frame-swaps are deduped.
 const flameBase = new WeakMap<Phaser.GameObjects.Image, { x: number; y: number }>();
-const flameFrame = new WeakMap<Phaser.GameObjects.Image, number>();
-
 function animateFlame(img: Phaser.GameObjects.Image, key: string, time: number): void {
   const base = flameBase.get(img);
   if (base === undefined) return;
   if (REDUCED_FLAME) return; // stays on the placed pose — a calm lit flame
-  // per-source phase from the tile-index digits so no two flames march in step
+  // The silhouette now animates continuously in the SHARED live texture
+  // (tilemap.drawLiveFlame). Here we only add a gentle per-source transform so
+  // neighbouring flames don't move in perfect lockstep — low frequencies only,
+  // so it reads smooth even where the device renders this scene at ~20fps.
   const phase = (key.charCodeAt(3) * 89 + (key.charCodeAt(4) || 0) * 17 + key.length * 41) % 997;
-  const fk = Math.floor(time / 82 + phase) % FLAME_TEX.count; // ~12 fps swap
-  if (flameFrame.get(img) !== fk) {
-    img.setTexture(flameFrameKey(fk));
-    flameFrame.set(img, fk);
-  }
-  // continuous flicker BETWEEN discrete frames — squash/stretch + a base lean.
-  // Low frequencies ONLY: the old 7-12Hz terms aliased into visible judder on
-  // phones that render this scene at ~20fps (Nyquist — they were undersampled).
-  // A calm 2-5Hz sway reads smooth at any frame rate and matches the menu flame.
   const w = time / 1000 + phase;
-  img.scaleX = base.x * (1 + Math.sin(w * 3.1) * 0.045 + Math.sin(w * 5.3 + 1.3) * 0.022);
-  img.scaleY = base.y * (1 + Math.sin(w * 2.6 + 0.7) * 0.06 + Math.sin(w * 4.4) * 0.03);
-  img.setAngle(Math.sin(w * 1.9) * 1.9 + Math.sin(w * 3.3 + 0.9) * 0.9);
+  img.scaleX = base.x * (1 + Math.sin(w * 3.1) * 0.03 + Math.sin(w * 5.3 + 1.3) * 0.015);
+  img.scaleY = base.y * (1 + Math.sin(w * 2.6 + 0.7) * 0.04 + Math.sin(w * 4.4) * 0.02);
+  img.setAngle(Math.sin(w * 1.9) * 1.3 + Math.sin(w * 3.3 + 0.9) * 0.6);
 }
 
 export function syncSourceGlows(
@@ -312,11 +304,10 @@ export function syncSourceGlows(
     want.add(key);
     let img = pool.images.get(key);
     if (img === undefined) {
-      img = scene.add.image(0, 0, flameFrameKey(0));
+      img = scene.add.image(0, 0, LIVE_FLAME_KEY);
       img.setOrigin(0.5, FLAME_ORIGIN_Y);
       layer?.add(img);
       pool.images.set(key, img);
-      flameFrame.set(img, 0);
     }
     // just above its own prop; a wall in front (larger x+y) still occludes it
     img.depth = depthOf(x, y, Layer.WALL) + 0.7;

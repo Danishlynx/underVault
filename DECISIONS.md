@@ -1108,6 +1108,22 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+127. THE LIVE FLAME (operator, 3rd flame pass: "i want the flame of main
+    menu to be the flame of lamps in gameplay and candle... they look
+    bad"). Root cause: the in-game flame and the menu flame were ALREADY
+    the same teardrop routine (drawTeardropFlame mirrors menu.drawFlame),
+    but the menu redraws its canvas continuously while in-game baked only 6
+    frames swapped at ~12fps — the stepping is what read as "bad". Fixed by
+    making the in-game flame the menu flame literally: ONE shared canvas
+    texture (uv-flame-live, 2x the logical cell so the normalised wick-pivot
+    still lands), redrawn every frame with the same continuous sway/flick
+    law and sampled by every lit prop. Cost is one small redraw + upload per
+    frame regardless of how many flames are on screen (was N frame-swaps);
+    animateFlame keeps only a gentle low-freq per-source transform so
+    neighbouring flames don't move in lockstep. Deleted buildFlameFrames +
+    the 6-frame set (D126's wobble-calming is now moot — the silhouette
+    itself carries the motion). Client-only, gate green.
+
 126. FLAME SMOOTHNESS + SNUFF LIGHT + TOAST CAP (operator on live mobile:
     "flame animation feels off and 19fps, not smooth; when I snuff the
     light is almost too low"). (a) FLAME JUDDER — animateFlame's continuous

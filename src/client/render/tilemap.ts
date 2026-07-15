@@ -90,7 +90,7 @@ function moldBody(
 /** Layered candle flame with halo — the game's leitmotif, drawn everywhere.
  *  `bake`="glow" paints ONLY the in-canvas bloom + a hot wick seed and skips
  *  the tongues: the lit tongue now rides as a per-frame animated overlay
- *  (buildFlameFrames + lights.pulseGlows) so braziers and wax candles flicker
+ *  (drawLiveFlame + lights.pulseGlows) so braziers and wax candles flicker
  *  like the menu's living flame instead of reading as a static painting. */
 function flameAt(
   ctx: CanvasRenderingContext2D,
@@ -155,11 +155,18 @@ function flameAt(
 // flickers alive. Built once at boot; frame-swap + a light transform wobble
 // keep mobile cheap (no per-frame canvas work, no filters). All presentation
 // — the deterministic sim never sees any of it.
-export const FLAME_TEX = { count: 6, cw: 44, ch: 60, fh: 22 } as const;
-export function flameFrameKey(k: number): string {
-  return `uv-flame-${k}`;
-}
-/** Wick-root pivot (normalised) so a placed frame roots exactly on its wick. */
+export const FLAME_TEX = { cw: 44, ch: 60, fh: 22 } as const;
+// The living flame is ONE shared canvas texture, redrawn every frame with the
+// menu's exact continuous flame law (drawTeardropFlame) — NOT a swap between
+// baked frames (that stepping is what read as "off"). Every lit prop samples
+// this one texture, so the cost is a single small redraw + upload per frame no
+// matter how many flames are on screen. Rendered at 2× the logical cell so the
+// normalised wick-pivot below still lands exactly on the wick.
+export const LIVE_FLAME_KEY = "uv-flame-live";
+const LIVE_W = FLAME_TEX.cw * 2;
+const LIVE_H = FLAME_TEX.ch * 2;
+const LIVE_FH = FLAME_TEX.fh * 2;
+/** Wick-root pivot (normalised) so a placed flame roots exactly on its wick. */
 export const FLAME_ORIGIN_Y = (FLAME_TEX.ch - FLAME_TEX.fh * 0.35) / FLAME_TEX.ch;
 
 /** One teardrop, the menu's grammar: attached glow, hot-graded body, cream
@@ -225,24 +232,27 @@ function drawTeardropFlame(
   ctx.globalCompositeOperation = "source-over";
 }
 
-/** Bake the flame-frame set (idempotent). Overlay sprites, so we keep the 4×
- *  master for crispness and scale via setDisplaySize at placement. */
-export function buildFlameFrames(scene: Phaser.Scene): void {
+/** Build the shared live-flame canvas (idempotent) and seat its module handle. */
+let liveTex: Phaser.Textures.CanvasTexture | null = null;
+export function buildLiveFlame(scene: Phaser.Scene): void {
   const T = scene.textures;
-  if (T.exists(flameFrameKey(0))) return;
-  const { count, cw, ch, fh } = FLAME_TEX;
-  for (let k = 0; k < count; k++) {
-    const tex = T.createCanvas(flameFrameKey(k), cw, ch);
-    if (tex === null) continue;
-    const ctx = hiBegin(tex);
-    // sample the menu flame's own sway/flick laws at distinct phases so the
-    // six silhouettes genuinely differ (proof-of-animation between captures)
-    const t = k * 0.62;
-    const sway = Math.sin(t * 2.3) * 0.62 + Math.sin(t * 5.1 + 1.7) * 0.4 + Math.sin(t * 1.3) * 0.25;
-    const flick = 1 + Math.sin(t * 9.7) * 0.09 + Math.sin(t * 13.3 + 0.6) * 0.1;
-    drawTeardropFlame(ctx, cw, ch, fh, t, sway, flick);
-    hiEnd(tex, true);
-  }
+  liveTex = T.exists(LIVE_FLAME_KEY)
+    ? (T.get(LIVE_FLAME_KEY) as Phaser.Textures.CanvasTexture)
+    : T.createCanvas(LIVE_FLAME_KEY, LIVE_W, LIVE_H);
+  drawLiveFlame(0); // never leave it empty — a prop must read "lit" on frame 1
+}
+
+/** Redraw the one shared flame for this frame (the menu's continuous sway/flick
+ *  law), then re-upload. Called once per frame; every flame sprite samples it. */
+export function drawLiveFlame(time: number): void {
+  if (liveTex === null) return;
+  const ctx = liveTex.getContext();
+  ctx.clearRect(0, 0, LIVE_W, LIVE_H);
+  const t = time / 1000;
+  const sway = Math.sin(t * 2.3) * 0.6 + Math.sin(t * 5.1 + 1.7) * 0.38 + Math.sin(t * 1.3) * 0.22;
+  const flick = 1 + Math.sin(t * 9.7) * 0.08 + Math.sin(t * 13.3 + 0.6) * 0.09;
+  drawTeardropFlame(ctx, LIVE_W, LIVE_H, LIVE_FH, t, sway, flick);
+  liveTex.refresh();
 }
 
 /** Soft elliptical contact shadow — grounds standing props. */
@@ -344,7 +354,7 @@ export function makeIsoTextures(scene: Phaser.Scene): void {
   buildBiomeSkin(scene.textures, 0); // the Tallow Halls skin ships with boot
   makeGlobalIsoTextures(scene);
   buildAllDecoSets(scene.textures); // per-biome furniture (D71)
-  buildFlameFrames(scene); // living-flame overlay frames (braziers, candles)
+  buildLiveFlame(scene); // the one shared live-flame texture (braziers, candles)
 }
 
 // ── Biome skins (D70): each biome wears its own stone ──────────────────────
