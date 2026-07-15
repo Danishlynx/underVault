@@ -1062,3 +1062,32 @@ candidates; flip them in the named data file, not in code.
       one house's candle blessed each dusk). Season 3 seed, one
       line she says at the festival: "The Vault has a bottom. The
       cold does not."
+
+106. THE FINALE IS PLAYABLE. When the candle given is the hundredth
+    (giftNo >= 100 for real; dev key K anywhere mid-run), the Meeting
+    continues into three finale plates: The Gate Unlocks (the halves
+    parted, a blade of white-gold pouring out, townsfolk silhouettes
+    frozen at the top), She Walks Up (the town's candlelight coming
+    down the stairs to meet her; her shadow finally long and ordinary
+    behind her), The Festival of Wicks (First Flame on its plinth
+    with ~100 tally marks, two candles on every sill, a child
+    lighting a wick, HER unhooded mid-crowd; the old door small and
+    dark on the hill with one verdigris breath - season two
+    sleeping). Then THE GATE IS OPEN sheet; the seal button reads
+    WALK UP BESIDE HER. Real players hit this exactly once per
+    season - the hundredth winner gets the rarest screen in the
+    game; the finale-day EVENT for everyone else remains the D105
+    proposal.
+
+107. THE HUMAN FINGERPRINT (operator worry: "will people understand
+    the collaboration?"). Every trace of another player now says so
+    in words: echoes teach "the last minutes of a delver who fell
+    here today" (+ toast names them as a person, not VFX); first
+    visible corpse teaches carry-their-learning-up; signs read
+    "carved by a delver's hand"; banking answers "it belongs to
+    every delver now"; codex meta reads "confirmed by N delvers";
+    arriving on a floor bearing echoes: "You are not the first down
+    here today" (once per run). House-name attribution on codex
+    entries/braziers needs a schema field - post-jam. Judge
+    cold-start mitigation: play the private sub with real accounts
+    before submission so the shared world has handwriting in it.

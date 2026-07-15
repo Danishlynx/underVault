@@ -259,6 +259,7 @@ export class DescentScene extends Phaser.Scene {
   private recovered: LearnedRule[] = [];
   private echoRing: { x: number; y: number; candle: number }[] = [];
   private floorEchoes: EchoRecord[] = [];
+  private echoWorldToasted = false; // once per run: "you are not the first" (D107)
   private echoPlayed = new Set<number>();
   private activeEcho: EchoPlayback | null = null;
   private lastTellAt = 0;
@@ -509,6 +510,11 @@ export class DescentScene extends Phaser.Scene {
         : "The match catches. The Vault is listening.",
       "info",
     );
+    this.echoWorldToasted = false;
+    if (this.floorEchoes.length > 0) {
+      this.echoWorldToasted = true;
+      this.hud.toast("You are not the first down here today.", "info");
+    }
     // the first lesson lands as soon as the flash settles (D93): the very
     // first thing a new delver needs is "press this to move"
     this.time.delayedCall(900, () => {
@@ -660,6 +666,20 @@ export class DescentScene extends Phaser.Scene {
             "inspect",
             "Something lives down here. Hold your pointer on it — finger or mouse — and learn its shape before it learns yours.",
             { timed: 9000, title: "The things below", at: { x: e.x, y: e.y } },
+          );
+          break;
+        }
+      }
+    }
+    // a visible corpse → the communal-inheritance lesson (D107)
+    if (!this.guides.has("corpse")) {
+      for (const e of s.entities) {
+        const ei = e.y * s.w + e.x;
+        if (e.kind === EntityKind.CORPSE && this.visibleMask[ei]! === 1 && (this.lightMap?.[ei] ?? 0) >= 0.3) {
+          this.teach(
+            "corpse",
+            "A fallen delver. What they learned dies unbanked — unless you stand beside them, press E, and carry it up.",
+            { timed: 10000, title: "What the fallen leave", at: { x: e.x, y: e.y } },
           );
           break;
         }
@@ -1162,6 +1182,7 @@ export class DescentScene extends Phaser.Scene {
       kb.on("keydown-V", () => this.toggleView()); // scout ↔ delve camera (D67)
       kb.on("keydown-M", () => this.devTeleport()); // DEV-ONLY: deleted at M2
       kb.on("keydown-L", () => this.devOpenSeal()); // DEV-ONLY: deleted at M2
+      kb.on("keydown-K", () => this.devOpenSeal(true)); // DEV-ONLY: the 100th candle
 
       const KC = Phaser.Input.Keyboard.KeyCodes;
       this.heldDirs = [
@@ -1405,7 +1426,7 @@ export class DescentScene extends Phaser.Scene {
         const nouns = earnedNouns(this.rules.learned.map((r) => r.key));
         const noun = nouns[sign.noun] ?? "…";
         const template = SIGN_TEMPLATES[sign.template] ?? "___";
-        this.hud.toast(`A sign: "${template.replace("___", noun)}"`, "discovery");
+        this.hud.toast(`A sign, carved by a delver's hand: "${template.replace("___", noun)}"`, "discovery");
         return;
       }
     }
@@ -1865,16 +1886,23 @@ export class DescentScene extends Phaser.Scene {
         : `Fl. ${ROMAN[this.state.floor]}. The dark is thicker here.`,
       "warning",
     );
+    if (!this.echoWorldToasted && this.floorEchoes.length > 0) {
+      this.echoWorldToasted = true;
+      this.hud.toast("You are not the first down here today.", "info");
+    }
   }
 
   // DEV-ONLY: deleted at M2 — L forces the Seal open (VICTORY) from anywhere,
   // so the operator can judge the Meeting without banking five truths.
-  private devOpenSeal(): void {
+  // K plays it as the HUNDREDTH candle: the Rescue finale (D106).
+  private devHundredth = false;
+  private devOpenSeal(hundredth = false): void {
     const s = this.state;
     if (s === null || !this.running || this.overlayOpen || s.status !== Status.ALIVE) return;
+    this.devHundredth = hundredth;
     s.status = Status.VICTORY;
     this.audio.play("bank"); // stands in for the Seal grinding open
-    this.hud.toast("(dev) The Seal forgets its price.", "info");
+    this.hud.toast(hundredth ? "(dev) The hundredth candle." : "(dev) The Seal forgets its price.", "info");
     this.time.delayedCall(600, () => this.openVictory());
   }
 
@@ -1932,7 +1960,10 @@ export class DescentScene extends Phaser.Scene {
             this.ports.bankClaims(claims);
           }
         }
-        this.hud.toast(`${e.a} truth${e.a === 1 ? "" : "s"} committed to the Codex.`, "discovery");
+        this.hud.toast(
+          `${e.a} truth${e.a === 1 ? "" : "s"} committed to the Codex — ${e.a === 1 ? "it belongs" : "they belong"} to every delver now.`,
+          "discovery",
+        );
         cue("bank");
         break;
       case Ev.REJECTED:
@@ -2368,7 +2399,13 @@ export class DescentScene extends Phaser.Scene {
     // one watery shimmer serves both entries: pool-triggered (Ev.POOL_ECHO →
     // playDeepestEcho) and proximity-triggered (maybeStartEcho)
     this.audio.play("pool");
-    this.hud.toast("A shape retraces its last steps…", "discovery");
+    // the human fingerprint (D107): an echo must read as a PERSON, not VFX
+    this.teach(
+      "echo",
+      "That shape is an echo — the last minutes of a delver who fell here today. Watch where it goes. Watch where it stops.",
+      { timed: 10000, title: "Those who came before" },
+    );
+    this.hud.toast("One who fell here today retraces their last steps…", "discovery");
   }
 
   private playDeepestEcho(): void {
@@ -2824,16 +2861,19 @@ export class DescentScene extends Phaser.Scene {
     // (D104, operator: "without music it was emotionless").
     this.audio.setDarkness(0);
     this.audio.startMeetingTheme();
+    // gate goal is 100, so the day's gatePct IS the season's candle count
+    // (D105) — this victory is the next one given. The hundredth (or the
+    // dev K key) completes the Long Rescue: the finale plates play (D106).
+    const giftNo = this.devHundredth ? 100 : Math.min(100, this.ports.getGuildhall().gatePct + 1);
+    this.devHundredth = false;
+    const finale = giftNo >= 100;
     openMeeting(host, () => {
       this.audio.play("victory");
-      // gate goal is 100, so the day's gatePct IS the season's candle count
-      // (D105) — this victory is the next one given
-      const giftNo = Math.min(100, this.ports.getGuildhall().gatePct + 1);
       openVictorySheet(host, this.runSummary(), () => {
         this.confirmRun();
         this.afterCeremony(true);
-      }, giftNo);
-    }, this.audio);
+      }, giftNo, finale);
+    }, this.audio, finale);
   }
 
   private afterCeremony(restAtDusk: boolean): void {

@@ -64,7 +64,13 @@ function renderEntry(entry: CodexEntry): HTMLElement {
   if (entry.status === "conditional") {
     row.appendChild(el("span", "uv-codex-cond", CONDITIONAL_SUFFIX));
   }
-  row.appendChild(el("span", "uv-dim uv-codex-meta", `Day ${entry.day} · ${entry.confirms}✓`));
+  row.appendChild(
+    el(
+      "span",
+      "uv-dim uv-codex-meta",
+      `Day ${entry.day} · confirmed by ${entry.confirms} delver${entry.confirms === 1 ? "" : "s"}`,
+    ),
+  );
   return row;
 }
 

@@ -19,6 +19,9 @@ import { paintMeeting1 } from "./story/meeting1.js";
 import { paintMeeting2 } from "./story/meeting2.js";
 import { paintMeeting3 } from "./story/meeting3.js";
 import { paintMeeting4 } from "./story/meeting4.js";
+import { paintFinale1 } from "./story/finale1.js";
+import { paintFinale2 } from "./story/finale2.js";
+import { paintFinale3 } from "./story/finale3.js";
 
 interface Slide {
   paint: (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
@@ -257,11 +260,34 @@ export function openStoryIntro(
   return openSlideshow(host, SLIDES, { skipLabel: "Skip the telling", holdMs: HOLD_MS }, onDone, audio);
 }
 
-/** The finale behind the Seal — no skip, no clock; Escape still releases it. */
+// The Rescue finale (D106): three more plates after the Meeting when the
+// hundredth candle is given — the Long Rescue completes on screen.
+const FINALE: Slide[] = [
+  {
+    paint: paintFinale1,
+    caption:
+      "On the hundredth candle, the Gate does not break. It unlocks — from the inside.\nIt was only ever waiting to be warm enough.",
+  },
+  {
+    paint: paintFinale2,
+    caption:
+      "Twenty years of stairs. The whole town's light comes down the steps to meet her —\nand her shadow falls behind her, long and ordinary, like anyone's.",
+  },
+  {
+    paint: paintFinale3,
+    caption:
+      "The First Flame stands in the square now. Two candles on every sill — one for the day, one for her.\nShe looks back only once, at the small dark door on the hill.\n“The Vault has a bottom. The cold does not.”",
+  },
+];
+
+/** The ending behind the Seal — no skip, no clock; Escape still releases it.
+ *  `finale` appends the Long Rescue's completion (the hundredth candle). */
 export function openMeeting(
   host: HTMLElement,
   onDone: () => void,
   audio?: { play(cue: "sheet"): void },
+  finale = false,
 ): () => void {
-  return openSlideshow(host, MEETING, { skipLabel: null, holdMs: 0 }, onDone, audio);
+  const slides = finale ? [...MEETING, ...FINALE] : MEETING;
+  return openSlideshow(host, slides, { skipLabel: null, holdMs: 0 }, onDone, audio);
 }

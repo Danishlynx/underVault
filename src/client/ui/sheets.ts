@@ -288,34 +288,62 @@ export function openVictorySheet(
   summary: RunSummary,
   onDone: () => void,
   giftNo?: number,
+  finale = false,
 ): () => void {
   const close = openSheet(host, (sheet) => {
-    sheet.appendChild(el("div", "uv-cause", "THE FIRST FLAME IS FED"));
-    sheet.appendChild(el("hr", "uv-rule"));
-    sheet.appendChild(
-      el(
-        "p",
-        "uv-gold",
-        `Floor XXV. Day ${summary.day}. Five truths opened the Seal; your candle's last wax went to hers. The Vault goes no deeper — and she keeps the flame your town still lights its wicks from.`,
-      ),
-    );
-    sheet.appendChild(el("p", "uv-dim", "She stayed. Someone had to. The town will remember who reached her first."));
-    // the Long Rescue (D105): the ending recruits — one victory is one candle
-    // toward the hundred that open the Gate from the inside
-    sheet.appendChild(
-      el(
-        "p",
-        "uv-gold",
-        `${giftNo !== undefined ? `Yours is the ${ordinal(giftNo)} candle given. ` : ""}When one hundred burn beside her, the Gate opens from the inside — and she walks home.`,
-      ),
-    );
+    if (finale) {
+      // the hundredth candle (D106): the Long Rescue completes on this sheet
+      sheet.appendChild(el("div", "uv-cause", "THE GATE IS OPEN"));
+      sheet.appendChild(el("hr", "uv-rule"));
+      sheet.appendChild(
+        el(
+          "p",
+          "uv-gold",
+          `Floor XXV. Day ${summary.day}. The hundredth candle was yours — the Gate needed no key, only warmth, and the town gave it a hundred times.`,
+        ),
+      );
+      sheet.appendChild(
+        el(
+          "p",
+          "uv-dim",
+          "She walks home by your light. Behind her, for the first time in twenty years, the Bottom is dark — and calm.",
+        ),
+      );
+      sheet.appendChild(
+        el(
+          "p",
+          "uv-gold",
+          "At dusk, the Festival of Wicks: two candles for every hearth. Her flame stands in the square now, and every house that gave is carved beneath it.",
+        ),
+      );
+    } else {
+      sheet.appendChild(el("div", "uv-cause", "THE FIRST FLAME IS FED"));
+      sheet.appendChild(el("hr", "uv-rule"));
+      sheet.appendChild(
+        el(
+          "p",
+          "uv-gold",
+          `Floor XXV. Day ${summary.day}. Five truths opened the Seal; your candle's last wax went to hers. The Vault goes no deeper — and she keeps the flame your town still lights its wicks from.`,
+        ),
+      );
+      sheet.appendChild(el("p", "uv-dim", "She stayed. Someone had to. The town will remember who reached her first."));
+      // the Long Rescue (D105): the ending recruits — one victory is one candle
+      // toward the hundred that open the Gate from the inside
+      sheet.appendChild(
+        el(
+          "p",
+          "uv-gold",
+          `${giftNo !== undefined ? `Yours is the ${ordinal(giftNo)} candle given. ` : ""}When one hundred burn beside her, the Gate opens from the inside — and she walks home.`,
+        ),
+      );
+    }
     const seal = el("button", "uv-seal-btn") as HTMLButtonElement;
     seal.addEventListener("click", () => {
       close();
       onDone();
     });
     sheet.appendChild(seal);
-    sheet.appendChild(el("span", "uv-seal-label", "RETURN TO THE LIGHT"));
+    sheet.appendChild(el("span", "uv-seal-label", finale ? "WALK UP BESIDE HER" : "RETURN TO THE LIGHT"));
   });
   return close;
 }
