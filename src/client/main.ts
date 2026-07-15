@@ -1,9 +1,9 @@
 /**
  * src/client/main.ts — the game.html bootstrap (M2b, 08 §7).
  *
- * Mirrors dev/main.ts's minimal boot — tokens.css through the vite module
+ * Mirrors dev/main.ts's minimal boot, tokens.css through the vite module
  * graph (a <link> above the vite root 404s silently and strips every DOM
- * sheet's theme), then createUndervaultGame(parent, ports) — with the dev
+ * sheet's theme), then createUndervaultGame(parent, ports), with the dev
  * adapter swapped for the remote ports. No perf rig, no tower view, no plate
  * preview: those are dev-only.
  */
@@ -17,7 +17,7 @@ import { createRemotePorts, VaultRefusal } from "./net/remote-ports.js";
 const REFUSAL_COPY: Partial<Record<string, string>> = {
   UNAUTHENTICATED: "The Guildhall does not know your face. Sign in, then descend.",
   NO_DAY: "The vault has not opened today. Return when the day's candle is minted.",
-  CANDLE_SPENT: "The candle is spent — return with tomorrow's flame.",
+  CANDLE_SPENT: "The candle is spent, return with tomorrow's flame.",
   RUN_EXPIRED: "The dark took your last descent while it lingered. Tomorrow, another flame.",
   FROZEN: "The vault is sealed while the Guild works. Patience, delver.",
 };

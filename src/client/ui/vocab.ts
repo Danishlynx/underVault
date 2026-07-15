@@ -64,7 +64,7 @@ export function describeRuleKey(key: string, effect: number): { subject: string;
     parts[3] === "cupped" ? ", flame cupped" : parts[3] === "snuffed" ? ", in darkness" : "";
   return {
     subject: subjectName(subject),
-    text: `${subjectName(subject)} — ${verb}${cond} → ${EFFECT_TEXT[effect] ?? "…"}`,
+    text: `${subjectName(subject)}, ${verb}${cond} → ${EFFECT_TEXT[effect] ?? "…"}`,
   };
 }
 

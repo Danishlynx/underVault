@@ -26,9 +26,9 @@ function injectStyles(): void {
 .uv-sheet {
   box-sizing: border-box;
   width: min(440px, 92%);
-  max-height: 88%;
+  max-height: 80%; /* D127: browser chrome clips the embed's bottom rows */
   overflow-y: auto;
-  margin-bottom: var(--gutter-mobile);
+  margin-bottom: calc(var(--gutter-mobile) + 28px);
   background: var(--parchment);
   color: var(--ink);
   border: 1px solid var(--ink);

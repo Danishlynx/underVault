@@ -198,19 +198,19 @@ const TILE_NAMES: Record<number, string> = {
 const PICKUP_LESSONS: Record<number, { title: string; text: string }> = {
   [Item.MIRROR]: {
     title: "The shard that sees",
-    text: "A mirror shard. Tap it when a chest sits wrong — its reflection catches a mirrormaw's fangs before you do.",
+    text: "A mirror shard. Tap it when a chest sits wrong, its reflection catches a mirrormaw's fangs before you do.",
   },
   [Item.BELL]: {
     title: "A voice to throw",
-    text: "A bell. Face a way and tap it to throw — the dark chases the sound, not you.",
+    text: "A bell. Face a way and tap it to throw, the dark chases the sound, not you.",
   },
   [Item.GLOWVIAL]: {
     title: "A light you leave",
-    text: "A glowmoss vial. Tap it to plant a light in the stone underfoot — it will burn for every delver after you.",
+    text: "A glowmoss vial. Tap it to plant a light in the stone underfoot, it will burn for every delver after you.",
   },
   [Item.DOUSE]: {
     title: "The cap that hides you",
-    text: "A dousing cap. Tap it to snuff the flame at once — no wax spent, and the dark takes you in a breath.",
+    text: "A dousing cap. Tap it to snuff the flame at once, no wax spent, and the dark takes you in a breath.",
   },
   [Item.KEY_IRON]: {
     title: "One turn of iron",
@@ -218,23 +218,23 @@ const PICKUP_LESSONS: Record<number, { title: string; text: string }> = {
   },
   [Item.KEY_MASTER]: {
     title: "The Keeper's key",
-    text: "The Lantern-Keeper's master key. Walk into any locked door — it knows every lock in the Vault.",
+    text: "The Lantern-Keeper's master key. Walk into any locked door, it knows every lock in the Vault.",
   },
   [Item.WSHARD]: {
     title: "A stone in your pocket",
-    text: "A waystone shard. Tap it to carve your truths into the Codex from where you stand — once, then it crumbles.",
+    text: "A waystone shard. Tap it to carve your truths into the Codex from where you stand, once, then it crumbles.",
   },
   [Item.ROPE]: {
     title: "Your own way down",
-    text: "A coil of rope. Tap it to drop to the next floor from anywhere — your own way down when a floor turns against you. Once only.",
+    text: "A coil of rope. Tap it to drop to the next floor from anywhere, your own way down when a floor turns against you. Once only.",
   },
   [Item.WAXCAKE]: {
     title: "The Vault's one mercy",
-    text: "A tallow cake. Tap it to feed your candle a hundred wax — the one mercy the Vault offers. Once only.",
+    text: "A tallow cake. Tap it to feed your candle a hundred wax, the one mercy the Vault offers. Once only.",
   },
   [Item.BONEKEY]: {
     title: "A key that keeps",
-    text: "A bone key. Face an iron door and tap it — it opens without a sound, and is never spent.",
+    text: "A bone key. Face an iron door and tap it, it opens without a sound, and is never spent.",
   },
 };
 
@@ -435,7 +435,7 @@ export class DescentScene extends Phaser.Scene {
 
     this.bindInput();
 
-    // DEV-ONLY: deleted at M2 — the Tower X-Ray's click-to-teleport
+    // DEV-ONLY: deleted at M2, the Tower X-Ray's click-to-teleport
     const onDevTeleport = (floor: number): void => this.devTeleport(floor);
     this.game.events.on("uv-dev-teleport", onDevTeleport);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -497,7 +497,7 @@ export class DescentScene extends Phaser.Scene {
     );
   }
 
-  /** "The Last Wick" (D79): the telling plays once per session — then the
+  /** "The Last Wick" (D79): the telling plays once per session, then the
    *  match strikes and the descent begins, no hall between (D91). */
   private tellThenStrike(host: HTMLElement): void {
     if (this.registry.get(STORY_KEY) !== true) {
@@ -575,7 +575,7 @@ export class DescentScene extends Phaser.Scene {
         "move",
         touch
           ? "Tap a tile to walk there. Tap yourself to stand still."
-          : "W A S D or Arrows — walk the dark. Hold a key to keep walking.",
+          : "W A S D or Arrows, walk the dark. Hold a key to keep walking.",
         { title: "First steps" },
       );
     });
@@ -618,7 +618,7 @@ export class DescentScene extends Phaser.Scene {
     this.lessonMoves = 0;
     this.hud.lesson(text, opts.title);
     // point AT the subject (D96): a lesson about an unmarked thing in the
-    // dark reads as a riddle — the gold diamond says "this one"
+    // dark reads as a riddle, the gold diamond says "this one"
     if (opts.at !== undefined) this.markLesson(opts.at.x, opts.at.y);
     this.lessonTimer?.remove();
     this.lessonTimer =
@@ -627,7 +627,7 @@ export class DescentScene extends Phaser.Scene {
         : null;
   }
 
-  /** The lesson's subject glows — LIGHT, not lines (D98 operator: the
+  /** The lesson's subject glows, LIGHT, not lines (D98 operator: the
    *  wireframe diamond read as a debug artifact, "not a proper game
    *  design way"). A soft golden pool beneath the subject, two breaths,
    *  then gone. Same visual language as the vigils and beacons. */
@@ -682,7 +682,7 @@ export class DescentScene extends Phaser.Scene {
       const touch = this.sys.game.device.input.touch && !this.sys.game.device.os.desktop;
       if (!touch) {
         this.time.delayedCall(900, () =>
-          this.teach("view", "V — the dark steps back and shows the room. V again, and it leans close.", {
+          this.teach("view", "V, the dark steps back and shows the room. V again, and it leans close.", {
             timed: 8000,
             title: "Two ways of seeing",
           }),
@@ -699,7 +699,7 @@ export class DescentScene extends Phaser.Scene {
       for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
         const t = s.tiles[(s.py + dy) * s.w + (s.px + dx)];
         if (t === Tile.DOOR_CLOSED || t === Tile.DOOR_STUCK || t === Tile.DOOR_IRON) {
-          this.teach("interact", "A door. Face it and press E — see if it gives. (A tap works too.)", {
+          this.teach("interact", "A door. Face it and press E, see if it gives. (A tap works too.)", {
             title: "What stands before you",
             at: { x: s.px + dx, y: s.py + dy },
           });
@@ -715,7 +715,7 @@ export class DescentScene extends Phaser.Scene {
         if (e.kind !== EntityKind.CORPSE && this.visibleMask[ei]! === 1 && (this.lightMap?.[ei] ?? 0) >= 0.3) {
           this.teach(
             "inspect",
-            "Something lives down here. Hold your pointer on it — finger or mouse — and learn its shape before it learns yours.",
+            "Something lives down here. Hold your pointer on it, finger or mouse, and learn its shape before it learns yours.",
             { timed: 9000, title: "The things below", at: { x: e.x, y: e.y } },
           );
           break;
@@ -729,7 +729,7 @@ export class DescentScene extends Phaser.Scene {
         if (e.kind === EntityKind.CORPSE && this.visibleMask[ei]! === 1 && (this.lightMap?.[ei] ?? 0) >= 0.3) {
           this.teach(
             "corpse",
-            "A fallen delver. What they learned dies unbanked — unless you stand beside them, press E, and carry it up.",
+            "A fallen delver. What they learned dies unbanked, unless you stand beside them, press E, and carry it up.",
             { timed: 10000, title: "What the fallen leave", at: { x: e.x, y: e.y } },
           );
           break;
@@ -743,7 +743,7 @@ export class DescentScene extends Phaser.Scene {
         const tx = i % s.w;
         const ty = (i / s.w) | 0;
         if (t === Tile.WAYSTONE) {
-          this.teach("bank", "A waystone. Stand on it, press E — what you carve there outlives you.", {
+          this.teach("bank", "A waystone. Stand on it, press E, what you carve there outlives you.", {
             timed: 9000,
             title: "What outlives you",
             at: { x: tx, y: ty },
@@ -751,7 +751,7 @@ export class DescentScene extends Phaser.Scene {
         } else if (t === Tile.STAIRS_DOWN) {
           this.guide("stairs", "The stairs down. Deeper floors keep deeper secrets.");
         } else if (t === Tile.WAX_DRIP || t === Tile.WAX_STUB || t === Tile.WAX_CAKE) {
-          this.teach("wax", "Wax on the stone. Walk over it — your candle drinks it.", {
+          this.teach("wax", "Wax on the stone. Walk over it, your candle drinks it.", {
             timed: 9000,
             title: "The Vault provides",
             at: { x: tx, y: ty },
@@ -768,7 +768,7 @@ export class DescentScene extends Phaser.Scene {
         if (this.visibleMask[e.y * s.w + e.x]! !== 1) continue;
         this.teach(
           "use-salt",
-          "A gloomcap slime nears. Salt is a wall it cannot cross, and it burns where it touches — press T (or tap the salt) to pour a line before it.",
+          "A gloomcap slime nears. Salt is a wall it cannot cross, and it burns where it touches, press T (or tap the salt) to pour a line before it.",
           { timed: 8000, title: "A wall of salt", at: { x: e.x, y: e.y } },
         );
         break;
@@ -783,7 +783,7 @@ export class DescentScene extends Phaser.Scene {
         if (this.visibleMask[e.y * s.w + e.x]! !== 1) continue;
         this.teach(
           "hunted",
-          "It hunts your light. Cup it (C) — or snuff and vanish. Each creature keeps its own law: test them.",
+          "It hunts your light. Cup it (C), or snuff and vanish. Each creature keeps its own law: test them.",
           { timed: 9000, title: "The dark hunts the light" },
         );
         break;
@@ -793,12 +793,12 @@ export class DescentScene extends Phaser.Scene {
     if (s.candle === Candle.SNUFFED && s.inv.includes(Item.FLINT)) {
       this.teach(
         "use-flint",
-        "Your candle is snuffed, and the dark has you. Flint will catch it again — press R (or tap the flint); three beats to steady the flame.",
+        "Your candle is snuffed, and the dark has you. Flint will catch it again, press R (or tap the flint); three beats to steady the flame.",
         { timed: 8000, title: "Strike it alight" },
       );
     }
     if (s.wax > 0 && s.wax < 150) {
-      this.teach("cup", "The candle wanes. C — cup the flame in your palm: unseen, and it sips instead of burns.", {
+      this.teach("cup", "The candle wanes. C, cup the flame in your palm: unseen, and it sips instead of burns.", {
         timed: 8000,
         title: "Guard the flame",
       });
@@ -808,7 +808,7 @@ export class DescentScene extends Phaser.Scene {
     if (!this.guides.has("use-chalk") && s.floor === 1 && this.guides.has("move") && s.inv.includes(Item.CHALK)) {
       this.teach(
         "use-chalk",
-        "Chalk marks the stone — press G (or tap the chalk). What you draw here endures into your own days to come, a map only you will read; and no Rustling will cross it.",
+        "Chalk marks the stone, press G (or tap the chalk). What you draw here endures into your own days to come, a map only you will read; and no Rustling will cross it.",
         { timed: 9000, title: "A mark of your own" },
       );
     }
@@ -830,7 +830,7 @@ export class DescentScene extends Phaser.Scene {
     if (s === null) return "";
     if (s.graceLeft > 0) return "Flame, or the way out.";
     if (s.floor === MAX_FLOOR) {
-      return s.banked >= 5 ? "Break the Seal." : `The Seal asks 5 banked truths — ${s.banked} given.`;
+      return s.banked >= 5 ? "Break the Seal." : `The Seal asks 5 banked truths, ${s.banked} given.`;
     }
     const n = this.unbankedThisRun().length;
     if (n > 0) return `Bank ${n} truth${n === 1 ? "" : "s"} at a waystone.`;
@@ -994,7 +994,7 @@ export class DescentScene extends Phaser.Scene {
   }
 
   // (D83) the darkness-dressing program — ghost prisms, rim masses, deep
-  // motes, painted backdrops — was reverted on operator verdict ("looks
+  // motes, painted backdrops, was reverted on operator verdict ("looks
   // ugly"). The paintings are parked unplugged in render/backdrops/. The
   // dark is the dark.
 
@@ -1102,7 +1102,7 @@ export class DescentScene extends Phaser.Scene {
     // dramatic change for a 4% zoom reads as a broken toggle (D97)
     if (Math.abs(this.baseZoom - before) / before > 0.08) {
       this.hud.toast(
-        this.viewMode === "delve" ? "Delve view — the dark leans close. (V to step back)" : "Scout view — the room at a glance.",
+        this.viewMode === "delve" ? "Delve view, the dark leans close. (V to step back)" : "Scout view, the room at a glance.",
         "info",
       );
     }
@@ -1113,7 +1113,7 @@ export class DescentScene extends Phaser.Scene {
    * see-through ground to its screen-front (N/W/NW) would hide the room
    * behind it, so it renders as a low CUT wall you see over; a wall showing
    * the camera its lit face (open ground S/E/SEs) is a room's back wall and
-   * may carry dressing. "Open" mirrors the FOV's opacity rule — chests,
+   * may carry dressing. "Open" mirrors the FOV's opacity rule, chests,
    * braziers, shrines are non-walkable but the player SEES them, so a wall
    * must never stand tall in front of one (adversarial-verify fix). Doors
    * count as open explicitly so jambs classify stably in any door state;
@@ -1148,7 +1148,7 @@ export class DescentScene extends Phaser.Scene {
    * is already the CUT rule; this asks whether a DEEPER cone tile hides
    * something that MATTERS — the player or a visible creature. (D96: it
    * used to ghost for ANY visible floor, which turned whole room edges
-   * into glass — operator: "clutter in rendering". Empty floor may hide;
+   * into glass, operator: "clutter in rendering". Empty floor may hide;
    * a monster you can see must never render invisible.)
    */
   private static readonly OCCLUSION_CONE: readonly [number, number][] = [
@@ -1415,7 +1415,7 @@ export class DescentScene extends Phaser.Scene {
   }
 
   /** Far tap → one safe step toward it (D97): the phone's only locomotion
-   *  was a lie before — "tap a tile to walk there" now walks there. */
+   *  was a lie before, "tap a tile to walk there" now walks there. */
   private stepToward(tx: number, ty: number): void {
     const s = this.state;
     if (s === null) return;
@@ -1516,11 +1516,11 @@ export class DescentScene extends Phaser.Scene {
     const s = this.state;
     if (s === null) return;
     this.lessonDone("inspect"); // doing dismisses the lesson (D93)
-    this.audio.play("inspect"); // the long-press lands — a faint tick
+    this.audio.play("inspect"); // the long-press lands, a faint tick
     const i = ty * s.w + tx;
     const floorRoman = ROMAN[s.floor] ?? String(s.floor);
     if (s.seen[i]! !== 1) {
-      this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)} — unseen dark`, "info");
+      this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)}, unseen dark`, "info");
       return;
     }
     // signs speak when inspected
@@ -1541,11 +1541,11 @@ export class DescentScene extends Phaser.Scene {
       // a disguised mirrormaw lies to the plaque too — secrets hold
       const disguised = ent.kind === EntityKind.MIMIC && ent.state === MimicState.DISGUISED;
       const name = disguised ? "an old chest" : ENTITY_NAMES[ent.kind] ?? "something nameless";
-      this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)} — ${name}`, "info");
+      this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)}, ${name}`, "info");
       return;
     }
     const what = TILE_NAMES[s.tiles[i]!] ?? "…";
-    this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)} — ${what}`, "info");
+    this.hud.toast(`Fl. ${floorRoman} · ${gridRef(tx, ty)}, ${what}`, "info");
   }
 
   private useSlot(slot: number): void {
@@ -1565,7 +1565,7 @@ export class DescentScene extends Phaser.Scene {
       return;
     }
     if (item === Item.KEY_IRON || item === Item.KEY_MASTER) {
-      this.hud.toast("Keys turn in doors — walk into a locked one.", "info");
+      this.hud.toast("Keys turn in doors, walk into a locked one.", "info");
       return;
     }
     // Generic USE, slot + facing packed: bell/mirror/glowvial/douse/wshard
@@ -1676,7 +1676,7 @@ export class DescentScene extends Phaser.Scene {
         return;
       }
       if (t === Tile.STAIRS_DOWN) {
-        this.hud.toast("Stairs — step onto them, then Enter (or tap yourself).", "info");
+        this.hud.toast("Stairs, step onto them, then Enter (or tap yourself).", "info");
         return;
       }
       if (DescentScene.SIM_INTERACTABLE.has(t)) {
@@ -1759,7 +1759,7 @@ export class DescentScene extends Phaser.Scene {
     }
 
     // the hold CHARGES visibly (D96): without this, players hold, see
-    // nothing move, and release before the threshold — "nothing happened"
+    // nothing move, and release before the threshold, "nothing happened"
     this.pressRing.clear();
     if (this.pressTile !== null && !this.pressConsumed) {
       const frac = Math.min(1, (time - this.pressAt) / LONG_PRESS_MS);
@@ -1805,7 +1805,7 @@ export class DescentScene extends Phaser.Scene {
     }
 
     // held-direction streaming (D92): only once a key has been HELD past
-    // the repeat delay — a tap is exactly one step (the keydown event's),
+    // the repeat delay, a tap is exactly one step (the keydown event's),
     // a deliberate hold streams at drain cadence. Most recent key wins,
     // so rolling from W to D corners crisply without releasing.
     const HOLD_REPEAT_MS = 200;
@@ -1882,7 +1882,7 @@ export class DescentScene extends Phaser.Scene {
         // instead of processing early — clearing them just ATE the keys the
         // player pressed while the Vault answered ("sometimes it doesn't move").
         // the triggering act must ride the flush: ActRes.rules is the set the
-        // server's replay consulted, and it only consults what the log holds —
+        // server's replay consulted, and it only consults what the log holds,
         // logged here EXACTLY ONCE (the re-run below passes actLogged)
         if (!actLogged) this.ports.actApplied?.(stepIn.op, stepIn.arg, s0.tick);
         void ra(first.needRule)
@@ -1905,7 +1905,7 @@ export class DescentScene extends Phaser.Scene {
     const s = this.state;
 
     if (this.meaningfulLearned() > before) {
-      this.hud.toast("◆ The Vault yields a truth — bank it at a Waystone", "discovery");
+      this.hud.toast("◆ The Vault yields a truth, bank it at a Waystone", "discovery");
       this.audio.play("discovery");
       // the discovery breath: the dark recedes for a moment and the world
       // leans in — no white flash, the inverse of one (D75)
@@ -1952,7 +1952,7 @@ export class DescentScene extends Phaser.Scene {
     const ga = this.ports.getFloorAsync;
     if (ga !== undefined) {
       // remote: the payload usually arrived with the stairs-touch prefetch;
-      // when it didn't, hold the descent (world paused) and keep asking —
+      // when it didn't, hold the descent (world paused) and keep asking,
       // a lost descend otherwise strands the run in DESCENDING forever
       this.floorLoading = true;
       ga(next)
@@ -2068,14 +2068,14 @@ export class DescentScene extends Phaser.Scene {
           const ba = this.ports.bankClaimsAsync;
           if (ba !== undefined) {
             void ba(claims).catch(() =>
-              this.hud.toast("The Codex is distant — your truths ride with the run's end.", "warning"),
+              this.hud.toast("The Codex is distant, your truths ride with the run's end.", "warning"),
             );
           } else {
             this.ports.bankClaims(claims);
           }
         }
         this.hud.toast(
-          `${e.a} truth${e.a === 1 ? "" : "s"} committed to the Codex — ${e.a === 1 ? "it belongs" : "they belong"} to every delver now.`,
+          `${e.a} truth${e.a === 1 ? "" : "s"} committed to the Codex, ${e.a === 1 ? "it belongs" : "they belong"} to every delver now.`,
           "discovery",
         );
         cue("bank");
@@ -2083,7 +2083,7 @@ export class DescentScene extends Phaser.Scene {
       case Ev.REJECTED:
         if (e.a === Action.BANK && this.pendingBank !== null) {
           this.pendingBank = null;
-          this.hud.toast("The stone is beyond reach — nothing was committed.", "warning");
+          this.hud.toast("The stone is beyond reach, nothing was committed.", "warning");
           cue("reject");
           break;
         }
@@ -2106,7 +2106,7 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.DOOR_OPENED:
       case Ev.DOOR_SIGIL_OPEN:
-        this.lessonDone("interact"); // the door GAVE — lesson learned (D97)
+        this.lessonDone("interact"); // the door GAVE, lesson learned (D97)
         this.puffAt(e.a, e.b, 8); // old hinges shed their dust (D75)
         cue("door");
         break;
@@ -2115,7 +2115,7 @@ export class DescentScene extends Phaser.Scene {
         this.puffAt(e.a, e.b, 12);
         cue("door-force");
         // the hidden extra cost surfaces (D97): stuck doors are not free
-        this.hud.toast("You force it — loud, and it takes wax.", "warning");
+        this.hud.toast("You force it, loud, and it takes wax.", "warning");
         break;
       case Ev.DOOR_FED:
         this.hud.toast("The door swallows fifty wax, and opens.", "warning");
@@ -2209,7 +2209,7 @@ export class DescentScene extends Phaser.Scene {
         cue("split");
         break;
       case Ev.BELL_RUNG:
-        this.hud.toast("A bell tolls above the corpse — the floor knows.", "death");
+        this.hud.toast("A bell tolls above the corpse, the floor knows.", "death");
         cue("bell");
         break;
       case Ev.SCREAM:
@@ -2229,7 +2229,7 @@ export class DescentScene extends Phaser.Scene {
         this.hud.toast(`It drops the ${subjectItem(e.a)}.`, "discovery");
         break;
       case Ev.HANDS_FULL:
-        this.hud.toast(`Your hands are full — the chest keeps its ${subjectItem(e.a)}.`, "info");
+        this.hud.toast(`Your hands are full, the chest keeps its ${subjectItem(e.a)}.`, "info");
         cue("thump");
         break;
       case Ev.PICKPOCKET:
@@ -2241,10 +2241,10 @@ export class DescentScene extends Phaser.Scene {
         break;
       case Ev.WAX_GAINED:
         cue("pickup");
-        this.lessonDone("wax"); // the candle drank — lesson learned (D95)
+        this.lessonDone("wax"); // the candle drank, lesson learned (D95)
         break;
       case Ev.ALTAR_PULSE:
-        this.hud.toast("The altar drinks 100 wax — the floor unfolds in your mind.", "discovery");
+        this.hud.toast("The altar drinks 100 wax, the floor unfolds in your mind.", "discovery");
         cue("discovery");
         break;
       case Ev.POOL_ECHO:
@@ -2259,19 +2259,19 @@ export class DescentScene extends Phaser.Scene {
         cue("sign");
         break;
       case Ev.CHALK_MARKED:
-        this.lessonDone("use-chalk"); // you drew the mark — lesson learned
+        this.lessonDone("use-chalk"); // you drew the mark, lesson learned
         this.ports.chalkChanged(s.floor, s.chalk);
         cue("chalk");
         break;
       case Ev.SALT_PLACED:
-        this.lessonDone("use-salt"); // the line is poured — lesson learned
+        this.lessonDone("use-salt"); // the line is poured, lesson learned
         cue("salt");
         break;
       case Ev.PLATE_PRESSED:
         cue("plate");
         break;
       case Ev.ITEM_USED:
-        this.lessonDone(`find:${e.a}`); // you spent it — its lesson is learned
+        this.lessonDone(`find:${e.a}`); // you spent it, its lesson is learned
         if (e.a === Item.GLOWVIAL) {
           this.ports.glowmossPlanted(s.floor, s.py * s.w + s.px);
           this.hud.toast("The glowmoss takes root. It will outlive you.", "discovery");
@@ -2308,7 +2308,7 @@ export class DescentScene extends Phaser.Scene {
           // the world drains toward the memory view while dark (D77)
           if (this.snuffGrade === null) this.snuffGrade = addSnuffGrade(this.cameras.main);
         } else {
-          this.lessonDone("use-flint"); // the flame is back — lesson learned
+          this.lessonDone("use-flint"); // the flame is back, lesson learned
           cue(e.a === Candle.CUPPED ? "cup" : "relight");
           removeSnuffGrade(this.cameras.main, this.snuffGrade);
           this.snuffGrade = null;
@@ -2441,7 +2441,7 @@ export class DescentScene extends Phaser.Scene {
     this.bumpStreak = now - this.lastBumpAt < 2600 ? this.bumpStreak + 1 : 1;
     this.lastBumpAt = now;
     if (this.bumpStreak >= 3) {
-      this.teach("blocked", "Stone. The dark hides walls — what your light has not touched is not yet real.", {
+      this.teach("blocked", "Stone. The dark hides walls, what your light has not touched is not yet real.", {
         timed: 7000,
         title: "The unseen stone",
       });
@@ -2520,7 +2520,7 @@ export class DescentScene extends Phaser.Scene {
     // the human fingerprint (D107): an echo must read as a PERSON, not VFX
     this.teach(
       "echo",
-      "That shape is an echo — the last minutes of a delver who fell here today. Watch where it goes. Watch where it stops.",
+      "That shape is an echo, the last minutes of a delver who fell here today. Watch where it goes. Watch where it stops.",
       { timed: 10000, title: "Those who came before" },
     );
     this.hud.toast("One who fell here today retraces their last steps…", "discovery");
@@ -2747,7 +2747,7 @@ export class DescentScene extends Phaser.Scene {
       const vis = this.visibleMask[i]! === 1;
       if (!seen) {
         // penumbra (D95, tightened D96): an unseen WALL beside the player
-        // shows as a faint cold silhouette — but only within arm's reach
+        // shows as a faint cold silhouette, but only within arm's reach
         // (manhattan ≤ 2). The first cut ringed the WHOLE light pool in
         // ghosts and read as clutter; the point is "what will I bump
         // NEXT", not an x-ray of the room. Items in the dark stay secret.
@@ -2870,7 +2870,7 @@ export class DescentScene extends Phaser.Scene {
     const host = this.host();
     const s = this.state;
     if (host === null || s === null || this.overlayOpen) return;
-    this.lessonDone("bank"); // the stone answered — lesson learned (D97)
+    this.lessonDone("bank"); // the stone answered, lesson learned (D97)
     this.overlayOpen = true;
     const bankable = this.unbankedThisRun();
     openWaystoneSheet(
@@ -2913,7 +2913,7 @@ export class DescentScene extends Phaser.Scene {
       .getCodex()
       .filter((c) => c.status !== "inked" && c.status !== "disproven" && c.confirms >= 3)
       .slice(0, 2)
-      .map((c) => `${c.text} — ${c.confirms}/5 confirmations.`);
+      .map((c) => `${c.text}, ${c.confirms}/5 confirmations.`);
     let nearMiss: string | null = null;
     for (let i = 0; i < s.tiles.length; i++) {
       if (s.tiles[i] === Tile.STAIRS_DOWN) {

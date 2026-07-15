@@ -1,5 +1,5 @@
 /**
- * The Main Menu — "The Vigil" (D84). The first screen of every session:
+ * The Main Menu, "The Vigil" (D84). The first screen of every session:
  * one great unlit candle before the buried Gate (painted hero backdrop),
  * a LIVE flame rendered per-frame at its wick, drifting embers, and the
  * wordmark over a Crysis-grade quiet menu. The essence of the game in one
@@ -76,7 +76,7 @@ export interface MenuVitals {
   codexPct: number;
   fallenToday: number;
   rumor: string;
-  /** today's candle already burned (one per day) — BEGIN goes dark (D98).
+  /** today's candle already burned (one per day), BEGIN goes dark (D98).
    *  Dev adapter never sets it; the server port flips it for real. */
   spent?: boolean;
   /** the Long Rescue is complete — she is home; the menu changes forever (D108) */
@@ -269,7 +269,7 @@ const REDUCED = (): boolean =>
  * The live flame: a small rAF canvas whose wick tip sits exactly on the
  * backdrop's returned geometry. One TEARDROP rooted on the wick (the
  * blind panel read the old layered blobs as "two stacked glowing balls,
- * not a flame") — a bezier flame body with a vertical heat gradient, a
+ * not a flame"), a bezier flame body with a vertical heat gradient, a
  * hot inner core, and a single attached glow. Sway leans the tip; the
  * root never leaves the wick.
  */
@@ -290,7 +290,7 @@ function drawFlame(
   const s = sway * F * 0.14; // lateral lean, applied strongest at the tip
   ctx.globalCompositeOperation = "lighter";
 
-  // one glow, attached — centered on the flame's belly, not floating above
+  // one glow, attached, centered on the flame's belly, not floating above
   const gx = wickX + s * 0.35;
   const gy = wickY - F * 0.42;
   const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, F * 0.95);
@@ -365,7 +365,7 @@ export function openMainMenu(
   herFlame.style.display = "none";
   root.appendChild(herFlame);
 
-  // the wax weeps in real time (D99) — drips crawl the candle's flank
+  // the wax weeps in real time (D99), drips crawl the candle's flank
   const melt = document.createElement("canvas");
   melt.className = "uv-menu-flame uv-menu-stage";
   root.appendChild(melt);
@@ -414,7 +414,7 @@ export function openMainMenu(
   }
   const tellingBtn = mkItem("The Telling", false);
   const codexBtn = mkItem("The Codex", false);
-  const soundBtn = mkItem(`Sound — ${audio.muted ? "off" : "on"}`, false);
+  const soundBtn = mkItem(`Sound: ${audio.muted ? "off" : "on"}`, false);
   col.appendChild(items);
 
   // the daily pulse (D91) — two quiet lines, all that remains of the hall
@@ -478,7 +478,7 @@ export function openMainMenu(
     const fctx = flame.getContext("2d");
     fctx?.scale(dpr, dpr);
     // her flame hugs the mother-wick the painter left anchored (D109);
-    // geom.mother.flameY is the flame's HEART — the base sits ~0.48 fH below
+    // geom.mother.flameY is the flame's HEART, the base sits ~0.48 fH below
     if (geom.mother !== undefined) {
       const mfH = geom.mother.flameH * h;
       herFlamePx = mfH;
@@ -741,7 +741,7 @@ export function openMainMenu(
       handlers.onCodex();
     } else {
       audio.setMuted(!audio.muted);
-      soundBtn.textContent = `Sound — ${audio.muted ? "off" : "on"}`;
+      soundBtn.textContent = `Sound: ${audio.muted ? "off" : "on"}`;
     }
   };
   list.forEach((b) => b.addEventListener("click", () => activate(b)));

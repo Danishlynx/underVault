@@ -37,7 +37,7 @@ export function openWaystoneSheet(
   onClose: () => void,
 ): () => void {
   const close = openSheet(host, (sheet) => {
-    sheet.appendChild(el("h1", "", "WAYSTONE — the Vault listens"));
+    sheet.appendChild(el("h1", "", "WAYSTONE, the Vault listens"));
     const meaningful = bankable.filter((r) => r.effect !== Effect.NONE);
     const picked = new Set<string>();
     let seal: HTMLButtonElement | null = null;
@@ -100,11 +100,11 @@ export interface EpitaphResult {
   houseName: string | null;
 }
 
-/** The Zeigarnik panel (D78): what died incomplete — tomorrow's pull. */
+/** The Zeigarnik panel (D78): what died incomplete, tomorrow's pull. */
 export interface UnfinishedBusiness {
   /** unbanked truths, already worded */
   truths: string[];
-  /** codex claims one breath from inking ("… — 4/5 confirmations") */
+  /** codex claims one breath from inking ("…, 4/5 confirmations") */
   nearClaims: string[];
   /** the near-miss line ("The stairs down were 4 steps away."), if cruel */
   nearMiss: string | null;
@@ -122,7 +122,7 @@ export function openEpitaphSheet(
 ): () => void {
   const close = openSheet(host, (sheet) => {
     // the death screen NAMES the killer (D98): deaths are the teachers in
-    // a knowledge game — "taken by the dark" taught nothing
+    // a knowledge game, "taken by the dark" taught nothing
     const cause =
       state.deathCause === DeathCause.TAKEN_BY_THE_DARK && killer !== undefined
         ? `TAKEN BY ${killer.toUpperCase()}`
@@ -152,7 +152,7 @@ export function openEpitaphSheet(
       sheet.appendChild(head);
       const list = el("ul", "uv-list");
       for (const t of unfinished.truths.slice(0, 3)) {
-        list.appendChild(el("li", "uv-dim", `${t} — lies with your corpse, 72 hours.`));
+        list.appendChild(el("li", "uv-dim", `${t}, lies with your corpse, 72 hours.`));
       }
       for (const c of unfinished.nearClaims.slice(0, 2)) {
         list.appendChild(el("li", "uv-dim", c));
@@ -211,7 +211,7 @@ export function openEpitaphSheet(
       sheet.appendChild(houseInput);
     } else {
       sheet.appendChild(
-        el("p", "uv-gold", `The line endures — ${house} ${ROMAN[generation + 1] ?? generation + 1} will wake at dusk.`),
+        el("p", "uv-gold", `The line endures, ${house} ${ROMAN[generation + 1] ?? generation + 1} will wake at dusk.`),
       );
     }
 
@@ -231,9 +231,9 @@ export function openEpitaphSheet(
     sheet.appendChild(seal);
     sheet.appendChild(el("span", "uv-seal-label", "REST UNTIL DUSK"));
     // the law, stated PLAINLY once (D98): "rest until dusk" alone reads
-    // as "back to menu" — players must leave knowing the day is spent
+    // as "back to menu", players must leave knowing the day is spent
     sheet.appendChild(
-      el("p", "uv-dim", "One candle a day — yours is spent. A new candle is cut at dusk, and the Vault deals new laws."),
+      el("p", "uv-dim", "One candle a day, yours is spent. A new candle is cut at dusk, and the Vault deals new laws."),
     );
     const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
     again.addEventListener("click", () => finish(false));
@@ -299,14 +299,14 @@ export function openVictorySheet(
         el(
           "p",
           "uv-gold",
-          `Floor XXV. Day ${summary.day}. The hundredth candle was yours — the Gate needed no key, only warmth, and the town gave it a hundred times.`,
+          `Floor XXV. Day ${summary.day}. The hundredth candle was yours, the Gate needed no key, only warmth, and the town gave it a hundred times.`,
         ),
       );
       sheet.appendChild(
         el(
           "p",
           "uv-dim",
-          "She walks home by your light. Behind her, for the first time in twenty years, the Bottom is dark — and calm.",
+          "She walks home by your light. Behind her, for the first time in twenty years, the Bottom is dark, and calm.",
         ),
       );
       sheet.appendChild(
@@ -321,7 +321,7 @@ export function openVictorySheet(
         el(
           "p",
           "uv-dim",
-          "The descent does not end. The Vault still shifts its laws at dusk, and the Codex is not yet full. She asks only this: keep going down. Learn it all — so the door she kept never needs a keeper again.",
+          "The descent does not end. The Vault still shifts its laws at dusk, and the Codex is not yet full. She asks only this: keep going down. Learn it all, so the door she kept never needs a keeper again.",
         ),
       );
     } else {
@@ -331,7 +331,7 @@ export function openVictorySheet(
         el(
           "p",
           "uv-gold",
-          `Floor XXV. Day ${summary.day}. Five truths opened the Seal; your candle's last wax went to hers. The Vault goes no deeper — and she keeps the flame your town still lights its wicks from.`,
+          `Floor XXV. Day ${summary.day}. Five truths opened the Seal; your candle's last wax went to hers. The Vault goes no deeper, and she keeps the flame your town still lights its wicks from.`,
         ),
       );
       sheet.appendChild(el("p", "uv-dim", "She stayed. Someone had to. The town will remember who reached her first."));
@@ -341,7 +341,7 @@ export function openVictorySheet(
         el(
           "p",
           "uv-gold",
-          `${giftNo !== undefined ? `Yours is the ${ordinal(giftNo)} candle given. ` : ""}When one hundred burn beside her, the Gate opens from the inside — and she walks home.`,
+          `${giftNo !== undefined ? `Yours is the ${ordinal(giftNo)} candle given. ` : ""}When one hundred burn beside her, the Gate opens from the inside, and she walks home.`,
         ),
       );
     }
@@ -367,11 +367,11 @@ export function openHeirloomSheet(host: HTMLElement, onPick: (id: number) => voi
   ];
   const close = openSheet(host, (sheet) => {
     sheet.appendChild(el("h1", "", "THE LINE ENDURES"));
-    sheet.appendChild(el("p", "uv-dim", "Three generations gone. The Guild grants one heirloom — choose."));
+    sheet.appendChild(el("p", "uv-dim", "Three generations gone. The Guild grants one heirloom, choose."));
     const list = el("ul", "uv-list");
     for (const o of OPTIONS) {
       const li = el("li", "", "");
-      const b = el("button", "uv-ink-btn", `${o.name} — ${o.blurb}`) as HTMLButtonElement;
+      const b = el("button", "uv-ink-btn", `${o.name}, ${o.blurb}`) as HTMLButtonElement;
       b.style.display = "inline";
       b.addEventListener("click", () => {
         close();

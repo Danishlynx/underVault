@@ -137,7 +137,7 @@ export class Hud {
     // NO in-HUD audio control (D98 operator override, twice confirmed):
     // the music is part of the game and stays on during play. The menu's
     // SOUND toggle remains the app-level control. Invariant 6's
-    // "always visible" is overridden by the operator — logged in
+    // "always visible" is overridden by the operator, logged in
     // DECISIONS; visibilitychange hard-mute is untouched.
     this.menuText = this.fixed(
       s.add.text(0, 0, "≡", { fontFamily: SANS, fontSize: "28px", color: "#b7ae9c" }).setOrigin(0.5, 0),
@@ -398,7 +398,7 @@ export class Hud {
     }
 
     if (state.graceLeft > 0) {
-      this.graceText.setText(`THE DARK GRACE — ${state.graceLeft}\nreach flame, or the way out`);
+      this.graceText.setText(`THE DARK GRACE, ${state.graceLeft}\nreach flame, or the way out`);
     } else {
       this.graceText.setText("");
     }
@@ -496,7 +496,7 @@ export class Hud {
 
   /**
    * A whisper from the Vault (D98, operator: "make them professional"):
-   * dark leaf, hairline frame and one small diamond in the KIND's color —
+   * dark leaf, hairline frame and one small diamond in the KIND's color,
    * the accent carries the meaning, the words stay parchment. Same
    * manuscript grammar as the lesson plaques, quieter register.
    */
