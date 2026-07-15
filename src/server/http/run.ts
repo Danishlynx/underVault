@@ -555,6 +555,19 @@ runRoutes.post("/start", async (c) => {
       resumed: true,
       setup: { mods: setup.mods, heirloom: setup.heirloom, noSalt: setup.noSalt },
       floor: await floorWireFor(d, meta, composed),
+      // Mid-run resume (M2b): the full packed log + current floor + every
+      // rule this run already consulted (run.learned). The client replays the
+      // log over the descend-re-served floors (ts-pinned ⇒ byte-identical)
+      // instead of voiding the candle on an innocent reload. Leak-safe: each
+      // learned rule already reached this player via earlier ActRes.rules.
+      resume: {
+        log: stored.log,
+        floor: Math.min(stored.floor, U8_MAX),
+        learned: stored.learned
+          .slice(0, 1024)
+          .map((l) => ({ key: l.key, effect: Math.min(l.effect, U8_MAX) })),
+        banked: stored.bankedKeys.slice(0, 256),
+      },
     };
     return c.json(res);
   }
@@ -618,7 +631,13 @@ runRoutes.post("/act", async (c) => {
   const crossing =
     Math.floor((req.fromTick + count) / CHECKPOINT_EVERY) >
     Math.floor(req.fromTick / CHECKPOINT_EVERY);
-  if (crossing && req.checkHash === undefined) {
+  // Valve (M2b): a SINGLE-act crossing may go hash-less. This is exactly the
+  // unknown-rule deadlock: when the act that consults an unlearned rule
+  // itself completes a 32-step block, the client cannot hash a state whose
+  // rule effect it has not learned — and this very flush is how it learns it
+  // (ActRes.rules). Multi-act crossings still require the seal; the honest
+  // client hashes again at the next boundary, so coverage resumes there.
+  if (crossing && req.checkHash === undefined && count !== 1) {
     fail(400, ErrCode.BAD_INPUT, "a checkpoint seal is required past the 32nd step");
   }
   const all = stored.concat(incoming);

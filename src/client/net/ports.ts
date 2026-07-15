@@ -5,7 +5,7 @@
  * /api/* with Redis behind it (same shapes).
  */
 
-import type { FloorData, OmenMods } from "../../shared/sim/types.js";
+import type { FloorData, OmenMods, SimState } from "../../shared/sim/types.js";
 
 export interface FloorPayloadLike {
   floorData: FloorData;
@@ -91,6 +91,30 @@ export interface GamePorts {
   setHouse(name: string): void;
   heirloomDue(): boolean;
   pickHeirloom(id: number): void;
+
+  // ---- M2b remote seams (08 §7) — absent in the dev adapter; when a method
+  // is missing the driver uses the synchronous path above. The sim never
+  // sees these: every async gap lives in the driver between ticks.
+  /** unknown rule: flush the act batch, return the server-resolved effect */
+  resolveRuleAsync?(key: string): Promise<number>;
+  /** speculative next-floor prefetch on stairs touch (idempotent server-side) */
+  prefetchFloor?(floor: number): void;
+  /** awaited inside the descend fade — serves the prefetch, or fetches now */
+  getFloorAsync?(floor: number): Promise<FloorPayloadLike>;
+  /** every action applied to the local sim, in order — feeds the act batcher */
+  actApplied?(op: number, arg: number, atTick: number): void;
+  bankClaimsAsync?(claims: LearnedRule[]): Promise<CodexEntryRec[]>;
+  reportDeathAsync?(report: DeathReport): Promise<void>;
+  reportExitAsync?(): Promise<void>;
+  /**
+   * Mid-run resume (mobile webviews die on app-switch; a reload must not
+   * void the candle). Non-null when the server replayed a live run for this
+   * session: the driver adopts `state` instead of a fresh initState, seeds
+   * its rule table with `learned` (all bankable again) and `banked` (keys
+   * already committed). CONSUMED ON READ — returns null ever after, so a
+   * post-run scene restart can never re-adopt a stale state.
+   */
+  getResume?(): { state: SimState; floor: FloorPayloadLike; learned: LearnedRule[]; banked: string[] } | null;
 }
 
 /** Session-learned rule cache (02 §4). */

@@ -22,7 +22,7 @@ import {
   type StartRes,
 } from "../../shared/protocol.js";
 import { initState, tick } from "../../shared/sim/engine.js";
-import { h32Hex, packActions, toB64 } from "../../shared/sim/pack.js";
+import { fromB64, h32Hex, packActions, toB64, unpackActions } from "../../shared/sim/pack.js";
 import {
   Action,
   DeathCause,
@@ -430,6 +430,61 @@ describe("corpse recovery, sign placement, banking (second delver)", () => {
   });
 });
 
+describe("mid-run resume payload (M2b)", () => {
+  it("start on a live run returns log + floor + learned + banked; dead runs stay CANDLE_SPENT", async () => {
+    const { mock, env, app } = fixture();
+    await mintTestDay(mock);
+
+    // delver A dies and ends — the spent path must NOT grow a resume payload
+    env.uid = "t2_alpha";
+    const sa = await startRun(app);
+    await sendBatches(app, env, sa.token, driveToDeath(clientSim(sa)));
+    let res = await post(app, "/api/run/end", { token: sa.token, lastWords: "gone", echoFrames: [] });
+    expect(res.status).toBe(200);
+    res = await post(app, "/api/run/start", {});
+    expect(res.status).toBe(409);
+    expect(zErrRes.parse(await res.json()).error).toBe("CANDLE_SPENT");
+
+    // delver B recovers A's corpse (learns corpse|bump|self|lit) and banks it
+    env.uid = "t2_beta";
+    env.now += 60_000;
+    const sb = await startRun(app);
+    expect(sb.resumed).toBe(false);
+    expect(sb.resume).toBeUndefined(); // fresh runs carry no resume payload
+    const simB = clientSim(sb);
+    const corpseEnt = sb.floor.entities.find((e) => e.kind === EntityKind.CORPSE);
+    expect(corpseEnt).toBeDefined();
+    const dx = corpseEnt!.x - simB.state.px;
+    const dy = corpseEnt!.y - simB.state.py;
+    const move =
+      dx === 1 ? Action.MOVE_E : dx === -1 ? Action.MOVE_W : dy === 1 ? Action.MOVE_S : Action.MOVE_N;
+    simB.apply(move);
+    env.now += ACT_MIN_SPACING_MS;
+    res = await post(app, "/api/run/act", actBody(sb.token, 0, simB.steps, h32Hex(simB.state)));
+    expect(res.status).toBe(200);
+    const learnedKey = "corpse|bump|self|lit";
+    res = await post(app, "/api/run/bank", {
+      token: sb.token,
+      claims: [{ key: learnedKey, effect: 9 }],
+      confirms: [],
+    });
+    expect(res.status).toBe(200);
+
+    // the reload: same token; resume carries the exact log, floor, learned, banked
+    env.now += 5_000;
+    const again = await startRun(app);
+    expect(again.resumed).toBe(true);
+    expect(again.token).toBe(sb.token);
+    expect(again.resume).toBeDefined();
+    expect(again.resume!.floor).toBe(1);
+    expect(unpackActions(fromB64(again.resume!.log))).toEqual(simB.steps);
+    expect(
+      again.resume!.learned.some((l) => l.key === learnedKey && l.effect === 9 /* Effect.RECOVER */),
+    ).toBe(true);
+    expect(again.resume!.banked).toEqual([learnedKey]);
+  });
+});
+
 describe("POST /api/run/descend", () => {
   it("re-serves entered floors byte-identically; rejects gaps and non-stairs advances", async () => {
     const { mock, env, app } = fixture();
@@ -548,6 +603,52 @@ describe("tampering and integrity (the M2 exit test)", () => {
     env.now += ACT_MIN_SPACING_MS;
     res = await post(app, "/api/run/act", actBody(start.token, 1, [{ op: Action.WAIT, arg: 0 }]));
     expect(res.status).toBe(200);
+  });
+});
+
+describe("checkpoint valve (single-act hash-less crossing)", () => {
+  it("accepts a lone hash-less act across the 32-step boundary; multi-act stays rejected", async () => {
+    const { mock, env, app } = fixture();
+    await mintTestDay(mock);
+    env.uid = "t2_valve";
+    const start = await startRun(app);
+    const sim = clientSim(start);
+
+    // 31 steps: no boundary crossed, no hash needed
+    for (let i = 0; i < 31; i++) sim.apply(Action.WAIT);
+    env.now += ACT_MIN_SPACING_MS;
+    let res = await post(app, "/api/run/act", actBody(start.token, 0, sim.steps.slice(0, 31)));
+    expect(res.status).toBe(200);
+
+    // a hash-less MULTI-act crossing is still a tampering reject
+    env.now += ACT_MIN_SPACING_MS;
+    res = await post(
+      app,
+      "/api/run/act",
+      actBody(start.token, 31, [{ op: Action.WAIT, arg: 0 }, { op: Action.WAIT, arg: 0 }]),
+    );
+    expect(res.status).toBe(400);
+    expect(zErrRes.parse(await res.json()).error).toBe("BAD_INPUT");
+
+    // the valve: exactly one act may cross hash-less — the unknown-rule
+    // deadlock case (the client cannot hash a state whose rule effect this
+    // very flush is fetching)
+    sim.apply(Action.WAIT); // step 32
+    env.now += ACT_MIN_SPACING_MS;
+    res = await post(app, "/api/run/act", actBody(start.token, 31, sim.steps.slice(31, 32)));
+    expect(res.status).toBe(200);
+    expect(zActRes.parse(await res.json()).serverTick).toBe(32);
+
+    // integrity coverage resumes: the next hashed crossing is still verified
+    for (let i = 0; i < 32; i++) sim.apply(Action.WAIT); // steps 33..64
+    env.now += ACT_MIN_SPACING_MS;
+    res = await post(
+      app,
+      "/api/run/act",
+      actBody(start.token, 32, sim.steps.slice(32), h32Hex(sim.state)),
+    );
+    expect(res.status).toBe(200);
+    expect(zActRes.parse(await res.json()).serverTick).toBe(64);
   });
 });
 

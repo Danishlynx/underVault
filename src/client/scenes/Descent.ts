@@ -12,6 +12,8 @@ import {
   descendState,
   effectiveRadius,
   initState,
+  isRuleRequest,
+  tick,
   tickResolving,
   visibleFor,
 } from "../../shared/sim/engine.js";
@@ -30,6 +32,7 @@ import {
   type OutcomeEvent,
   type SimState,
   type Step,
+  type TickResult,
 } from "../../shared/sim/types.js";
 import {
   RELIGHT_TICKS,
@@ -43,7 +46,7 @@ import {
   MAX_FLOOR,
 } from "../../shared/sim/constants.js";
 import { PORTS_KEY } from "../game.js";
-import type { EchoRecord, GamePorts, LearnedRule } from "../net/ports.js";
+import type { EchoRecord, FloorPayloadLike, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import {
   ensureBiomeSkin,
@@ -108,7 +111,7 @@ import {
   openWaystoneSheet,
 } from "../ui/sheets.js";
 import { openMainMenu } from "../ui/menu.js";
-import { openStoryIntro } from "../ui/story.js";
+import { openMeeting, openStoryIntro } from "../ui/story.js";
 import { openCodexSheet } from "../ui/codex.js";
 import { openSignComposer } from "../ui/signs.js";
 import { describeRuleKey, earnedNouns } from "../ui/vocab.js";
@@ -465,18 +468,32 @@ export class DescentScene extends Phaser.Scene {
   }
 
   private startRun(): void {
-    const setup = this.ports.getRunSetup();
-    const f = this.ports.getFloor(1);
-    this.state = initState(f.floorData, f.rngInit, {
-      mods: setup.mods,
-      heirloom: setup.heirloom,
-      noSalt: setup.noSalt,
-    });
+    // M2b resume: mobile webviews die on app-switch — a reload adopts the
+    // server-replayed run mid-floor instead of voiding the day's candle
+    const maybe = this.ports.getResume?.() ?? null;
+    const resume = maybe !== null && maybe.state.status === Status.ALIVE ? maybe : null;
+    const f = resume?.floor ?? this.ports.getFloor(1);
+    if (resume !== null) {
+      this.state = resume.state;
+    } else {
+      const setup = this.ports.getRunSetup();
+      this.state = initState(f.floorData, f.rngInit, {
+        mods: setup.mods,
+        heirloom: setup.heirloom,
+        noSalt: setup.noSalt,
+      });
+    }
     this.floorEchoes = f.echoes;
     this.echoPlayed.clear();
     this.visibleMask = visibleFor(this.state);
+    // resume: the run's learned truths re-enter the table BEFORE the baseline
+    // is cut, and baseline 0 keeps them bankable; banked keys must not re-bank
     this.runBaseline = this.rules.learned.length;
+    if (resume !== null) {
+      for (const r of resume.learned) this.rules.set(r.key, r.effect);
+    }
     this.bankedKeys.clear();
+    if (resume !== null) for (const k of resume.banked) this.bankedKeys.add(k);
     this.recovered = [];
     this.echoRing = [];
     this.running = true;
@@ -486,7 +503,12 @@ export class DescentScene extends Phaser.Scene {
     this.buildFloor();
     this.redraw(true);
     armBloomValve(this, this.cameras.main, this.fx); // sample fps IN-run (D77)
-    this.hud.toast("The match catches. The Vault is listening.", "info");
+    this.hud.toast(
+      resume !== null
+        ? "Your candle still burns where you left it."
+        : "The match catches. The Vault is listening.",
+      "info",
+    );
     // the first lesson lands as soon as the flash settles (D93): the very
     // first thing a new delver needs is "press this to move"
     this.time.delayedCall(900, () => {
@@ -705,7 +727,7 @@ export class DescentScene extends Phaser.Scene {
   private finishRun(restAtDusk: boolean): void {
     if (this.state !== null && this.running) {
       this.confirmRun();
-      this.ports.reportExit();
+      this.sendExit();
     }
     this.running = false;
     if (restAtDusk) this.ports.nextDay();
@@ -1670,7 +1692,14 @@ export class DescentScene extends Phaser.Scene {
     }
     for (const h of this.heldDirs) h.wasDown = h.key.isDown;
 
-    if (this.queue.length > 0 && !this.overlayOpen && time - this.lastStep > 70 && time >= this.hitStopUntil) {
+    if (
+      this.queue.length > 0 &&
+      !this.overlayOpen &&
+      !this.ruleWait &&
+      !this.floorLoading &&
+      time - this.lastStep > 70 &&
+      time >= this.hitStopUntil
+    ) {
       this.lastStep = time;
       const step = this.queue.shift()!;
       this.step(step);
@@ -1686,9 +1715,14 @@ export class DescentScene extends Phaser.Scene {
   }
 
   // ── Turn processing ──────────────────────────────────────────────────────
-  private step(stepIn: Step): void {
+  // M2b: async gaps (unknown rule, floor fetch) live between ticks, never
+  // inside the sim (08 §7). While either flag holds, the world is paused.
+  private ruleWait = false;
+  private floorLoading = false;
+
+  private step(stepIn: Step, actLogged = false): void {
     const s0 = this.state;
-    if (s0 === null) return;
+    if (s0 === null || this.ruleWait || this.floorLoading) return;
     // lessons are dismissed by DOING (D93/D97): moves count on Ev.MOVED,
     // the door lesson on Ev.DOOR_OPENED — a FAILED attempt must not eat
     // the guidance at the exact moment the player got it wrong
@@ -1699,7 +1733,37 @@ export class DescentScene extends Phaser.Scene {
     // Ev.TIER_CHANGED only carries the NEW radius — remember the old one so
     // handleEvent can tell a guttering-down from a brightening-up
     this.preTickRadius = effectiveRadius(s0);
-    const result = tickResolving(s0, stepIn, this.rules, (key) => this.ports.resolveRule(key));
+    let result: TickResult;
+    const ra = this.ports.resolveRuleAsync;
+    if (ra === undefined) {
+      result = tickResolving(s0, stepIn, this.rules, (key) => this.ports.resolveRule(key));
+    } else {
+      // remote play: an unknown rule holds the world while the Vault answers,
+      // then the SAME step re-runs against the now-warmer table. A tick can
+      // miss more than one rule — recursion drains them one round-trip each.
+      const first = tick(s0, stepIn, this.rules);
+      if (isRuleRequest(first)) {
+        this.ruleWait = true;
+        this.queue = [];
+        // the triggering act must ride the flush: ActRes.rules is the set the
+        // server's replay consulted, and it only consults what the log holds —
+        // logged here EXACTLY ONCE (the re-run below passes actLogged)
+        if (!actLogged) this.ports.actApplied?.(stepIn.op, stepIn.arg, s0.tick);
+        void ra(first.needRule)
+          .then((eff) => {
+            this.rules.set(first.needRule, eff);
+            this.ruleWait = false;
+            this.step(stepIn, true);
+          })
+          .catch(() => {
+            this.ruleWait = false;
+            this.hud.toast("The Vault did not answer. Try once more.", "warning");
+          });
+        return;
+      }
+      result = first;
+    }
+    if (!actLogged) this.ports.actApplied?.(stepIn.op, stepIn.arg, s0.tick);
     this.state = result.state;
     this.visibleMask = result.visible;
     const s = this.state;
@@ -1746,10 +1810,35 @@ export class DescentScene extends Phaser.Scene {
   }
 
   /** The one true floor transition — stairs and the dev skip share it. */
-  private installFloor(next: number): void {
+  private installFloor(next: number, attempt = 0): void {
     const s = this.state;
     if (s === null) return;
-    const nf = this.ports.getFloor(next);
+    const ga = this.ports.getFloorAsync;
+    if (ga !== undefined) {
+      // remote: the payload usually arrived with the stairs-touch prefetch;
+      // when it didn't, hold the descent (world paused) and keep asking —
+      // a lost descend otherwise strands the run in DESCENDING forever
+      this.floorLoading = true;
+      ga(next)
+        .then((nf) => {
+          this.floorLoading = false;
+          this.finishInstallFloor(nf);
+        })
+        .catch(() => {
+          if (attempt === 0) this.hud.toast("The stair below is slow to answer…", "info");
+          this.time.delayedCall(1500, () => {
+            this.floorLoading = false;
+            this.installFloor(next, attempt + 1);
+          });
+        });
+      return;
+    }
+    this.finishInstallFloor(this.ports.getFloor(next));
+  }
+
+  private finishInstallFloor(nf: FloorPayloadLike): void {
+    const s = this.state;
+    if (s === null) return;
     this.state = descendState(s, nf.floorData, nf.rngInit);
     this.floorEchoes = nf.echoes;
     this.echoPlayed.clear();
@@ -1804,6 +1893,7 @@ export class DescentScene extends Phaser.Scene {
         // arriving ON the stairs names the next gesture (D97: touch had
         // no path to descend at all before)
         if (t === Tile.STAIRS_DOWN) {
+          this.ports.prefetchFloor?.(s.floor + 1); // idempotent; hides the round-trip
           this.hud.toast("The stairs. Tap yourself (or Enter) to descend.", "info");
         }
         break;
@@ -1819,8 +1909,16 @@ export class DescentScene extends Phaser.Scene {
       case Ev.BANKED:
         if (this.pendingBank !== null) {
           for (const p of this.pendingBank) this.bankedKeys.add(p.key);
-          this.ports.bankClaims(this.pendingBank);
+          const claims = this.pendingBank;
           this.pendingBank = null;
+          const ba = this.ports.bankClaimsAsync;
+          if (ba !== undefined) {
+            void ba(claims).catch(() =>
+              this.hud.toast("The Codex is distant — your truths ride with the run's end.", "warning"),
+            );
+          } else {
+            this.ports.bankClaims(claims);
+          }
         }
         this.hud.toast(`${e.a} truth${e.a === 1 ? "" : "s"} committed to the Codex.`, "discovery");
         cue("bank");
@@ -2659,7 +2757,7 @@ export class DescentScene extends Phaser.Scene {
     }
     openEpitaphSheet(host, s, this.runSummary(), house, 0, (result, rest) => {
       if (result.houseName !== null) this.ports.setHouse(result.houseName);
-      this.ports.reportDeath({
+      const report = {
         day: this.ports.getGuildhall().day,
         floor: s.floor,
         x: s.px,
@@ -2669,7 +2767,10 @@ export class DescentScene extends Phaser.Scene {
         gift: result.gift,
         unbanked: this.unbankedThisRun(),
         echoFrames: this.echoRing.slice(),
-      });
+      };
+      const rda = this.ports.reportDeathAsync;
+      if (rda !== undefined) void rda(report).catch(() => undefined);
+      else this.ports.reportDeath(report);
       this.confirmRun();
       this.afterCeremony(rest);
     }, { truths, nearClaims, nearMiss }, ENTITY_NAMES[this.lastHurtKind]);
@@ -2686,9 +2787,16 @@ export class DescentScene extends Phaser.Scene {
     this.audio.play("exit");
     openExitSheet(host, s, this.runSummary(), (rest) => {
       this.confirmRun();
-      this.ports.reportExit();
+      this.sendExit();
       this.afterCeremony(rest);
     });
+  }
+
+  /** Exit report over whichever wire this session has (08 §7). */
+  private sendExit(): void {
+    const rea = this.ports.reportExitAsync;
+    if (rea !== undefined) void rea().catch(() => undefined);
+    else this.ports.reportExit();
   }
 
   private openVictory(): void {
@@ -2698,11 +2806,17 @@ export class DescentScene extends Phaser.Scene {
     this.overlayOpen = true;
     this.running = false;
     this.audio.setHeartbeat(false);
-    this.audio.play("victory");
-    openVictorySheet(host, this.runSummary(), () => {
-      this.confirmRun();
-      this.afterCeremony(true);
-    });
+    // The Seal breaks into quiet, not fanfare: the Meeting first — she is
+    // what the Vault was keeping — then the victory sheet reframed as the
+    // wax-gift (D101). The fanfare waits until she has spoken.
+    this.audio.setDarkness(0);
+    openMeeting(host, () => {
+      this.audio.play("victory");
+      openVictorySheet(host, this.runSummary(), () => {
+        this.confirmRun();
+        this.afterCeremony(true);
+      });
+    }, this.audio);
   }
 
   private afterCeremony(restAtDusk: boolean): void {

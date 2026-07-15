@@ -113,9 +113,29 @@ export type DayRes = z.infer<typeof zDayRes>;
 // ── /api/run/start ─────────────────────────────────────────────────────────
 export const zStartReq = z.object({}).strict();
 export type StartReq = z.infer<typeof zStartReq>;
+/**
+ * Mid-run resume payload (M2b, additive — no logV bump): present on a
+ * `resumed: true` response for a still-ALIVE run. `log` is the run's entire
+ * packed action log (one canonical pack.ts frame, same codec as
+ * zActReq.actions); the client replays it locally over the descend-re-served
+ * floors 1..`floor` (ts-pinned ⇒ byte-identical composition). `learned`
+ * carries run.learned — every rule the log consulted, server-recorded — so
+ * the local replay never hits an unresolvable rule. Leak-safe: this player
+ * already learned each of them this run (they rode earlier ActRes.rules).
+ * `banked` lists the ruleKeys already committed to the Codex this run so the
+ * driver never re-banks them.
+ */
+export const zResumeWire = z.object({
+  log: zB64,
+  floor: zU8,
+  learned: z.array(zLearnedRuleWire).max(1024),
+  banked: z.array(z.string().max(96)).max(256),
+});
+export type ResumeWire = z.infer<typeof zResumeWire>;
 export const zStartRes = z.object({
   token: zToken, day: zU32, resumed: z.boolean(),
   setup: zRunSetupWire, floor: zFloorWire,
+  resume: zResumeWire.optional(),
 });
 export type StartRes = z.infer<typeof zStartRes>;
 

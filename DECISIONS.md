@@ -960,3 +960,37 @@ candidates; flip them in the named data file, not in code.
     entrypoint byte budgets, then devvit upload to a PRIVATE test
     subreddit - platform realities (real Redis, Reddit webview audio
     policy, mobile GPUs, payload limits) are only testable hosted.
+
+101. THE MEETING SHIPS (the ending, per The Fabric). Victory no longer
+    jumps to a scoresheet: breaking the Seal opens three painted
+    plates - Her Hands (wax-translucent, cupped around the fist-sized
+    First Flame stub), Her Face (patient eyes holding a too-tall
+    reflected flame; her shadow bows TOWARD the light), The Gift (the
+    player's last wax tips into her stub; four hands, two kinds of
+    flesh; faint unlit stairs behind). No skip button - Escape still
+    releases. Then the victory sheet reframed: THE FIRST FLAME IS FED,
+    wax-gift copy ("your candle's last wax went to hers"). story.ts
+    refactored into a shared openSlideshow core (intro + meeting).
+    Plates preview standalone via /?plate=<name> (import.meta.glob -
+    a computed /src/... URL 404s under vite root dev/).
+
+102. M2b LANDS - the client speaks to the real server. net/api.ts
+    (typed zod-parsed fetch), net/batcher.ts (12 acts/5s/on-unknown
+    flush, >=1s spacing, byte-idempotent retry, pack.ts framing,
+    shadow-sim checkpoint hashes), net/session-model.ts,
+    net/remote-ports.ts (createRemotePorts: hydrate day/start/codex,
+    floor cache via idempotent descend, rule cache, all sync ports +
+    optional async seams), client/main.ts bootstrap in game.html.
+    GamePorts stays sync; optional M2b seams (resolveRuleAsync,
+    prefetchFloor, getFloorAsync, actApplied, bankClaimsAsync,
+    reportDeath/ExitAsync, getResume) - dev adapter untouched, Descent
+    branches per seam presence. Acts log EXACTLY ONCE (unknown-rule
+    act rides the flush; re-run passes actLogged). Checkpoint valve:
+    hash-less 32-step crossing accepted iff count===1 (the unknown-
+    rule flush cannot hash a state whose rule that flush fetches).
+    MID-RUN RESUME: mobile webviews die on app-switch - /start on a
+    live run returns {log, floor, learned, banked}; client re-fetches
+    floors via byte-identical descend re-serve, shadow-replays the
+    log, seeds rule cache/SessionRules, primes batcher fromTick;
+    getResume is consume-once; "Your candle still burns where you
+    left it." 210 net/route/protocol tests; replay corpus untouched.

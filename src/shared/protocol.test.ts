@@ -14,6 +14,7 @@ import {
   zHash8,
   zI16,
   zStartReq,
+  zStartRes,
   zU8,
   zU16,
   zU32,
@@ -195,6 +196,40 @@ describe("schema gates", () => {
   test("zStartReq is strict — extra keys rejected", () => {
     expect(zStartReq.safeParse({}).success).toBe(true);
     expect(zStartReq.safeParse({ seed: 1 }).success).toBe(false);
+  });
+
+  test("zStartRes: resume payload is optional and additive (M2b mid-run resume)", () => {
+    const base = {
+      token: "a".repeat(32),
+      day: 3,
+      resumed: false,
+      setup: {
+        mods: {
+          graceTicks: 25, burnBasic: 1, radiusPenalty: 0,
+          quietFeet: 0, beastEar: 1, echoRadius: 0,
+        },
+        heirloom: 0,
+        noSalt: false,
+      },
+      floor: floorToWire(makeFloor(false), makeRng(), extras),
+    };
+    // the pre-M2b shape still parses — additive, no codec bump
+    expect(zStartRes.safeParse(base).success).toBe(true);
+
+    const resume = {
+      log: toB64(packActions([{ op: Action.WAIT, arg: 0 }, { op: Action.DESCEND, arg: 0 }])),
+      floor: 2,
+      learned: [{ key: "rat|bump|torch|", effect: 2 }],
+      banked: ["rat|bump|torch|"],
+    };
+    expect(zStartRes.safeParse({ ...base, resumed: true, resume }).success).toBe(true);
+    expect(zStartRes.safeParse({ ...base, resume: { ...resume, log: "" } }).success).toBe(true); // 0-step run
+    expect(zStartRes.safeParse({ ...base, resume: { ...resume, floor: 256 } }).success).toBe(false);
+    expect(zStartRes.safeParse({ ...base, resume: { ...resume, log: "not-b64!*" } }).success).toBe(false);
+    expect(
+      zStartRes.safeParse({ ...base, resume: { ...resume, learned: [{ key: "short", effect: 1 }] } })
+        .success,
+    ).toBe(false); // key min 7 (zLearnedRuleWire)
   });
 
   test("zErrRes enum tracks ErrCode exactly", () => {

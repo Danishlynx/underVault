@@ -8,10 +8,19 @@ import { createUndervaultGame } from "../src/client/game.js";
 import { createDevPorts } from "./rules-adapter.js";
 import { toggleTowerView } from "./tower-view.js";
 
+// vite's import.meta.glob (untyped here: tsconfig.client has no vite types)
+declare global {
+  interface ImportMeta {
+    glob(pattern: string): Record<string, () => Promise<unknown>>;
+  }
+}
+
 // DEV-ONLY: standalone plate preview — `/?plate=meeting1` paints a single
 // story painter fullscreen with no game booted, so parallel slide artists
 // iterate through snap.ts with zero shared state (never wire unfinished
-// plates into story.ts just to see them)
+// plates into story.ts just to see them). Loaded via a static glob: vite
+// rewrites it to /@fs/ URLs at transform time — a runtime-computed `/src/…`
+// path 404s because the vite root is `dev/`.
 function bootPlatePreview(plate: string): void {
   const cv = document.createElement("canvas");
   cv.width = window.innerWidth;
@@ -20,8 +29,11 @@ function bootPlatePreview(plate: string): void {
   document.body.appendChild(cv);
   const ctx = cv.getContext("2d");
   if (ctx === null) throw new Error("plate preview: no 2d context");
-  // the vite dev server compiles /src modules on demand — dev-only, unbundled
-  void import(/* @vite-ignore */ `/src/client/ui/story/${plate}.ts`).then((m: Record<string, unknown>) => {
+  const plates = import.meta.glob("../src/client/ui/story/*.ts");
+  const loader = plates[`../src/client/ui/story/${plate}.ts`];
+  if (loader === undefined) throw new Error(`plate preview: no module ${plate}`);
+  void loader().then((mod) => {
+    const m = mod as Record<string, unknown>;
     const fn = Object.entries(m).find(([k, v]) => k.startsWith("paint") && typeof v === "function")?.[1] as
       | ((c: CanvasRenderingContext2D, w: number, h: number) => void)
       | undefined;
