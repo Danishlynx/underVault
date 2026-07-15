@@ -2,7 +2,8 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": []
+    "types": [],
+    "customConditions": ["browser"]
   },
   "include": ["src/client/**/*.ts", "dev/**/*.ts", "design/**/*.ts", "src/shared/**/*.ts"],
   "exclude": ["src/shared/**/*.test.ts"]

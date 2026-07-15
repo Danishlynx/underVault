@@ -119,7 +119,8 @@ async function main(): Promise<void> {
   }
 
   for (const k of KEYS) {
-    await page.keyboard.press((k === " " ? "Space" : k) as KeyInput);
+    // lowercase n = Enter (descend) — --keys is single-char tokens
+    await page.keyboard.press((k === " " ? "Space" : k === "n" ? "Enter" : k) as KeyInput);
     await new Promise((r) => setTimeout(r, 160));
   }
   if (KEYS !== "") await new Promise((r) => setTimeout(r, 500));
