@@ -13,6 +13,7 @@ import { COLOR, HUD, MOTION } from "../../../design/tokens/tokens.js";
 import { Candle, Item, type SimState } from "../../shared/sim/types.js";
 import { START_WAX } from "../../shared/sim/constants.js";
 import { TEX_SCALE } from "./tilemap.js";
+import { uiScale } from "../game.js";
 
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
@@ -53,6 +54,13 @@ export class Hud {
   private readonly scene: Phaser.Scene;
   private readonly cb: HudCallbacks;
   private readonly layer: Phaser.GameObjects.Layer | null;
+
+  // High-DPI (D121): the game buffer renders in PHYSICAL pixels (game.ts), so
+  // the whole HUD is parented to this root and scaled by uiScale() — the HUD is
+  // authored in LOGICAL/CSS pixels (unchanged design metrics) and the root
+  // magnifies it to keep the same apparent size while gaining the buffer's
+  // crispness. layout() re-applies the scale so a dpr change tracks live.
+  private root!: Phaser.GameObjects.Container;
 
   private w = 0;
   private h = 0;
@@ -97,13 +105,21 @@ export class Hud {
   private fixed<T extends Phaser.GameObjects.GameObject & { setScrollFactor(v: number): T }>(o: T): T {
     o.setScrollFactor(0);
     (o as unknown as { depth: number }).depth = 1000;
-    this.layer?.add(o);
+    this.root.add(o);
     return o;
   }
 
   // ── Construction (positions applied in layout()) ─────────────────────────
   private build(): void {
     const s = this.scene;
+
+    // the DPR-compensation root — everything the HUD builds lives under it so a
+    // single scale keeps apparent sizes right against the physical-px buffer.
+    this.root = s.add.container(0, 0);
+    this.root.setScrollFactor(0);
+    this.root.setDepth(1000);
+    this.root.setScale(uiScale());
+    this.layer?.add(this.root);
 
     this.plaque = this.fixed(s.add.rectangle(0, 0, 96, 36, COLOR.surface, 0.92).setOrigin(0, 0));
     this.plaque.setStrokeStyle(1, COLOR.borderVoid, 1);
@@ -248,6 +264,13 @@ export class Hud {
 
   // ── Layout: everything derives from the current canvas size ─────────────
   layout(w: number, h: number): void {
+    // args arrive in PHYSICAL px (scene.scale = the buffer). The HUD is authored
+    // in LOGICAL px; the root magnifies it by the DPR factor (D121), so convert
+    // the canvas size down to logical here and everything below is unchanged.
+    const f = uiScale();
+    this.root.setScale(f);
+    w = w / f;
+    h = h / f;
     this.w = w;
     this.h = h;
     this.barY = h - HUD.bottomBarH;
@@ -289,10 +312,12 @@ export class Hud {
     this.graceText.setPosition(w >> 1, 120);
   }
 
-  /** The meter's touch strip in screen coords (scene input guard).
-   *  Width 56 (D97): the old 64 ate a sliver of playable world. */
+  /** The meter's touch strip in PHYSICAL screen coords (the scene input guard
+   *  in Descent compares against physical pointer coords). Width 56 (D97): the
+   *  old 64 ate a sliver of playable world. Scaled by the DPR factor (D121). */
   meterBounds(): { x: number; y: number; w: number; h: number } {
-    return { x: 0, y: METER_Y - 20, w: 56, h: this.meterH + 40 };
+    const f = uiScale();
+    return { x: 0, y: (METER_Y - 20) * f, w: 56 * f, h: (this.meterH + 40) * f };
   }
 
   // ── Per-frame ────────────────────────────────────────────────────────────
@@ -438,7 +463,7 @@ export class Hud {
     const box = s.add.container(this.w >> 1, this.h - HUD.bottomBarH - h / 2 - 20, [g, eyebrow, t]);
     box.setScrollFactor(0);
     box.depth = 1001;
-    this.layer?.add(box);
+    this.root.add(box);
     this.lessonBox = box;
     box.setAlpha(0);
     box.y += 6;
@@ -499,7 +524,7 @@ export class Hud {
     const box = s.add.container(this.w >> 1, top + h / 2, [g, t]);
     box.setScrollFactor(0);
     box.depth = 1002;
-    this.layer?.add(box);
+    this.root.add(box);
     this.activeToasts.push(box);
     box.setAlpha(0);
     s.tweens.add({ targets: box, alpha: 1, y: "+=4", duration: 200, ease: "Sine.easeOut" });

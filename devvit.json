@@ -33,6 +33,13 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/mint-day"
+      },
+      {
+        "label": "Undervault: reset my candle (dev)",
+        "description": "Clears your run for today so you can replay (testing)",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/reset-run"
       }
     ]
   },

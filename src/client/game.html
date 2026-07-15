@@ -24,10 +24,63 @@
         position: relative;
         height: 100%;
       }
+      /* Instant load state (paints before the bundle/boot/art) so the delver
+         never stares at a black rectangle. main.ts removes it on first render. */
+      #uv-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: radial-gradient(120% 90% at 50% 46%, #17110a 0%, #0b0906 62%);
+        color: #e8dcc0;
+        font-family: Georgia, "Times New Roman", serif;
+        transition: opacity 0.5s ease;
+      }
+      #uv-loader.uv-loader-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #uv-loader .uv-flame {
+        width: 14px;
+        height: 22px;
+        border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        background: linear-gradient(#fff6da, #f5a93f 55%, #7a3d12);
+        box-shadow: 0 0 18px 6px rgba(245, 169, 63, 0.45);
+        transform-origin: 50% 90%;
+        animation: uv-flicker 1.6s ease-in-out infinite;
+      }
+      #uv-loader .uv-kindle {
+        font-style: italic;
+        font-size: 15px;
+        letter-spacing: 0.02em;
+        color: #b79b6a;
+        opacity: 0.9;
+        animation: uv-breathe 2.4s ease-in-out infinite;
+      }
+      @keyframes uv-flicker {
+        0%, 100% { transform: scale(1) rotate(-1deg); opacity: 0.92; }
+        50% { transform: scale(1.08, 0.96) rotate(1.5deg); opacity: 1; }
+      }
+      @keyframes uv-breathe {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 0.95; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #uv-loader .uv-flame,
+        #uv-loader .uv-kindle { animation: none; }
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="uv-loader" role="status" aria-label="Loading">
+      <div class="uv-flame"></div>
+      <div class="uv-kindle">Kindling the vault…</div>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

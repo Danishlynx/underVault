@@ -16,6 +16,7 @@ import { Hono } from "hono";
 import { CodexRepo } from "../data/codex.js";
 import { DayRepo } from "../data/days.js";
 import type { RedisLike } from "../data/redis.js";
+import { RunRepo } from "../data/runs.js";
 import { mintDaySeed } from "../rules/seed.js";
 import { omenDayFor, RULE_TOTAL } from "../rules/table.js";
 import type { UvEnv } from "./env.js";
@@ -84,6 +85,25 @@ internalRoutes.post("/menu/mint-day", async (c) => {
 internalRoutes.post("/jobs/reshuffle", async (c) => {
   const { day, created } = await mintDay(c.get("redis"), c.get("now"));
   return c.json({ status: "ok", day, created });
+});
+
+// Moderator dev tool (D120): wipe the clicking mod's run for the current day
+// so they can replay without minting a new day / spamming posts. Mod-only via
+// devvit.json forUserType; the acting user's id comes from the platform context.
+internalRoutes.post("/menu/reset-run", async (c) => {
+  const r = c.get("redis");
+  const day = await new DayRepo(r).currentDay();
+  if (day === null) return c.json({ showToast: "No day stands yet — mint one first." });
+  let uid: string | null = null;
+  try {
+    const { context } = await import("@devvit/web/server");
+    uid = context.userId ?? null;
+  } catch {
+    uid = null;
+  }
+  if (uid === null) return c.json({ showToast: "Could not identify you — reset unavailable." });
+  await new RunRepo(r).clearRun(uid, day);
+  return c.json({ showToast: `Your candle is fresh — reopen Day ${day} to descend again.` });
 });
 
 internalRoutes.post("/triggers/on-app-install", async (c) => {

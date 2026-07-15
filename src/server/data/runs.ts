@@ -122,6 +122,13 @@ export class RunRepo {
     await this.r.hSet(kRun(uid, day), toFields(row));
   }
 
+  /** Wipe a user's run for a day so the one-candle claim starts fresh — the
+   *  moderator "reset my candle" dev tool (D120). The corpse/fallen count are
+   *  left as-is; only the candle gate (this key) is cleared. */
+  async clearRun(uid: string, day: number): Promise<void> {
+    await this.r.del(kRun(uid, day));
+  }
+
   /** Convenience: row.ticks += addedSteps then save — single hSet round-trip. */
   async appendLogAndSave(uid: string, day: number, row: RunRow, addedSteps: number): Promise<void> {
     row.ticks += addedSteps;

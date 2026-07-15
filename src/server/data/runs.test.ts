@@ -51,6 +51,16 @@ describe("RunRepo claimStart — one candle per user per day", () => {
     expect((await repo.load(UID, DAY))?.token).toBe("tok_0123456789abcdef"); // caller re-issues stored token
   });
 
+  it("clearRun wipes the candle → a spent run claims 'new' again (D120 dev reset)", async () => {
+    const r = createMockRedis();
+    const repo = new RunRepo(r);
+    await repo.claimStart(UID, DAY, freshRow());
+    expect(await repo.claimStart(UID, DAY, freshRow({ startTs: NOW + 60_000 }))).toBe("resume");
+    await repo.clearRun(UID, DAY);
+    expect(await repo.load(UID, DAY)).toBeNull();
+    expect(await repo.claimStart(UID, DAY, freshRow())).toBe("new"); // candle fresh again
+  });
+
   it("active but expired (45 min) row → 'spent'", async () => {
     const r = createMockRedis();
     const repo = new RunRepo(r);

@@ -1108,6 +1108,38 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+121. MOBILE HIGH-DPI + LOAD STATE (live playtest on Reddit: mobile
+    render muddy, ~5s black screen). Root cause: game.ts sized the
+    WebGL buffer to CSS px (Scale.RESIZE) so on a phone (dpr ~2.5-3)
+    the browser upscaled a 1x buffer -> blur. Fix: Scale.NONE, buffer
+    = logical x uiScale() where uiScale = clamp(dpr,1,2) (UI_MAX_DPR=2
+    - 2x is the crispness/perf knee, 3x is 9x pixels for nothing);
+    canvas DISPLAYS at logical CSS px so the browser downsamples the
+    supersampled buffer -> crisp. Phaser 4 couples buffer+cameras to
+    gameSize (no separate render res), so the scene is authored in
+    physical px: the world stays apparent-size-correct via iso.fitZoom
+    (scales with gameSize), and the HUD is parented to a root
+    Container scaled by uiScale() (hud.ts) + Descent chrome/pointer
+    coords convert by the same factor. dpr=1 (desktop) is a no-op -
+    VERIFIED unchanged; dpr=2 mobile VERIFIED crisp with correct HUD
+    size. LOAD: game.html paints an instant candle "Kindling the
+    vault..." state (pure CSS, before bundle/boot/art) that main.ts
+    removes on first postrender (safety timeout 12s; refusal path
+    dismisses it too) - no more black rectangle. (Built by an agent
+    that stalled mid-verify; operator's coordinator finished the
+    verification + loader. The DPR work is client-only, no sim/golden
+    impact.)
+
+120. RESET-MY-CANDLE DEV TOOL. The one-candle law (correctly) blocks
+    replay on the real server, which made hosted testing painful.
+    New mod-only menu item "Undervault: reset my candle (dev)" ->
+    /internal/menu/reset-run clears the clicking mod's run row
+    (RunRepo.clearRun deletes uv:run:{uid}:{day}) so they replay the
+    same day without minting a new day / spamming posts. Corpse and
+    fallen-count left as-is; only the candle gate clears. Unit-tested
+    (clearRun -> claimStart returns 'new' again). Mod-only + private
+    sub; fine to keep for demos.
+
 118. THREE NEW ITEMS + ITEM TUTORIALS (operator: "design the rest 3
     items... tell the user when to use them as tutorial in start").
     Built by 3 parallel Opus agents on non-overlapping files (sim /

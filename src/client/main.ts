@@ -24,6 +24,14 @@ const REFUSAL_COPY: Partial<Record<string, string>> = {
 
 const FALLBACK_COPY = "The Vault did not answer. Pull to refresh, delver.";
 
+/** Fade + remove the instant load state (game.html #uv-loader). Idempotent. */
+function dismissLoader(): void {
+  const el = document.getElementById("uv-loader");
+  if (el === null) return;
+  el.classList.add("uv-loader-out");
+  window.setTimeout(() => el.remove(), 550);
+}
+
 function refusalCopy(err: unknown): string {
   if (err instanceof ApiError) return REFUSAL_COPY[err.code] ?? err.message;
   if (err instanceof VaultRefusal) return err.message;
@@ -57,6 +65,7 @@ function renderRefusal(parent: HTMLElement, err: unknown): void {
 
   box.append(flame, line);
   parent.replaceChildren(box);
+  dismissLoader(); // the refusal IS the content now — never hold the loader over it
 }
 
 async function boot(): Promise<void> {
@@ -64,7 +73,11 @@ async function boot(): Promise<void> {
   if (parent === null) throw new Error("game shell: #app missing");
   try {
     const ports = await createRemotePorts();
-    createUndervaultGame(parent, ports);
+    const game = createUndervaultGame(parent, ports);
+    // hide the load state once the first real frame is on screen (menu paints)
+    game.events.once("postrender", dismissLoader);
+    // safety net: never let the loader stick if postrender somehow doesn't fire
+    window.setTimeout(dismissLoader, 12000);
   } catch (err) {
     renderRefusal(parent, err); // never white-screen
   }

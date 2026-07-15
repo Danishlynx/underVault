@@ -45,7 +45,7 @@ import {
   F_OPAQUE,
   MAX_FLOOR,
 } from "../../shared/sim/constants.js";
-import { PORTS_KEY } from "../game.js";
+import { PORTS_KEY, uiScale } from "../game.js";
 import type { EchoRecord, FloorPayloadLike, GamePorts, LearnedRule } from "../net/ports.js";
 import { SessionRules } from "../net/ports.js";
 import {
@@ -1072,14 +1072,21 @@ export class DescentScene extends Phaser.Scene {
    *  overview for immersion; the light pool intentionally crops. */
   private applyViewport(smooth = false): void {
     const cam = this.cameras.main;
-    const base = fitZoom(this.scale.width, this.scale.height);
-    const zoom = this.viewMode === "delve" ? Math.min(2.6, Math.max(1.9, base * 1.75)) : base;
+    // fitZoom's pixel targets + zoom clamps are authored in LOGICAL px, but the
+    // buffer (and scale.width) is now physical (D121). Compute the APPARENT zoom
+    // from the logical viewport, then render it at f× into the physical buffer:
+    // framing stays byte-identical to the 1× path while gaining the detail.
+    const f = uiScale();
+    const base = fitZoom(this.scale.width / f, this.scale.height / f);
+    const apparent = this.viewMode === "delve" ? Math.min(2.6, Math.max(1.9, base * 1.75)) : base;
+    const zoom = apparent * f;
     this.baseZoom = zoom; // impact()/discovery pulses return here (D75)
     if (smooth) cam.zoomTo(zoom, 320, "Sine.easeInOut");
     else cam.setZoom(zoom);
     // usable area sits above the 72px HUD bar and below top chrome (~60px):
-    // bias the follow so the player rides its center, not the canvas center
-    this.followBias = ((72 - 60) / 2) / zoom;
+    // bias the follow so the player rides its center, not the canvas center.
+    // chrome is authored in logical px but the buffer is physical (D121).
+    this.followBias = (((72 - 60) * f) / 2) / zoom;
     cam.setFollowOffset(-this.camPullX, -this.camPullY - this.followBias);
   }
 
@@ -1447,8 +1454,11 @@ export class DescentScene extends Phaser.Scene {
   private pointerEaten(x: number, y: number): boolean {
     const w = this.scale.width;
     const h = this.scale.height;
-    if (y > h - 72) return true; // the bottom bar, exactly
-    if (y < 60 && (x < 240 || x > w - 110)) return true; // plaque | mute+menu
+    // the buffer (and pointer coords) are physical px (D121); the HUD chrome
+    // occupies LOGICAL px × the DPR factor, so scale the guard bands to match.
+    const f = uiScale();
+    if (y > h - 72 * f) return true; // the bottom bar, exactly
+    if (y < 60 * f && (x < 240 * f || x > w - 110 * f)) return true; // plaque | mute+menu
     const mb = this.hud.meterBounds();
     return x < mb.x + mb.w && y > mb.y && y < mb.y + mb.h;
   }
@@ -1755,9 +1765,11 @@ export class DescentScene extends Phaser.Scene {
       const frac = Math.min(1, (time - this.pressAt) / LONG_PRESS_MS);
       if (frac > 0.18) {
         const p = this.input.activePointer;
-        this.pressRing.lineStyle(3, COLOR.goldInk, 0.9);
+        // pointer coords are physical px (D121); keep the ring's apparent size.
+        const f = uiScale();
+        this.pressRing.lineStyle(3 * f, COLOR.goldInk, 0.9);
         this.pressRing.beginPath();
-        this.pressRing.arc(p.x, p.y - 34, 13, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+        this.pressRing.arc(p.x, p.y - 34 * f, 13 * f, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
         this.pressRing.strokePath();
       }
     }
