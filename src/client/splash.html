@@ -5,90 +5,451 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>The Undervault</title>
     <!-- Invariant 7: this entrypoint ships NO Phaser and stays <= 300 KB.
-         M2 minimal shell (08-M2-PORT-CONTRACT §1.11); real Guildhall overlay lands at M2b. -->
+         "The Antechamber of the Great Gate" — one static canvas painted per
+         resize (splash.ts), DOM text/CTA above it, CSS-only ambient motion
+         (compositor transforms/opacity; zero rAF loops). Tokens below are a
+         copied subset of design/tokens/tokens.css §2.1 — splash must be
+         self-contained (no @import above root). -->
     <style>
       :root {
         color-scheme: dark;
+        /* token subset — keep in sync with design/tokens/tokens.css */
+        --void: #0b0a10;
+        --surface: #16131c;
+        --surface-2: #1e1a26;
+        --flame: #f5a93f;
+        --flame-hi: #ffd98a;
+        --ember: #c9701e;
+        --verdigris: #4fb39a;
+        --verdigris-dim: #2e6b5c;
+        --parchment-aged: #d6c7a3;
+        --bone: #b7ae9c;
+        --bone-dim: #7e786c;
+        --gold-ink: #c8a24b;
+        --font-display: "IM Fell English", "Cormorant Garamond", Cormorant, Georgia, "Times New Roman", serif;
+        --font-body: Inter, system-ui, sans-serif;
+        --dur-micro: 120ms;
+        --dur-standard: 200ms;
+        --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       }
       html,
       body {
         margin: 0;
-        min-height: 100%;
+        height: 100%;
+        overflow: hidden;
       }
       body {
-        background: #0b0906;
-        color: #e8dcc0;
-        font-family: Georgia, "Times New Roman", serif;
+        background: var(--void);
+        color: var(--bone);
+        font-family: var(--font-display);
+      }
+
+      /* ── the painted scene ─────────────────────────────────────────── */
+      #uv-scene {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        z-index: 0;
+      }
+
+      /* the Gate's verdigris seam, breathing (position fed by splash.ts) */
+      #uv-seam {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: var(--seam-w, 26px);
+        height: var(--seam-h, 40vh);
+        transform: translate(calc(var(--seam-x, 50vw) - 50%), var(--seam-top, 18vh));
+        background: radial-gradient(
+          48% 46% at 50% 60%,
+          rgba(79, 179, 154, 0.2),
+          rgba(79, 179, 154, 0.07) 52%,
+          rgba(79, 179, 154, 0) 76%
+        );
+        mix-blend-mode: screen;
+        pointer-events: none;
+        z-index: 1;
+        animation: uv-breathe 5.2s ease-in-out infinite alternate;
+        will-change: opacity;
+      }
+      @keyframes uv-breathe {
+        from {
+          opacity: 0.45;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* ── drifting ember motes (8, compositor-only) ─────────────────── */
+      #uv-embers {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 2;
+      }
+      #uv-embers i {
+        position: absolute;
+        bottom: -6px;
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--flame-hi);
+        box-shadow: 0 0 6px 1px rgba(245, 169, 63, 0.55);
+        opacity: 0;
+        animation: uv-rise var(--dur, 12s) linear infinite;
+        animation-delay: var(--delay, 0s);
+        will-change: transform, opacity;
+      }
+      #uv-embers i:nth-child(1) { left: 11%; --dx: 18px; --dur: 12s; --delay: -3s; --o: 0.75; }
+      #uv-embers i:nth-child(2) { left: 22%; --dx: -12px; --dur: 15s; --delay: -9s; --o: 0.5; width: 2px; height: 2px; }
+      #uv-embers i:nth-child(3) { left: 34%; --dx: 10px; --dur: 10s; --delay: -6s; --o: 0.85; }
+      #uv-embers i:nth-child(4) { left: 47%; --dx: -16px; --dur: 16s; --delay: -1s; --o: 0.45; width: 2px; height: 2px; }
+      #uv-embers i:nth-child(5) { left: 58%; --dx: 14px; --dur: 11s; --delay: -8s; --o: 0.8; }
+      #uv-embers i:nth-child(6) { left: 69%; --dx: -10px; --dur: 14s; --delay: -5s; --o: 0.6; width: 2px; height: 2px; }
+      #uv-embers i:nth-child(7) { left: 81%; --dx: 20px; --dur: 13s; --delay: -11s; --o: 0.7; }
+      #uv-embers i:nth-child(8) { left: 90%; --dx: -14px; --dur: 17s; --delay: -2s; --o: 0.5; width: 2px; height: 2px; }
+      @keyframes uv-rise {
+        0% {
+          transform: translate3d(0, 0, 0);
+          opacity: 0;
+        }
+        9% {
+          opacity: var(--o, 0.8);
+        }
+        58% {
+          transform: translate3d(var(--dx, 10px), -50vh, 0);
+          opacity: calc(var(--o, 0.8) * 0.7);
+        }
+        100% {
+          transform: translate3d(calc(var(--dx, 10px) / 3), -94vh, 0);
+          opacity: 0;
+        }
+      }
+
+      /* ── the card text, above the painting ─────────────────────────── */
+      main {
+        position: relative;
+        z-index: 3;
+        box-sizing: border-box;
+        height: 100%;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         text-align: center;
+        gap: clamp(5px, 2vh, 15px);
+        padding: clamp(10px, 3vh, 30px) clamp(14px, 6vw, 44px);
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 0.6s var(--ease),
+          transform 0.6s var(--ease);
       }
-      main {
-        padding: 24px 20px;
-        max-width: 420px;
-        width: 100%;
+      /* soft dark scrim so the engraving reads over the monument */
+      main::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        inset: 0;
+        background: radial-gradient(
+          58% 60% at 50% 52%,
+          rgba(11, 10, 16, 0.52),
+          rgba(11, 10, 16, 0.28) 55%,
+          rgba(11, 10, 16, 0) 80%
+        );
+        pointer-events: none;
       }
+      body.uv-ready main {
+        opacity: 1;
+        transform: none;
+      }
+
       h1 {
-        font-size: 20px;
-        letter-spacing: 0.18em;
+        display: flex;
+        align-items: center;
+        gap: clamp(8px, 2.4vw, 16px);
+        margin: 0;
+        font-size: clamp(9px, 1.2vmin + 5px, 14px);
+        font-weight: normal;
+        letter-spacing: 0.42em;
+        text-indent: 0.42em;
         text-transform: uppercase;
-        margin: 0 0 4px;
-        color: #d9a441;
+        color: var(--gold-ink);
+        text-shadow: 0 1px 10px rgba(11, 10, 16, 0.9);
+      }
+      h1::before,
+      h1::after {
+        content: "";
+        height: 1px;
+        width: clamp(14px, 5vw, 54px);
+        background: linear-gradient(90deg, rgba(200, 162, 75, 0), rgba(200, 162, 75, 0.65));
+      }
+      h1::after {
+        background: linear-gradient(90deg, rgba(200, 162, 75, 0.65), rgba(200, 162, 75, 0));
+      }
+
+      #uv-daybox {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(1px, 0.5vh, 4px);
+      }
+      #uv-kicker {
+        margin: 0;
+        font-size: clamp(8px, 1vmin + 4px, 12px);
+        letter-spacing: 0.52em;
+        text-indent: 0.52em;
+        text-transform: uppercase;
+        color: var(--bone);
+        text-shadow:
+          0 0 6px rgba(11, 10, 16, 1),
+          0 1px 8px rgba(11, 10, 16, 0.95);
       }
       #uv-day {
-        font-size: 14px;
-        opacity: 0.85;
-        margin: 0 0 16px;
+        margin: 0;
+        font-size: clamp(40px, 19vmin, 112px);
+        line-height: 0.92;
+        font-weight: normal;
+        background: linear-gradient(180deg, #ffd98a 0%, #c8a24b 42%, #8a6a2a 78%, #c8a24b 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 0 16px rgba(245, 169, 63, 0.3)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.7));
       }
+
       #uv-teaser {
+        margin: 0;
         font-style: italic;
-        font-size: 15px;
-        min-height: 3em;
-        margin: 0 0 16px;
-        opacity: 0.9;
+        font-size: clamp(11px, 1.6vmin + 6px, 17px);
+        line-height: 1.45;
+        max-width: 40ch;
+        color: #8fb3a0;
+        color: color-mix(in srgb, var(--bone) 52%, var(--verdigris) 48%);
+        text-shadow: 0 1px 8px rgba(11, 10, 16, 0.95);
       }
+
       #uv-stats {
         display: flex;
-        justify-content: center;
-        gap: 24px;
-        font-size: 13px;
-        margin: 0 0 20px;
-        opacity: 0.8;
+        gap: clamp(10px, 3vmin, 24px);
       }
-      #uv-house {
-        font-size: 12px;
-        opacity: 0.7;
-        margin: 12px 0 0;
-        min-height: 1em;
+      .uv-plaque {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: clamp(4px, 1.2vmin, 9px) clamp(12px, 3.4vmin, 22px);
+        border: 1px solid rgba(183, 174, 156, 0.18);
+        border-radius: 2px;
+        background: linear-gradient(180deg, rgba(30, 26, 38, 0.74), rgba(22, 19, 28, 0.55));
+        box-shadow:
+          inset 0 1px 0 rgba(0, 0, 0, 0.55),
+          inset 0 -1px 0 rgba(183, 174, 156, 0.07),
+          0 1px 6px rgba(0, 0, 0, 0.4);
       }
+      .uv-plaque b {
+        font-weight: normal;
+        font-size: clamp(14px, 2.4vmin + 6px, 24px);
+        line-height: 1;
+      }
+      .uv-plaque b small {
+        font-size: 0.58em;
+        opacity: 0.75;
+      }
+      .uv-plaque .uv-lbl {
+        font-family: var(--font-body);
+        font-size: clamp(7px, 1vmin + 3px, 10px);
+        letter-spacing: 0.3em;
+        text-indent: 0.3em;
+        text-transform: uppercase;
+        color: var(--bone-dim);
+      }
+      #uv-gate-num { color: var(--flame); }
+      #uv-codex-num { color: var(--verdigris); }
+
+      /* ── the hero: match-strike seal button ────────────────────────── */
       #uv-descend {
-        font: inherit;
-        font-size: 16px;
-        letter-spacing: 0.08em;
-        color: #0b0906;
-        background: #d9a441;
-        border: 0;
-        border-radius: 4px;
-        padding: 12px 28px;
+        position: relative;
+        isolation: isolate;
+        font-family: var(--font-display);
+        font-size: clamp(11px, 2.6vmin, 16px);
+        letter-spacing: 0.3em;
+        text-indent: 0.3em;
+        text-transform: uppercase;
+        color: var(--flame-hi);
+        background: linear-gradient(180deg, #3a1d0b, #24120a 55%, #190c05);
+        border: 1px solid rgba(200, 162, 75, 0.55);
+        border-radius: 3px;
+        padding: clamp(9px, 2.4vmin, 14px) clamp(18px, 5vmin, 36px);
         cursor: pointer;
+        box-shadow:
+          0 0 0 1px rgba(11, 10, 16, 0.9),
+          0 0 18px rgba(245, 169, 63, 0.16),
+          inset 0 1px 0 rgba(255, 217, 138, 0.22),
+          inset 0 -6px 14px rgba(201, 112, 30, 0.2);
+        transition:
+          box-shadow var(--dur-standard) var(--ease),
+          border-color var(--dur-standard) var(--ease),
+          color var(--dur-standard) var(--ease),
+          transform var(--dur-micro) var(--ease);
+      }
+      #uv-descend .uv-orn {
+        color: var(--gold-ink);
+        font-size: 0.72em;
+        opacity: 0.85;
+      }
+      #uv-descend::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        inset: -46% -26%;
+        background: radial-gradient(
+          52% 58% at 50% 62%,
+          rgba(245, 169, 63, 0.3),
+          rgba(245, 169, 63, 0.08) 55%,
+          rgba(245, 169, 63, 0) 78%
+        );
+        opacity: 0.65;
+        pointer-events: none;
+        animation: uv-halo 3.4s ease-in-out infinite alternate;
+        transition: opacity var(--dur-standard) var(--ease);
+        will-change: transform, opacity;
+      }
+      @keyframes uv-halo {
+        from {
+          transform: scale(0.94);
+        }
+        to {
+          transform: scale(1.08);
+        }
+      }
+      #uv-descend:hover,
+      #uv-descend:focus-visible {
+        border-color: rgba(255, 217, 138, 0.85);
+        color: #ffe9bd;
+        box-shadow:
+          0 0 0 1px rgba(11, 10, 16, 0.9),
+          0 0 26px rgba(245, 169, 63, 0.34),
+          inset 0 1px 0 rgba(255, 217, 138, 0.32),
+          inset 0 -6px 16px rgba(201, 112, 30, 0.3);
+      }
+      #uv-descend:hover::before,
+      #uv-descend:focus-visible::before {
+        opacity: 1;
+      }
+      #uv-descend:active {
+        transform: translateY(1px);
+        color: var(--flame);
+        box-shadow:
+          0 0 0 1px rgba(11, 10, 16, 0.9),
+          0 0 30px rgba(245, 169, 63, 0.42),
+          inset 0 2px 6px rgba(11, 10, 16, 0.6),
+          inset 0 -4px 12px rgba(201, 112, 30, 0.36);
+      }
+      #uv-descend:focus-visible {
+        outline: 1px solid var(--flame-hi);
+        outline-offset: 3px;
       }
       #uv-descend:disabled {
         opacity: 0.5;
         cursor: default;
       }
+
+      #uv-house {
+        margin: 0;
+        font-family: var(--font-body);
+        font-size: clamp(8px, 1vmin + 4px, 12px);
+        letter-spacing: 0.18em;
+        text-indent: 0.18em;
+        text-transform: uppercase;
+        color: var(--bone-dim);
+        min-height: 1em;
+        text-shadow:
+          0 0 6px rgba(11, 10, 16, 1),
+          0 1px 8px rgba(11, 10, 16, 0.95);
+      }
+
+      /* ── empty / fallback state: the Gate dark, still intentional ──── */
+      body.uv-unopened #uv-kicker {
+        display: none;
+      }
+      body.uv-unopened #uv-day {
+        background: none;
+        -webkit-text-fill-color: var(--parchment-aged);
+        color: var(--parchment-aged);
+        filter: none;
+        font-style: italic;
+        font-size: clamp(16px, 3vmin + 8px, 28px);
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+      }
+      body.uv-unopened #uv-seam {
+        animation: none;
+        opacity: 0.3;
+      }
+
+      @media (max-height: 300px) {
+        main {
+          gap: clamp(3px, 1.5vh, 8px);
+        }
+      }
+
+      /* ── §5 reduced-motion law: embers hidden, seam steady, fades ──── */
+      @media (prefers-reduced-motion: reduce) {
+        #uv-embers {
+          display: none;
+        }
+        #uv-seam {
+          animation: none;
+          opacity: 0.75;
+        }
+        #uv-descend::before {
+          animation: none;
+          transform: none;
+        }
+        main {
+          transform: none;
+          transition: opacity 0.3s ease;
+        }
+        #uv-descend {
+          transition:
+            box-shadow 0.3s ease,
+            border-color 0.3s ease,
+            color 0.3s ease;
+        }
+        #uv-descend:active {
+          transform: none;
+        }
+      }
     </style>
   </head>
   <body>
+    <canvas id="uv-scene" aria-hidden="true"></canvas>
+    <div id="uv-seam" aria-hidden="true"></div>
+    <div id="uv-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <main>
       <h1>The Undervault</h1>
-      <p id="uv-day">&hellip;</p>
+      <div id="uv-daybox">
+        <p id="uv-kicker">Day</p>
+        <p id="uv-day">&hellip;</p>
+      </div>
       <p id="uv-teaser"></p>
       <div id="uv-stats">
-        <span>Gate <span id="uv-gate">&ndash;</span>%</span>
-        <span>Codex <span id="uv-codex">&ndash;</span>%</span>
+        <span class="uv-plaque">
+          <b id="uv-gate-num"><span id="uv-gate">&ndash;</span><small>%</small></b>
+          <span class="uv-lbl">Gate</span>
+        </span>
+        <span class="uv-plaque">
+          <b id="uv-codex-num"><span id="uv-codex">&ndash;</span><small>%</small></b>
+          <span class="uv-lbl">Codex</span>
+        </span>
       </div>
-      <button id="uv-descend" type="button">Strike the match</button>
+      <button id="uv-descend" type="button">
+        <span class="uv-orn">&#10038;</span>&nbsp; Strike the Match &nbsp;<span class="uv-orn">&#10038;</span>
+      </button>
       <p id="uv-house"></p>
     </main>
     <script type="module" src="./splash.ts"></script>

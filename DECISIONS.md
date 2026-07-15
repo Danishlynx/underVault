@@ -994,3 +994,15 @@ candidates; flip them in the named data file, not in code.
     log, seeds rule cache/SessionRules, primes batcher fromTick;
     getResume is consume-once; "Your candle still burns where you
     left it." 210 net/route/protocol tests; replay corpus untouched.
+
+103. THE ANTECHAMBER SPLASH - the feed card is now a painted scene,
+    not an HTML form: the sealed Great Gate as central monument
+    (rim rings, ridge spokes, rivets, gold boss split by a breathing
+    verdigris seam), three fog-stops of arches, four candle-dotted
+    steps with a clear processional column, illuminated day numeral,
+    engraved GATE/CODEX plaques, STRIKE THE MATCH hero button with
+    flame halo. Canvas painted once per resize; all motion CSS-only
+    (embers, seam breathe, halo) - zero rAF; reduced-motion collapses
+    to fades. Fallback (no postData, no API) stays intentional: dark
+    gate, "The gate is not yet open." Composition verified 380x220 /
+    700x400 / 520x940. splash chunk 135 KB, no phaser (invariant 7).
