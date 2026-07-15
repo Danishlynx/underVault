@@ -34,6 +34,16 @@
  * mid-air. Depth ordering by line weight: the near stair nosings are the
  * crispest lines in the frame; the Gate's carvings stay softer and dimmer.
  *
+ * WHEN THE SEASON IS WON (`rescued`): the Candlemaid was freed and the
+ * First Flame came home. A mother-candle appears a step up-ledge behind the
+ * daily pillar on a low carved plinth — broad, ancient, ~1.6× a fresh
+ * pillar, her shaft scored with a hundred faint tallies (one per candle the
+ * town gave), her flame PAINTED IN: tall, calm, a teardrop that does not
+ * gutter. Her halo lifts the whole hall's warmth a breath — hope, not
+ * vigil — inside the same two-hue law. The daily candle-clock runs
+ * untouched beside her; with `rescued` false the scene is exactly the
+ * vigil it always was, to the pixel.
+ *
  * The caller has DPR-scaled and cleared the context. The engine overlays a
  * live animated flame at the wick tip; paintMenuBackdrop returns that anchor
  * (and a suggested flame height, ~7% of frame height) as fractions of w/h.
@@ -70,6 +80,11 @@ export interface MenuGeom {
   flameY: number;
   flameH: number;
   candle?: { left: number; right: number; top: number; base: number };
+  /** The First Flame's painted-in fire (rescued epilogue only) — the anchor
+   *  of its luminous heart plus its painted height, as fractions of w/h,
+   *  should the engine ever want to breathe on her too. Absent while the
+   *  season still runs. */
+  mother?: { flameX: number; flameY: number; flameH: number };
 }
 
 export function paintMenuBackdrop(
@@ -77,6 +92,7 @@ export function paintMenuBackdrop(
   w: number,
   h: number,
   burn = 0,
+  rescued = false,
 ): MenuGeom {
   const C = COLOR_CSS;
   const rand = vigilRand(0x716117);
@@ -748,6 +764,304 @@ export function paintMenuBackdrop(
   ctx.lineTo(breakX - w * 0.068, bedB + h * 0.02);
   ctx.stroke();
 
+  // ── 9b. THE FIRST FLAME — the season's epilogue (rescued only) ───────────
+  // The Candlemaid freed, the mother-candle come home. She stands a step
+  // up-ledge behind the daily pillar on a low carved plinth: broad, ancient,
+  // ~1.6× a FRESH pillar, her shaft scored with a hundred faint tallies —
+  // one per candle the town gave. Her flame is PAINTED (tall, calm, a
+  // teardrop that never gutters) and her halo lifts the hall a breath
+  // warmer: hope, not vigil. Everything here guards behind `rescued`, and
+  // she draws from her OWN jitter stream, so the vigil scene never shifts
+  // by a pixel between seasons — the daily candle-clock runs untouched.
+  let mother: MenuGeom["mother"];
+  if (rescued) {
+    const mr = vigilRand(0xf1a3e5);
+    const mcx = w * 0.1; // left of and behind the daily pillar
+    const mcw = cw * 1.32; // broad — a mother among candles
+    const mBaseY = ledgeY - h * 0.014; // a step up-ledge: behind, not beside
+    const plinthH = h * 0.036;
+    const plinthW = mcw * 1.72;
+    const plinthTopY = mBaseY - plinthH;
+    const mch = chFull * 1.6; // against the FRESH daily height, always
+    const mTopY = plinthTopY - mch;
+    const mHalf = mcw / 2;
+    const mSpread = mcw * 0.14; // the heavy skirt flares the foot
+    // contact shadow — the plinth presses into the ledge stone (kept tight:
+    // a seat, not a saucer)
+    ctx.save();
+    ctx.translate(mcx, mBaseY + h * 0.003);
+    ctx.scale(1, 0.2);
+    const mContact = ctx.createRadialGradient(0, 0, 0, 0, 0, plinthW * 0.62);
+    mContact.addColorStop(0, shade(C.void, 0.55, 0.55));
+    mContact.addColorStop(0.6, shade(C.void, 0.55, 0.26));
+    mContact.addColorStop(1, shade(C.void, 0.55, 0));
+    ctx.fillStyle = mContact;
+    ctx.fillRect(-plinthW, -plinthW, plinthW * 2, plinthW * 2);
+    ctx.restore();
+    // the plinth — a low carved block: face, base course, slab lip. It lives
+    // inside the frame's bottom settle, so its stone runs a shade brighter
+    // than the ledge courses around it — her hearth-light explains the lift.
+    const px0 = mcx - plinthW / 2;
+    const plinthG = ctx.createLinearGradient(0, plinthTopY, 0, mBaseY);
+    plinthG.addColorStop(0, mix(C.void, C.surface2, 0.92, 0.97));
+    plinthG.addColorStop(1, mix(C.void, C.surface, 0.5, 0.97));
+    ctx.fillStyle = plinthG;
+    ctx.fillRect(px0, plinthTopY, plinthW, plinthH);
+    ctx.fillStyle = mix(C.void, C.surface, 0.52, 0.97); // base course, a hair wider
+    ctx.fillRect(px0 - w * 0.0035, mBaseY - plinthH * 0.28, plinthW + w * 0.007, plinthH * 0.28);
+    const slabH = Math.max(3, plinthH * 0.22);
+    ctx.fillStyle = mix(C.void, C.surface2, 0.95, 0.97); // the slab lips past the face
+    ctx.fillRect(px0 - w * 0.003, plinthTopY - slabH * 0.4, plinthW + w * 0.006, slabH);
+    ctx.strokeStyle = mix(C.flame, C.bone, 0.45, 0.45); // its edge catches her light
+    ctx.lineWidth = 1;
+    line(px0 - w * 0.003, plinthTopY - slabH * 0.4 + 0.5, px0 + plinthW + w * 0.003, plinthTopY - slabH * 0.4 + 0.5);
+    ctx.strokeStyle = shade(C.void, 0.55, 0.5); // shadow tucked under the lip
+    line(px0, plinthTopY + slabH * 0.65, px0 + plinthW, plinthTopY + slabH * 0.65);
+    // carved face: a groove either side of a small lozenge (token hues only)
+    const pfy = plinthTopY + plinthH * 0.56;
+    ctx.strokeStyle = shade(C.void, 0.6, 0.45);
+    line(px0 + plinthW * 0.12, pfy, px0 + plinthW * 0.38, pfy);
+    line(px0 + plinthW * 0.62, pfy, px0 + plinthW * 0.88, pfy);
+    ctx.strokeStyle = mix(C.void, C.boneDim, 0.55, 0.24);
+    line(px0 + plinthW * 0.12, pfy + 1, px0 + plinthW * 0.38, pfy + 1);
+    line(px0 + plinthW * 0.62, pfy + 1, px0 + plinthW * 0.88, pfy + 1);
+    ctx.save();
+    ctx.translate(mcx, pfy);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = shade(C.void, 0.6, 0.5);
+    ctx.fillRect(-plinthH * 0.15, -plinthH * 0.15, plinthH * 0.3, plinthH * 0.3);
+    ctx.fillStyle = mix(C.void, C.boneDim, 0.65, 0.4);
+    ctx.fillRect(-plinthH * 0.1, -plinthH * 0.1, plinthH * 0.2, plinthH * 0.2);
+    ctx.restore();
+    ctx.strokeStyle = shade(C.void, 0.7, 0.7); // cut-line, softer than the near pillar's
+    ctx.lineWidth = Math.max(1.2, s * 0.0028);
+    ctx.strokeRect(px0, plinthTopY, plinthW, plinthH);
+    // her body — broad and stately: flanks bowing gently, the crown softened
+    // by centuries of slow burning (no collapsed lip — she was never let
+    // gutter), the foot flaring into the heavy skirt
+    const mbody = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(mcx - mHalf - mSpread, plinthTopY);
+      ctx.bezierCurveTo(
+        mcx - mHalf - mSpread * 0.3,
+        plinthTopY - mch * 0.22,
+        mcx - mHalf - mcw * 0.02,
+        plinthTopY - mch * 0.55,
+        mcx - mHalf + mcw * 0.06,
+        mTopY + mch * 0.05,
+      );
+      ctx.quadraticCurveTo(mcx - mcw * 0.24, mTopY - mch * 0.006, mcx - mcw * 0.1, mTopY + mch * 0.012);
+      ctx.quadraticCurveTo(mcx, mTopY + mch * 0.028, mcx + mcw * 0.11, mTopY + mch * 0.01);
+      ctx.quadraticCurveTo(mcx + mcw * 0.26, mTopY - mch * 0.004, mcx + mHalf - mcw * 0.06, mTopY + mch * 0.055);
+      ctx.bezierCurveTo(
+        mcx + mHalf + mcw * 0.02,
+        mTopY + mch * 0.45,
+        mcx + mHalf + mSpread * 0.35,
+        plinthTopY - mch * 0.2,
+        mcx + mHalf + mSpread,
+        plinthTopY,
+      );
+      ctx.closePath();
+    };
+    const mBodyG = ctx.createLinearGradient(0, mTopY, 0, plinthTopY);
+    mBodyG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.34)); // her flame's warmth
+    mBodyG.addColorStop(0.2, mix(C.parchmentAged, C.bone, 0.28));
+    mBodyG.addColorStop(0.55, mix(C.bone, C.boneDim, 0.55));
+    mBodyG.addColorStop(1, mix(C.boneDim, C.void, 0.5));
+    mbody();
+    ctx.fillStyle = mBodyG;
+    ctx.fill();
+    // round the pillar off — side shade clipped to the wax
+    ctx.save();
+    mbody();
+    ctx.clip();
+    const mSideG = ctx.createLinearGradient(mcx - mHalf, 0, mcx + mHalf, 0);
+    mSideG.addColorStop(0, shade(C.void, 0.8, 0.32));
+    mSideG.addColorStop(0.35, shade(C.void, 0.8, 0));
+    mSideG.addColorStop(0.78, shade(C.void, 0.8, 0));
+    mSideG.addColorStop(1, shade(C.void, 0.8, 0.2));
+    ctx.fillStyle = mSideG;
+    ctx.fillRect(mcx - mcw, mTopY - mch * 0.05, mcw * 2, mch * 1.15);
+    // THE HUNDRED TALLIES — one per candle the town gave: five-bar gates,
+    // five gates a course, four courses (5×5×4 = 100), scored faint into
+    // the wax. Older courses sit lower and dimmer, and every mark fades
+    // toward the flanks where the shaft turns away — a texture of counting,
+    // not a ledger to squint at.
+    ctx.lineWidth = 1;
+    const gateW = mcw * 0.115;
+    const tallH = mch * 0.03;
+    for (let row = 0; row < 4; row++) {
+      const ty = mTopY + mch * (0.32 + row * 0.068) + (mr() - 0.5) * mch * 0.01;
+      const rowA = 0.34 - row * 0.055;
+      for (let g2 = 0; g2 < 5; g2++) {
+        const gx0 = mcx - mcw * 0.34 + g2 * ((mcw * 0.68 - gateW) / 4) + (mr() - 0.5) * mcw * 0.012;
+        const away = Math.abs(gx0 + gateW / 2 - mcx) / (mcw * 0.5);
+        ctx.strokeStyle = shade(C.boneDim, 0.75, rowA * (1 - away * 0.55));
+        for (let k = 0; k < 4; k++) {
+          const tx = gx0 + (k * gateW) / 4 + (mr() - 0.5) * 1.2;
+          line(tx, ty + (mr() - 0.5) * 1.4, tx - mcw * 0.008, ty + tallH);
+        }
+        // the fifth stroke gates the four
+        line(gx0 - mcw * 0.012, ty + tallH * 0.2, gx0 + gateW * 0.78, ty + tallH * 0.85);
+      }
+    }
+    ctx.restore();
+    mbody();
+    ctx.strokeStyle = shade(C.void, 0.7, 0.75); // woodcut cut-line, a shade behind
+    ctx.lineWidth = Math.max(1.3, s * 0.003);
+    ctx.stroke();
+    // the crown well — shallow and kept, never collapsed
+    ctx.fillStyle = mix(C.parchmentAged, C.ink, 0.4);
+    ctx.beginPath();
+    ctx.ellipse(mcx, mTopY + mch * 0.018, mcw * 0.24, mch * 0.012, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = mix(C.ink, C.void, 0.3, 0.75);
+    ctx.beginPath();
+    ctx.ellipse(mcx, mTopY + mch * 0.02, mcw * 0.13, mch * 0.007, 0, 0, TAU);
+    ctx.fill();
+    // drip ribbons — §10's helper is declared below us; she keeps her own
+    const mOldTop = mix(C.parchmentAged, C.bone, 0.4);
+    const mOldBot = mix(C.boneDim, C.void, 0.45);
+    const mFreshTop = mix(C.parchment, C.flame, 0.14); // warm where her fire reaches
+    const mdrip = (x: number, yTop: number, len: number, wr: number, top = mOldTop, bot = mOldBot): void => {
+      const g = ctx.createLinearGradient(0, yTop, 0, yTop + len);
+      g.addColorStop(0, top);
+      g.addColorStop(1, bot);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x - wr, yTop);
+      ctx.bezierCurveTo(
+        x - wr * 1.06,
+        yTop + len * 0.42,
+        x - wr * 0.86,
+        yTop + len - wr * 1.5,
+        x - wr * 0.72,
+        yTop + len - wr,
+      );
+      ctx.arc(x, yTop + len - wr, wr * 0.72, Math.PI, 0, true);
+      ctx.bezierCurveTo(x + wr * 0.9, yTop + len - wr * 1.6, x + wr * 1.06, yTop + len * 0.4, x + wr, yTop);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(C.void, 0.7, 0.35);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    };
+    // ribbons down the flanks, hung from the crown rim (one drowns the
+    // tally band's edge); the inner pair still carries her fire's warmth
+    mdrip(mcx - mcw * 0.42, mTopY + mch * 0.045, mch * 0.34, mcw * 0.05);
+    mdrip(mcx - mcw * 0.2, mTopY + mch * 0.028, mch * 0.16, mcw * 0.045, mFreshTop);
+    mdrip(mcx + mcw * 0.3, mTopY + mch * 0.032, mch * 0.5, mcw * 0.055, mFreshTop);
+    mdrip(mcx + mcw * 0.44, mTopY + mch * 0.055, mch * 0.24, mcw * 0.045);
+    // …and the heavy skirt at the foot: a frozen apron draping the slab,
+    // spilling partway down the plinth face
+    ctx.fillStyle = mix(C.parchmentAged, C.boneDim, 0.52, 0.95);
+    ctx.beginPath();
+    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.92, h * 0.008, 0, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = shade(C.void, 0.7, 0.3);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.92, h * 0.008, 0, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.stroke();
+    // tongues spilling over the slab lip — placed, not scattered: a broad
+    // one under her lean, two lighter falls to either side
+    mdrip(mcx - mHalf * 0.52, plinthTopY + h * 0.002, plinthH * 0.5, mcw * 0.05);
+    mdrip(mcx + mHalf * 0.08, plinthTopY + h * 0.002, plinthH * 0.85, mcw * 0.062);
+    mdrip(mcx + mHalf * 0.46, plinthTopY + h * 0.002, plinthH * 0.6, mcw * 0.044);
+    // her wick — trimmed and sound: kept, not neglected
+    const mWickY = mTopY + mch * 0.014;
+    const mfx = mcx + mcw * 0.005;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.strokeStyle = mix(C.ink, C.void, 0.4);
+    ctx.lineWidth = Math.max(2, h * 0.004);
+    line(mcx - mcw * 0.006, mWickY + mch * 0.004, mfx, mWickY - h * 0.011);
+    ctx.restore();
+    // HER FLAME, painted in — tall, calm, a teardrop that holds its line
+    const mfH = h * 0.078;
+    const fB = mWickY - h * 0.006;
+    const fT = fB - mfH;
+    const heartY = fT + mfH * 0.52;
+    const tear = (x: number, tipY: number, baseY: number, hw: number): void => {
+      const dh = baseY - tipY;
+      ctx.beginPath();
+      ctx.moveTo(x, tipY);
+      ctx.bezierCurveTo(x + hw * 0.2, tipY + dh * 0.26, x + hw, tipY + dh * 0.6, x + hw * 0.62, baseY - dh * 0.07);
+      ctx.quadraticCurveTo(x + hw * 0.3, baseY, x, baseY);
+      ctx.quadraticCurveTo(x - hw * 0.3, baseY, x - hw * 0.62, baseY - dh * 0.07);
+      ctx.bezierCurveTo(x - hw, tipY + dh * 0.6, x - hw * 0.2, tipY + dh * 0.26, x, tipY);
+      ctx.closePath();
+    };
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const veilG = ctx.createRadialGradient(mfx, heartY, 0, mfx, heartY, mfH * 0.95);
+    veilG.addColorStop(0, shade(C.flame, 0.85, 0.3)); // the veil round the fire
+    veilG.addColorStop(0.55, shade(C.ember, 0.7, 0.09));
+    veilG.addColorStop(1, shade(C.ember, 0.7, 0));
+    ctx.fillStyle = veilG;
+    ctx.fillRect(mfx - mfH, heartY - mfH, mfH * 2, mfH * 2);
+    ctx.restore();
+    // amber sheath → luminous heart → the still core
+    const mfG = ctx.createLinearGradient(0, fT, 0, fB);
+    mfG.addColorStop(0, mix(C.flame, C.flameHi, 0.3, 0.88));
+    mfG.addColorStop(0.6, mix(C.flame, C.ember, 0.3, 0.9));
+    mfG.addColorStop(1, shade(C.ember, 0.85, 0.7));
+    ctx.fillStyle = mfG;
+    tear(mfx, fT, fB, mfH * 0.3);
+    ctx.fill();
+    ctx.fillStyle = mix(C.flameHi, C.flame, 0.3, 0.95);
+    tear(mfx, fT + mfH * 0.26, fB - mfH * 0.03, mfH * 0.185);
+    ctx.fill();
+    ctx.fillStyle = mix(C.flameHi, C.parchment, 0.6, 0.98);
+    tear(mfx, fT + mfH * 0.5, fB - mfH * 0.07, mfH * 0.095);
+    ctx.fill();
+    ctx.fillStyle = shade(C.ember, 0.45, 0.5); // the dark seat at the wick root
+    ctx.beginPath();
+    ctx.ellipse(mfx, fB - mfH * 0.02, mfH * 0.09, mfH * 0.045, 0, 0, TAU);
+    ctx.fill();
+    // her light answers on the world — a response crown on her own wax…
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const mCrown = ctx.createRadialGradient(mcx, mTopY + mch * 0.01, 0, mcx, mTopY + mch * 0.01, mcw * 1.45);
+    mCrown.addColorStop(0, shade(C.flameHi, 0.7, 0.24));
+    mCrown.addColorStop(1, shade(C.flameHi, 0.7, 0));
+    ctx.fillStyle = mCrown;
+    ctx.fillRect(mcx - mcw * 1.5, mTopY + mch * 0.01 - mcw * 1.5, mcw * 3, mcw * 3);
+    // …a hearth-pool across plinth and ledge…
+    ctx.save();
+    ctx.translate(mcx, mBaseY + h * 0.004);
+    ctx.scale(1, 0.3);
+    const hearth = ctx.createRadialGradient(0, 0, 0, 0, 0, chFull * 1.1);
+    hearth.addColorStop(0, shade(C.flame, 0.6, 0.22));
+    hearth.addColorStop(0.45, shade(C.ember, 0.55, 0.09));
+    hearth.addColorStop(1, shade(C.ember, 0.55, 0));
+    ctx.fillStyle = hearth;
+    ctx.fillRect(-chFull * 1.15, -chFull * 1.15, chFull * 2.3, chFull * 2.3);
+    ctx.restore();
+    // …and the great halo: generous, calm — the whole hall breathes a shade
+    // warmer. It dies long before the top band (D83: the void stays pure).
+    const mHalo = ctx.createRadialGradient(mfx, heartY, 0, mfx, heartY, h * 0.8);
+    mHalo.addColorStop(0, shade(C.flame, 0.6, 0.14));
+    mHalo.addColorStop(0.3, shade(C.ember, 0.55, 0.065));
+    mHalo.addColorStop(0.65, shade(C.ember, 0.55, 0.022));
+    mHalo.addColorStop(1, shade(C.ember, 0.55, 0));
+    ctx.fillStyle = mHalo;
+    ctx.fillRect(mfx - h * 0.82, heartY - h * 0.82, h * 1.64, h * 1.64);
+    ctx.restore();
+    // the crest catches her hearth too — a second warm span on the ledge lip
+    const mCrest = ctx.createLinearGradient(mcx - w * 0.1, 0, mcx + w * 0.12, 0);
+    mCrest.addColorStop(0, mix(C.flame, C.bone, 0.42, 0));
+    mCrest.addColorStop(0.45, mix(C.flame, C.bone, 0.38, 0.4));
+    mCrest.addColorStop(1, mix(C.flame, C.bone, 0.42, 0));
+    ctx.strokeStyle = mCrest;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, crest[0]?.y ?? ledgeY);
+    for (const p of crest) ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    mother = { flameX: mfx / w, flameY: heartY / h, flameH: mfH / h };
+  }
+
   // ── 10. THE CANDLE — thick, ancient, drip-skirted, waiting ───────────────
   // soft contact shadow first — the candle presses into its own dark
   ctx.save();
@@ -1220,5 +1534,6 @@ export function paintMenuBackdrop(
       top: (topY - ch * 0.03) / h,
       base: ledgeY / h,
     },
+    ...(mother === undefined ? {} : { mother }),
   };
 }

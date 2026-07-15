@@ -35,7 +35,21 @@ function dayBurn(): number {
 type BurnGeom = MenuGeom & {
   candle?: { left: number; right: number; top: number; base: number };
 };
-type BurnPainter = (ctx: CanvasRenderingContext2D, w: number, h: number, burn?: number) => BurnGeom;
+type BurnPainter = (
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  burn?: number,
+  rescued?: boolean,
+) => BurnGeom;
+
+/** The Long Rescue completed (D108): the menu keeps the changed world.
+ *  Debug: ?rescued=1 overrides. */
+function isRescued(vitals?: MenuVitals): boolean {
+  const o = new URLSearchParams(window.location.search).get("rescued");
+  if (o !== null) return o !== "0";
+  return vitals?.rescued === true;
+}
 
 /** Structural slice of AudioGraph the menu needs (keeps this file decoupled). */
 export interface MenuAudio {
@@ -65,6 +79,8 @@ export interface MenuVitals {
   /** today's candle already burned (one per day) — BEGIN goes dark (D98).
    *  Dev adapter never sets it; the server port flips it for real. */
   spent?: boolean;
+  /** the Long Rescue is complete — she is home; the menu changes forever (D108) */
+  rescued?: boolean;
 }
 
 // Private LCG (same law as the hall: never touch paint.ts crand()).
@@ -363,7 +379,12 @@ export function openMainMenu(
   const rule = el("div", "uv-menu-rule uv-menu-stage", "◆");
   // one whisper only — the day/lore lines belonged to the hall, not here
   // (operator: "too many text makes it messy")
-  const tagline = el("div", "uv-menu-tagline uv-menu-stage", "She is still down there.");
+  const rescued = isRescued(vitals);
+  const tagline = el(
+    "div",
+    "uv-menu-tagline uv-menu-stage",
+    rescued ? "She is home. The dark can be warmed." : "She is still down there.",
+  );
   col.appendChild(eyebrow);
   col.appendChild(title);
   col.appendChild(rule);
@@ -398,7 +419,9 @@ export function openMainMenu(
     vitalsEl = el(
       "div",
       "uv-menu-vitals uv-menu-stage",
-      `Day ${vitals.day} · the Gate strains ${vitals.gatePct}% · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`,
+      rescued
+        ? `Day ${vitals.day} · the Gate stands open · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`
+        : `Day ${vitals.day} · the Gate strains ${vitals.gatePct}% · Codex ${vitals.codexPct}% · ${vitals.fallenToday} fallen today`,
     );
     col.appendChild(rumorEl);
     col.appendChild(vitalsEl);
@@ -430,7 +453,7 @@ export function openMainMenu(
     const ctx = bg.getContext("2d");
     if (ctx !== null) {
       ctx.scale(dpr, dpr);
-      geom = (paintMenuBackdrop as BurnPainter)(ctx, w, h, burn);
+      geom = (paintMenuBackdrop as BurnPainter)(ctx, w, h, burn, rescued);
     }
     // live-flame canvas hugs the wick tip
     const fH = geom.flameH * h;

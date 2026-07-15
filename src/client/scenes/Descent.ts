@@ -124,6 +124,7 @@ const AUTOSTART_KEY = "uv-autostart";
 const GUIDES_KEY = "uv-guides"; // once-per-session lessons (memory only, inv. 3)
 const VIEW_KEY = "uv-view"; // D67 camera experiment (memory only, inv. 3)
 const STORY_KEY = "uv-story-told"; // the telling plays once per session (D79)
+const RESCUED_KEY = "uv-rescued"; // witnessed the finale this session (D108)
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
   "XXI", "XXII", "XXIII", "XXIV", "XXV"];
@@ -442,6 +443,9 @@ export class DescentScene extends Phaser.Scene {
         codexPct: g.codexPct,
         fallenToday: g.fallenToday,
         rumor: g.omenRumor,
+        // the changed world (D108): the season completed — for everyone once
+        // the counter fills, immediately for whoever witnessed the finale
+        rescued: g.gatePct >= 100 || this.registry.get(RESCUED_KEY) === true,
       },
     );
   }
@@ -2867,6 +2871,7 @@ export class DescentScene extends Phaser.Scene {
     const giftNo = this.devHundredth ? 100 : Math.min(100, this.ports.getGuildhall().gatePct + 1);
     this.devHundredth = false;
     const finale = giftNo >= 100;
+    if (finale) this.registry.set(RESCUED_KEY, true); // the menu stays changed (D108)
     openMeeting(host, () => {
       this.audio.play("victory");
       openVictorySheet(host, this.runSummary(), () => {

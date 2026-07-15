@@ -1091,3 +1091,19 @@ candidates; flip them in the named data file, not in code.
     entries/braziers needs a schema field - post-jam. Judge
     cold-start mitigation: play the private sub with real accounts
     before submission so the shared world has handwriting in it.
+
+108. THE MENU STAYS CHANGED (operator: "why didnt the menu change
+    after she got released"). MenuVitals.rescued (server gatePct >=
+    100, or same-session finale witness via registry uv-rescued;
+    debug ?rescued=1): tagline becomes "She is home. The dark can be
+    warmed.", vitals read "the Gate stands open", and backdrop.ts
+    paints THE FIRST FLAME beside the daily candle - mother-candle
+    1.6x fresh height on a carved plinth, 100 tally marks in
+    five-bar gates (one per candle given), painted calm flame with
+    a hall-warming halo; the daily candle keeps burning down beside
+    her (one-candle law survives the rescue - the contrast IS the
+    story). rescued=false verified pixel-hash-identical to
+    pre-change. Also: docs/09-OPERATOR-HANDOFF.md (continuation
+    brief for the next session/model - hosting critical path,
+    landmines, rigs, backlog) and meeting-probe.mjs preserved into
+    tools/dev-harness.
