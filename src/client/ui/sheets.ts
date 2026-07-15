@@ -119,6 +119,7 @@ export function openEpitaphSheet(
   onDone: (result: EpitaphResult, restAtDusk: boolean) => void,
   unfinished?: UnfinishedBusiness,
   killer?: string,
+  onShare?: () => Promise<boolean>,
 ): () => void {
   const close = openSheet(host, (sheet) => {
     // the death screen NAMES the killer (D98): deaths are the teachers in
@@ -235,6 +236,18 @@ export function openEpitaphSheet(
     sheet.appendChild(
       el("p", "uv-dim", "One candle a day. Yours is spent. A new candle is cut at dusk, and the Vault deals new laws."),
     );
+    // the Reddit hook: post this epitaph as a comment so the fall is shared
+    if (onShare !== undefined) {
+      const share = el("button", "uv-ink-btn", "Post my epitaph to the feed") as HTMLButtonElement;
+      share.addEventListener("click", () => {
+        share.disabled = true;
+        share.textContent = "Posting…";
+        void onShare().then((ok) => {
+          share.textContent = ok ? "Posted to the vault's feed ✦" : "Could not reach the feed";
+        });
+      });
+      sheet.appendChild(share);
+    }
     const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
     again.addEventListener("click", () => finish(false));
     sheet.appendChild(again);

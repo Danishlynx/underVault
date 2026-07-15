@@ -1108,6 +1108,21 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+131. THE DEATH SHARE — THE REDDIT HOOK (necessary-bundle, "Games with a
+    Hook"). The epitaph could not leave the webview; the game had no
+    shareable artifact (audit: the main viral surface, unbuilt). New POST
+    /api/run/share submits the run's epitaph AS THE USER (devvit.json reddit
+    scope: user) via reddit.submitComment on context.postId. The comment is
+    composed SERVER-SIDE from authoritative run+user data (house, floor,
+    epitaph line, truths carried) — never client text, so it can't post
+    arbitrary content. Fail-safe: off-platform / permission / any error just
+    returns ok:false and the button reads "Could not reach the feed" (never
+    breaks the run). Client: a "Post my epitaph to the feed" button on the
+    death sheet, shown only when the remote ports implement shareEpitaph (the
+    dev adapter hides it); zShareReq/Res validated. MUST be verified on the
+    live sub — the Devvit reddit runtime can't be exercised locally. Gate
+    green. Flair deferred (lower value; needs a username lookup).
+
 130. LINEAGE PERSISTS + THE HOOK ON THE CARD (necessary-bundle, pre-
     submission). (A) SPLASH HOOK: the feed card explained no premise (audit:
     "a scroller sees a pretty gate with no meaning"); added one plain line

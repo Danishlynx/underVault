@@ -24,6 +24,7 @@ import {
   zDescendRes,
   zEndRes,
   zHouseRes,
+  zShareRes,
   zErrRes,
   zStartRes,
   type ActReq,
@@ -36,6 +37,7 @@ import {
   type EndReq,
   type EndRes,
   type HouseRes,
+  type ShareRes,
   type ErrCodeT,
   type StartRes,
 } from "../../shared/protocol.js";
@@ -145,6 +147,11 @@ export function apiRunEnd(req: EndReq): Promise<EndRes> {
 /** Persist the founded house (first-write-wins server-side; survives reload). */
 export function apiSetHouse(house: string): Promise<HouseRes> {
   return post("/api/run/house", { house }, zHouseRes);
+}
+
+/** Post the run's epitaph as a Reddit comment (server composes the text). */
+export function apiShare(token: string): Promise<ShareRes> {
+  return post("/api/run/share", { token }, zShareRes);
 }
 
 export function apiCodex(page: number): Promise<CodexRes> {

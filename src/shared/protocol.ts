@@ -196,6 +196,12 @@ export const zHouseRes = z.object({
 });
 export type HouseRes = z.infer<typeof zHouseRes>;
 
+// ── /api/run/share — post the run's epitaph as a comment (the Reddit hook) ──
+export const zShareReq = z.object({ token: zToken });
+export type ShareReq = z.infer<typeof zShareReq>;
+export const zShareRes = z.object({ ok: z.boolean() });
+export type ShareRes = z.infer<typeof zShareRes>;
+
 export const zEndRes = z.object({
   day: zU32, floor: zU8, cause: zU8, generation: zU16,
   epitaphLine: z.string().max(140),

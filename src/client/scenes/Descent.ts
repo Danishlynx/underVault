@@ -2904,7 +2904,8 @@ export class DescentScene extends Phaser.Scene {
       else this.ports.reportDeath(report);
       this.confirmRun();
       this.afterCeremony(rest);
-    }, { truths, nearClaims, nearMiss }, ENTITY_NAMES[this.lastHurtKind]);
+    }, { truths, nearClaims, nearMiss }, ENTITY_NAMES[this.lastHurtKind],
+      this.ports.shareEpitaph ? () => this.ports.shareEpitaph!() : undefined);
   }
 
   private openExit(): void {

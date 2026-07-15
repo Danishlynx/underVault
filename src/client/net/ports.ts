@@ -89,6 +89,9 @@ export interface GamePorts {
   /** lineage */
   getHouse(): string | null;
   setHouse(name: string): void;
+  /** post the run's epitaph as a Reddit comment; resolves true on success.
+   *  Optional: only the remote (hosted) ports implement it. */
+  shareEpitaph?: () => Promise<boolean>;
   heirloomDue(): boolean;
   pickHeirloom(id: number): void;
 

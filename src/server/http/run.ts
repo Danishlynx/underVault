@@ -24,6 +24,8 @@ import {
   zEndRes,
   zHouseReq,
   zHouseRes,
+  zShareReq,
+  zShareRes,
   zStartReq,
   type BankRes,
   type CorpseYieldWire,
@@ -802,4 +804,38 @@ runRoutes.post("/house", async (c) => {
   const name = req.house.trim().replace(/[^\p{L}\p{N} '-]/gu, "").slice(0, 20);
   const house = name === "" ? (await d.users.get(d.uid)).house : await d.users.ensureHouse(d.uid, name);
   return c.json(zHouseRes.parse({ house }));
+});
+
+// Post the run's epitaph as a Reddit comment (the shareable hook). Composes
+// from AUTHORITATIVE run+user data (never client text, so it can't post
+// arbitrary content), submits AS THE USER (devvit.json reddit scope: user),
+// and fails safe off-platform / on any error — the button just reports no-post.
+runRoutes.post("/share", async (c) => {
+  const d = deps(c);
+  const req = zShareReq.parse(await jsonBody(c));
+  const { meta } = await dayCtx(d);
+  const row = await loadRow(d, meta, req.token);
+  const user = await d.users.get(d.uid);
+  const end = row.epitaph !== "" ? (JSON.parse(row.epitaph) as EndRes) : null;
+  const houseBit = user.house === "" ? "A nameless delver" : `House ${user.house}`;
+  const floor = end?.floor ?? row.floor;
+  const truths = row.learned.length;
+  const line = end?.epitaphLine ?? "The dark took them.";
+  const text =
+    `⚑ ${houseBit} fell on Floor ${floor} of the Undervault (Day ${meta.day}).\n\n` +
+    `> ${line}\n\n` +
+    `They carried ${truths} ${truths === 1 ? "truth" : "truths"} toward the town's shared Codex. ` +
+    `One candle a day; the dark is learned together. 🕯️`;
+  let ok = false;
+  try {
+    const { context, reddit } = await import("@devvit/web/server");
+    const postId = context.postId;
+    if (postId !== undefined) {
+      await reddit.submitComment({ id: postId, text });
+      ok = true;
+    }
+  } catch (err) {
+    console.warn("[share] comment unavailable:", err);
+  }
+  return c.json(zShareRes.parse({ ok }));
 });
