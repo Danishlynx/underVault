@@ -924,13 +924,13 @@ export function paintMenuBackdrop(
     mdrip(mcx - mcw * 0.2, mTopY + mch * 0.028, mch * 0.16, mcw * 0.045, mFreshTop);
     mdrip(mcx + mcw * 0.3, mTopY + mch * 0.032, mch * 0.5, mcw * 0.055, mFreshTop);
     mdrip(mcx + mcw * 0.44, mTopY + mch * 0.055, mch * 0.24, mcw * 0.045);
-    // her wax pool — the tide-mark on the stone, exactly the daily pillar's
-    // treatment (D111): a calm warm lobed ring hugging the foot, painted flat.
-    // Restored, she never guttered, so the pool stays modest — no bright saucer.
-    const mPoolR = mHalf + mSpread * 0.9;
+    // her wax pool — WIDE, like the daily pillar's (D113): the small pool read
+    // as a detached saucer under her foot. A broad pool (wider than the shaft)
+    // centered right at the foot reads as wax she stands IN, not a plate below.
+    const mPoolR = mcw * 1.02;
     ctx.save();
-    ctx.translate(mcx + mcw * 0.04, mBaseY - mch * 0.004); // sits INTO the foot
-    ctx.scale(1, 0.22);
+    ctx.translate(mcx + mcw * 0.04, mBaseY + mch * 0.002); // right at the foot
+    ctx.scale(1, 0.2);
     const mPoolPts: Array<readonly [number, number]> = [];
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * TAU;
@@ -953,16 +953,24 @@ export function paintMenuBackdrop(
       ctx.closePath();
     };
     const mPoolG = ctx.createRadialGradient(-mPoolR * 0.2, -mPoolR * 0.25, mPoolR * 0.06, 0, 0, mPoolR);
-    mPoolG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.22, 0.9));
-    mPoolG.addColorStop(0.55, mix(C.parchmentAged, C.boneDim, 0.5, 0.62));
-    mPoolG.addColorStop(1, mix(C.boneDim, C.void, 0.55, 0.3));
+    mPoolG.addColorStop(0, mix(C.parchment, C.flame, 0.24, 0.96));
+    mPoolG.addColorStop(0.5, mix(C.parchmentAged, C.boneDim, 0.5, 0.78));
+    mPoolG.addColorStop(1, mix(C.boneDim, C.void, 0.55, 0.28));
     mPoolPath();
     ctx.fillStyle = mPoolG;
     ctx.fill();
-    ctx.strokeStyle = shade(C.void, 0.7, 0.28); // the frozen lip
+    ctx.strokeStyle = shade(C.void, 0.7, 0.3); // the frozen lip
     ctx.lineWidth = 1.2;
     mPoolPath();
     ctx.stroke();
+    // a glossy inner lip where her light lies on the fresh wax (daily's trick)
+    ctx.save();
+    ctx.scale(0.92, 0.92);
+    mPoolPath();
+    ctx.strokeStyle = mix(C.parchment, C.flameHi, 0.4, 0.22);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
     ctx.restore();
     // her wick — trimmed and sound: kept, not neglected
     const mWickY = mTopY + mch * 0.014;

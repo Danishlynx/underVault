@@ -1108,6 +1108,15 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+113. THE POOL WAS TOO SMALL (operator, out of time: "what do you
+    see"). Final diagnosis: her wax pool radius was mcw*0.63 - SMALLER
+    than the shaft - so it read as a detached plate under her foot,
+    not wax she stands in. The daily candle's pool is WIDER than its
+    shaft (cw*1.17). Fix: mother pool widened to mcw*1.02, centered at
+    the foot, brighter fill + glossy inner lip (the daily's trick).
+    Her foot now sits IN the wax. Grounded - sibling of the daily
+    candle at last. (Combined with D112's lit-to-foot body.)
+
 112. THE REAL FLOAT CAUSE - her body faded to void (operator, 4th
     time: "its still flying in air, just keep it on platform"). The
     seating was fine; the mother-candle's body GRADIENT dimmed to
