@@ -814,8 +814,8 @@ export function paintMenuBackdrop(
     ctx.translate(mcx, mBaseY + h * 0.003);
     ctx.scale(1, 0.2);
     const mContact = ctx.createRadialGradient(0, 0, 0, 0, 0, plinthW * 0.62);
-    mContact.addColorStop(0, shade(C.void, 0.55, 0.55));
-    mContact.addColorStop(0.6, shade(C.void, 0.55, 0.26));
+    mContact.addColorStop(0, shade(C.void, 0.55, 0.34)); // softer: a seat, not a gap
+    mContact.addColorStop(0.6, shade(C.void, 0.55, 0.16));
     mContact.addColorStop(1, shade(C.void, 0.55, 0));
     ctx.fillStyle = mContact;
     ctx.fillRect(-plinthW, -plinthW, plinthW * 2, plinthW * 2);
@@ -824,12 +824,28 @@ export function paintMenuBackdrop(
     // inside the frame's bottom settle, so its stone runs a shade brighter
     // than the ledge courses around it — her hearth-light explains the lift.
     const px0 = mcx - plinthW / 2;
+    // her flame stands right over this stone — the pedestal is warmly lit, a
+    // clear pale block so she never floats above a black gap (D110)
     const plinthG = ctx.createLinearGradient(0, plinthTopY, 0, mBaseY);
-    plinthG.addColorStop(0, mix(C.void, C.surface2, 0.92, 0.97));
-    plinthG.addColorStop(1, mix(C.void, C.surface, 0.5, 0.97));
+    plinthG.addColorStop(0, mix(C.surface2, C.flame, 0.26, 0.99)); // hearth-warm crown
+    plinthG.addColorStop(0.45, mix(C.surface2, C.bone, 0.22, 0.99));
+    plinthG.addColorStop(1, mix(C.void, C.surface2, 0.66, 0.99));
     ctx.fillStyle = plinthG;
     ctx.fillRect(px0, plinthTopY, plinthW, plinthH);
-    ctx.fillStyle = mix(C.void, C.surface, 0.52, 0.97); // base course, a hair wider
+    // a radial hearth wash on the face — brightest under her foot, fading down
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(px0, plinthTopY, plinthW, plinthH);
+    ctx.clip();
+    ctx.globalCompositeOperation = "lighter";
+    const pWash = ctx.createRadialGradient(mcx, plinthTopY, 0, mcx, plinthTopY, plinthW * 0.7);
+    pWash.addColorStop(0, shade(C.flame, 0.85, 0.2));
+    pWash.addColorStop(0.5, shade(C.flame, 0.8, 0.08));
+    pWash.addColorStop(1, shade(C.flame, 0.8, 0));
+    ctx.fillStyle = pWash;
+    ctx.fillRect(px0, plinthTopY, plinthW, plinthH);
+    ctx.restore();
+    ctx.fillStyle = mix(C.void, C.surface2, 0.72, 0.99); // base course, a hair wider
     ctx.fillRect(px0 - w * 0.0035, mBaseY - plinthH * 0.28, plinthW + w * 0.007, plinthH * 0.28);
     const slabH = Math.max(3, plinthH * 0.22);
     ctx.fillStyle = mix(C.void, C.surface2, 0.95, 0.97); // the slab lips past the face
@@ -976,20 +992,22 @@ export function paintMenuBackdrop(
     mdrip(mcx + mcw * 0.44, mTopY + mch * 0.055, mch * 0.24, mcw * 0.045);
     // …and the heavy skirt at the foot: a frozen apron draping the slab,
     // spilling partway down the plinth face
-    ctx.fillStyle = mix(C.parchmentAged, C.boneDim, 0.52, 0.95);
+    // her foot-wax fused to the slab: a snug warm cushion, NOT a wide saucer
+    // (D110 — the plate read floated her; hug the foot, don't extend past it)
+    ctx.fillStyle = mix(C.parchmentAged, C.flame, 0.16, 0.95);
     ctx.beginPath();
-    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.92, h * 0.008, 0, 0, TAU);
+    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.4, h * 0.007, 0, 0, TAU);
     ctx.fill();
-    ctx.strokeStyle = shade(C.void, 0.7, 0.3);
+    ctx.strokeStyle = shade(C.void, 0.7, 0.22);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.92, h * 0.008, 0, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.ellipse(mcx, plinthTopY - h * 0.001, mHalf + mSpread * 0.4, h * 0.007, 0, Math.PI * 0.05, Math.PI * 0.95);
     ctx.stroke();
-    // tongues spilling over the slab lip — placed, not scattered: a broad
-    // one under her lean, two lighter falls to either side
-    mdrip(mcx - mHalf * 0.52, plinthTopY + h * 0.002, plinthH * 0.5, mcw * 0.05);
-    mdrip(mcx + mHalf * 0.08, plinthTopY + h * 0.002, plinthH * 0.85, mcw * 0.062);
-    mdrip(mcx + mHalf * 0.46, plinthTopY + h * 0.002, plinthH * 0.6, mcw * 0.044);
+    // tongues spilling over the slab lip — short runs that stay ON the face,
+    // never dangling past the plinth (they read as legs when they do)
+    mdrip(mcx - mHalf * 0.5, plinthTopY + h * 0.001, plinthH * 0.3, mcw * 0.044);
+    mdrip(mcx + mHalf * 0.06, plinthTopY + h * 0.001, plinthH * 0.44, mcw * 0.05);
+    mdrip(mcx + mHalf * 0.42, plinthTopY + h * 0.001, plinthH * 0.34, mcw * 0.04);
     // her wick — trimmed and sound: kept, not neglected
     const mWickY = mTopY + mch * 0.014;
     const mfx = mcx + mcw * 0.005;

@@ -1108,6 +1108,17 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+110. HER PEDESTAL READS AS STONE (operator: the mother-candle still
+    floated). Root cause: the plinth block was painted near-void
+    (mix toward surface2 at 0.92) so it vanished into the dark - the
+    eye saw a lit candle foot, a black band, then the faint contact
+    disc. Fixes: the plinth face is now warm-lit stone (hearth wash
+    radial from her flame, brighter block), the false-gap contact
+    shadow is softened, the wide pale apron is tightened to a snug
+    foot-cushion (was reading as a floating saucer), and the wax
+    tongues shortened so they stay ON the face instead of dangling
+    like legs. She sits on a real dais now.
+
 109. HER FLAME BREATHES (operator: the mother-candle was static).
     backdrop.ts no longer paints her flame body (veil/crown/hearth/
     halo stay static); menu.ts drives a LIVE second flame at
