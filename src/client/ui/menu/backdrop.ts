@@ -773,271 +773,225 @@ export function paintMenuBackdrop(
   // warmer: hope, not vigil. Everything here guards behind `rescued`, and
   // she draws from her OWN jitter stream, so the vigil scene never shifts
   // by a pixel between seasons — the daily candle-clock runs untouched.
-  let mother: MenuGeom["mother"];
-  if (rescued) {
-    const mr = vigilRand(0xf1a3e5);
-    const mcx = w * 0.1; // left of and behind the daily pillar
-    const mcw = cw * 1.32; // broad — a mother among candles
-    // NO PLINTH (D111 — operator: "make it like the first candle"). The
-    // pedestal read as a floating saucer no matter how it was lit; she now
-    // seats onto the stone EXACTLY like the daily pillar — soft contact
-    // shadow, a firm seat at the foot, a wax pool hugging it. She just sits
-    // further back and left, so her ground line rides a touch higher.
-    const mBaseY = ledgeY - h * 0.022; // her ground line, a step back
-    const mch = chFull * 1.6; // against the FRESH daily height, always
-    const plinthTopY = mBaseY; // her foot sits ON the stone — no lift, no gap
-    const mTopY = plinthTopY - mch;
-    const mHalf = mcw / 2;
-    const mSpread = mcw * 0.14; // the heavy skirt flares the foot
-    // soft contact shadow (the daily pillar's exact treatment, scaled to her)
+  // A fresh (unburnt) pillar drawn with the daily candle's EXACT grounded
+  // vocabulary - contact shadow, firm seat, wax pool, tapered body, drip
+  // skirt, wick. Used for the First Flame in the rescued menu (D114): the
+  // bespoke tall candle never stopped floating, so we copy the candle that
+  // already sits perfectly. Returns the wick tip for the live flame.
+  const drawFreshPillar = (
+    pcx: number,
+    pcw: number,
+    pch: number,
+    opts: { tallies?: boolean; pale?: boolean },
+  ): { wickX: number; wickY: number } => {
+    const ptopY = ledgeY - pch;
+    const cwHalf = pcw / 2;
+    const spread = pcw * 0.09;
+    const craterCx = pcx + pcw * 0.02;
+    const craterY = ptopY + pch * 0.028;
+    // contact shadow - the candle presses into its own dark
     ctx.save();
-    ctx.translate(mcx, mBaseY + mch * 0.008);
+    ctx.translate(pcx, ledgeY + pch * 0.012);
     ctx.scale(1, 0.22);
-    const mContact = ctx.createRadialGradient(0, 0, 0, 0, 0, mcw * 1.3);
-    mContact.addColorStop(0, shade(C.void, 0.55, 0.72));
-    mContact.addColorStop(0.55, shade(C.void, 0.55, 0.4));
-    mContact.addColorStop(1, shade(C.void, 0.55, 0));
-    ctx.fillStyle = mContact;
-    ctx.fillRect(-mcw * 1.35, -mcw * 1.35, mcw * 2.7, mcw * 2.7);
+    const contact = ctx.createRadialGradient(0, 0, 0, 0, 0, pcw * 1.3);
+    contact.addColorStop(0, shade(C.void, 0.55, 0.72));
+    contact.addColorStop(0.55, shade(C.void, 0.55, 0.4));
+    contact.addColorStop(1, shade(C.void, 0.55, 0));
+    ctx.fillStyle = contact;
+    ctx.fillRect(-pcw * 1.35, -pcw * 1.35, pcw * 2.7, pcw * 2.7);
     ctx.restore();
-    // a firmer seat right at the foot — she SITS on the stone
+    // firm seat right at the foot - she SITS on the stone
     ctx.fillStyle = shade(C.void, 0.55, 0.5);
     ctx.beginPath();
-    ctx.ellipse(mcx + mcw * 0.03, mBaseY + mch * 0.004, mHalf + mSpread * 0.7, mch * 0.022, 0, 0, TAU);
+    ctx.ellipse(pcx + pcw * 0.03, ledgeY + pch * 0.004, pcw * 0.68, pch * 0.021, 0, 0, TAU);
     ctx.fill();
-    // her body — broad and stately: flanks bowing gently, the crown softened
-    // by centuries of slow burning (no collapsed lip — she was never let
-    // gutter), the foot flaring into the heavy skirt
-    const mbody = (): void => {
+    // the wax pool - a modest ring hugging the foot (fresh burn)
+    const poolR = pcw * 0.72;
+    const poolRy = poolR * 0.16;
+    const poolCx = pcx + pcw * 0.05;
+    const poolCy = ledgeY + poolRy * 0.22;
+    ctx.save();
+    ctx.translate(poolCx, poolCy);
+    ctx.scale(1, poolRy / poolR);
+    const PN = 9;
+    const poolPts: Array<readonly [number, number]> = [];
+    for (let i = 0; i < PN; i++) {
+      const a = (i / PN) * TAU;
+      const r = poolR * (0.92 + rand() * 0.16);
+      poolPts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    const poolPath = (): void => {
+      const mid = (i: number): readonly [number, number] => {
+        const p = poolPts[i % PN]!;
+        const q = poolPts[(i + 1) % PN]!;
+        return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+      };
       ctx.beginPath();
-      ctx.moveTo(mcx - mHalf - mSpread, plinthTopY);
-      ctx.bezierCurveTo(
-        mcx - mHalf - mSpread * 0.3,
-        plinthTopY - mch * 0.22,
-        mcx - mHalf - mcw * 0.02,
-        plinthTopY - mch * 0.55,
-        mcx - mHalf + mcw * 0.06,
-        mTopY + mch * 0.05,
-      );
-      ctx.quadraticCurveTo(mcx - mcw * 0.24, mTopY - mch * 0.006, mcx - mcw * 0.1, mTopY + mch * 0.012);
-      ctx.quadraticCurveTo(mcx, mTopY + mch * 0.028, mcx + mcw * 0.11, mTopY + mch * 0.01);
-      ctx.quadraticCurveTo(mcx + mcw * 0.26, mTopY - mch * 0.004, mcx + mHalf - mcw * 0.06, mTopY + mch * 0.055);
-      ctx.bezierCurveTo(
-        mcx + mHalf + mcw * 0.02,
-        mTopY + mch * 0.45,
-        mcx + mHalf + mSpread * 0.35,
-        plinthTopY - mch * 0.2,
-        mcx + mHalf + mSpread,
-        plinthTopY,
-      );
+      ctx.moveTo(mid(0)[0], mid(0)[1]);
+      for (let i = 1; i <= PN; i++) {
+        const p = poolPts[i % PN]!;
+        const m = mid(i);
+        ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]);
+      }
       ctx.closePath();
     };
-    // she stays LIT to the foot (D112): the restored First Flame — her body
-    // must NOT fade to void at the base, or the lit shaft ends above the pool
-    // and she reads as floating. Bone all the way down, warm at the crown.
-    const mBodyG = ctx.createLinearGradient(0, mTopY, 0, plinthTopY);
-    mBodyG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.34)); // her flame's warmth
-    mBodyG.addColorStop(0.25, mix(C.parchmentAged, C.bone, 0.24));
-    mBodyG.addColorStop(0.7, mix(C.bone, C.boneDim, 0.32));
-    mBodyG.addColorStop(1, mix(C.bone, C.boneDim, 0.5)); // still bone at the foot, not void
-    mbody();
-    ctx.fillStyle = mBodyG;
+    const poolG = ctx.createRadialGradient(-poolR * 0.2, -poolR * 0.25, poolR * 0.06, 0, 0, poolR);
+    poolG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.22, 0.24));
+    poolG.addColorStop(0.55, mix(C.parchmentAged, C.boneDim, 0.5, 0.18));
+    poolG.addColorStop(1, mix(C.boneDim, C.void, 0.55, 0.09));
+    poolPath();
+    ctx.fillStyle = poolG;
     ctx.fill();
-    // round the pillar off — side shade clipped to the wax
+    ctx.strokeStyle = shade(C.void, 0.7, 0.24);
+    ctx.lineWidth = 1.2;
+    poolPath();
+    ctx.stroke();
+    ctx.restore();
+    // the body - tapered pillar, foot flaring to the skirt
+    const body = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(pcx - cwHalf - spread, ledgeY);
+      ctx.bezierCurveTo(pcx - cwHalf - spread * 0.4, ledgeY - pch * 0.3, pcx - cwHalf + pcw * 0.02, ledgeY - pch * 0.62, pcx - pcw * 0.43, ptopY + pch * 0.005);
+      ctx.quadraticCurveTo(pcx - pcw * 0.1, ptopY - pch * 0.012, pcx + pcw * 0.08, ptopY + pch * 0.018);
+      ctx.quadraticCurveTo(pcx + pcw * 0.28, ptopY + pch * 0.035, pcx + pcw * 0.41, ptopY + pch * 0.03);
+      ctx.bezierCurveTo(pcx + cwHalf + pcw * 0.01, ledgeY - pch * 0.6, pcx + cwHalf + spread * 0.5, ledgeY - pch * 0.26, pcx + cwHalf + spread, ledgeY);
+      ctx.closePath();
+    };
+    const bodyG = ctx.createLinearGradient(0, ptopY, 0, ledgeY);
+    if (opts.pale === true) {
+      // the restored First Flame - brighter, and LIT to the foot so she never
+      // reads as floating above her pool (D112 lesson baked in)
+      bodyG.addColorStop(0, mix(C.parchment, C.flame, 0.26));
+      bodyG.addColorStop(0.25, mix(C.parchment, C.bone, 0.4));
+      bodyG.addColorStop(0.7, mix(C.bone, C.boneDim, 0.3));
+      bodyG.addColorStop(1, mix(C.bone, C.boneDim, 0.5));
+    } else {
+      bodyG.addColorStop(0, mix(C.parchmentAged, C.flame, 0.32));
+      bodyG.addColorStop(0.22, mix(C.parchmentAged, C.bone, 0.3));
+      bodyG.addColorStop(0.55, mix(C.bone, C.boneDim, 0.5));
+      bodyG.addColorStop(1, mix(C.boneDim, C.void, 0.55));
+    }
+    body();
+    ctx.fillStyle = bodyG;
+    ctx.fill();
+    // side shade clipped to the wax
     ctx.save();
-    mbody();
+    body();
     ctx.clip();
-    const mSideG = ctx.createLinearGradient(mcx - mHalf, 0, mcx + mHalf, 0);
-    mSideG.addColorStop(0, shade(C.void, 0.8, 0.32));
-    mSideG.addColorStop(0.35, shade(C.void, 0.8, 0));
-    mSideG.addColorStop(0.78, shade(C.void, 0.8, 0));
-    mSideG.addColorStop(1, shade(C.void, 0.8, 0.2));
-    ctx.fillStyle = mSideG;
-    ctx.fillRect(mcx - mcw, mTopY - mch * 0.05, mcw * 2, mch * 1.15);
-    // THE HUNDRED TALLIES — one per candle the town gave: five-bar gates,
-    // five gates a course, four courses (5×5×4 = 100), scored faint into
-    // the wax. Older courses sit lower and dimmer, and every mark fades
-    // toward the flanks where the shaft turns away — a texture of counting,
-    // not a ledger to squint at.
-    ctx.lineWidth = 1;
-    const gateW = mcw * 0.115;
-    const tallH = mch * 0.03;
-    for (let row = 0; row < 4; row++) {
-      const ty = mTopY + mch * (0.32 + row * 0.068) + (mr() - 0.5) * mch * 0.01;
-      const rowA = 0.34 - row * 0.055;
-      for (let g2 = 0; g2 < 5; g2++) {
-        const gx0 = mcx - mcw * 0.34 + g2 * ((mcw * 0.68 - gateW) / 4) + (mr() - 0.5) * mcw * 0.012;
-        const away = Math.abs(gx0 + gateW / 2 - mcx) / (mcw * 0.5);
-        ctx.strokeStyle = shade(C.boneDim, 0.75, rowA * (1 - away * 0.55));
-        for (let k = 0; k < 4; k++) {
-          const tx = gx0 + (k * gateW) / 4 + (mr() - 0.5) * 1.2;
-          line(tx, ty + (mr() - 0.5) * 1.4, tx - mcw * 0.008, ty + tallH);
+    const sideG = ctx.createLinearGradient(pcx - cwHalf, 0, pcx + cwHalf, 0);
+    sideG.addColorStop(0, shade(C.void, 0.8, 0.3));
+    sideG.addColorStop(0.35, shade(C.void, 0.8, 0));
+    sideG.addColorStop(0.8, shade(C.void, 0.8, 0));
+    sideG.addColorStop(1, shade(C.void, 0.8, 0.16));
+    ctx.fillStyle = sideG;
+    ctx.fillRect(pcx - pcw, ptopY - pch * 0.05, pcw * 2, pch * 1.1);
+    // the hundred tallies - one per candle the town gave (five-bar gates)
+    if (opts.tallies === true) {
+      ctx.lineWidth = 1;
+      const gateW = pcw * 0.115;
+      for (let row = 0; row < 4; row++) {
+        const ty = ptopY + pch * (0.34 + row * 0.062);
+        ctx.strokeStyle = shade(C.boneDim, 0.75, 0.3 - row * 0.05);
+        for (let g2 = 0; g2 < 5; g2++) {
+          const gx0 = pcx - pcw * 0.32 + g2 * ((pcw * 0.64 - gateW) / 4);
+          for (let k = 0; k < 4; k++) {
+            const tx = gx0 + (k * gateW) / 4;
+            line(tx, ty, tx - pcw * 0.008, ty + pch * 0.028);
+          }
+          line(gx0 - pcw * 0.012, ty + pch * 0.006, gx0 + gateW * 0.78, ty + pch * 0.024);
         }
-        // the fifth stroke gates the four
-        line(gx0 - mcw * 0.012, ty + tallH * 0.2, gx0 + gateW * 0.78, ty + tallH * 0.85);
       }
     }
     ctx.restore();
-    mbody();
-    ctx.strokeStyle = shade(C.void, 0.7, 0.75); // woodcut cut-line, a shade behind
-    ctx.lineWidth = Math.max(1.3, s * 0.003);
+    body();
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(1.5, s * 0.0035);
     ctx.stroke();
-    // the crown well — shallow and kept, never collapsed
-    ctx.fillStyle = mix(C.parchmentAged, C.ink, 0.4);
+    // the crater well around the wick root
+    ctx.fillStyle = mix(C.parchmentAged, C.ink, 0.42);
     ctx.beginPath();
-    ctx.ellipse(mcx, mTopY + mch * 0.018, mcw * 0.24, mch * 0.012, 0, 0, TAU);
+    ctx.ellipse(craterCx, craterY, pcw * 0.27, pch * 0.016, 0, 0, TAU);
     ctx.fill();
-    ctx.fillStyle = mix(C.ink, C.void, 0.3, 0.75);
+    ctx.fillStyle = mix(C.ink, C.void, 0.3, 0.8);
     ctx.beginPath();
-    ctx.ellipse(mcx, mTopY + mch * 0.02, mcw * 0.13, mch * 0.007, 0, 0, TAU);
+    ctx.ellipse(craterCx, craterY + pch * 0.002, pcw * 0.15, pch * 0.009, 0, 0, TAU);
     ctx.fill();
-    // drip ribbons — §10's helper is declared below us; she keeps her own
-    const mOldTop = mix(C.parchmentAged, C.bone, 0.4);
-    const mOldBot = mix(C.boneDim, C.void, 0.45);
-    const mFreshTop = mix(C.parchment, C.flame, 0.14); // warm where her fire reaches
-    const mdrip = (x: number, yTop: number, len: number, wr: number, top = mOldTop, bot = mOldBot): void => {
+    // the drip skirt
+    const drip = (x: number, yTop: number, len: number, wr: number, top: string, bot: string): void => {
       const g = ctx.createLinearGradient(0, yTop, 0, yTop + len);
       g.addColorStop(0, top);
       g.addColorStop(1, bot);
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(x - wr, yTop);
-      ctx.bezierCurveTo(
-        x - wr * 1.06,
-        yTop + len * 0.42,
-        x - wr * 0.86,
-        yTop + len - wr * 1.5,
-        x - wr * 0.72,
-        yTop + len - wr,
-      );
+      ctx.bezierCurveTo(x - wr * 1.06, yTop + len * 0.42, x - wr * 0.86, yTop + len - wr * 1.5, x - wr * 0.72, yTop + len - wr);
       ctx.arc(x, yTop + len - wr, wr * 0.72, Math.PI, 0, true);
       ctx.bezierCurveTo(x + wr * 0.9, yTop + len - wr * 1.6, x + wr * 1.06, yTop + len * 0.4, x + wr, yTop);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = shade(C.void, 0.7, 0.35);
+      ctx.strokeStyle = shade(C.void, 0.7, 0.4);
       ctx.lineWidth = 1;
       ctx.stroke();
     };
-    // ribbons down the flanks, hung from the crown rim (one drowns the
-    // tally band's edge); the inner pair still carries her fire's warmth
-    mdrip(mcx - mcw * 0.42, mTopY + mch * 0.045, mch * 0.34, mcw * 0.05);
-    mdrip(mcx - mcw * 0.2, mTopY + mch * 0.028, mch * 0.16, mcw * 0.045, mFreshTop);
-    mdrip(mcx + mcw * 0.3, mTopY + mch * 0.032, mch * 0.5, mcw * 0.055, mFreshTop);
-    mdrip(mcx + mcw * 0.44, mTopY + mch * 0.055, mch * 0.24, mcw * 0.045);
-    // her wax pool — WIDE, like the daily pillar's (D113): the small pool read
-    // as a detached saucer under her foot. A broad pool (wider than the shaft)
-    // centered right at the foot reads as wax she stands IN, not a plate below.
-    const mPoolR = mcw * 1.02;
-    ctx.save();
-    ctx.translate(mcx + mcw * 0.04, mBaseY + mch * 0.002); // right at the foot
-    ctx.scale(1, 0.2);
-    const mPoolPts: Array<readonly [number, number]> = [];
-    for (let i = 0; i < 9; i++) {
-      const a = (i / 9) * TAU;
-      const r = mPoolR * (0.9 + mr() * 0.18);
-      mPoolPts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    const freshTop = mix(C.parchment, C.flame, 0.14);
+    const freshBot = mix(C.parchmentAged, C.boneDim, 0.4);
+    const oldTop = mix(C.parchmentAged, C.bone, 0.4);
+    const oldBot = mix(C.boneDim, C.void, 0.45);
+    drip(pcx - pcw * 0.44, ptopY + pch * 0.05, pch * 0.52, pcw * 0.05, oldTop, oldBot);
+    drip(pcx + pcw * 0.44, ptopY + pch * 0.04, pch * 0.9, pcw * 0.06, oldTop, oldBot);
+    drip(pcx + pcw * 0.1, ptopY + pch * 0.06, pch * 0.44, pcw * 0.045, oldTop, oldBot);
+    const skirt: ReadonlyArray<readonly [number, number, number]> = [
+      [-0.36, 0.13, 0.055],
+      [-0.18, 0.2, 0.07],
+      [0.02, 0.1, 0.05],
+      [0.2, 0.28, 0.075],
+      [0.38, 0.16, 0.06],
+    ];
+    for (const [ox, ol, owr] of skirt) {
+      drip(pcx + pcw * ox, ptopY + pch * 0.02, pch * ol, pcw * owr, freshTop, freshBot);
     }
-    const mPoolPath = (): void => {
-      const mid = (i: number): readonly [number, number] => {
-        const p = mPoolPts[i % 9]!;
-        const q = mPoolPts[(i + 1) % 9]!;
-        return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-      };
-      ctx.beginPath();
-      ctx.moveTo(mid(0)[0], mid(0)[1]);
-      for (let i = 1; i <= 9; i++) {
-        const p = mPoolPts[i % 9]!;
-        const m = mid(i);
-        ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]);
-      }
-      ctx.closePath();
-    };
-    const mPoolG = ctx.createRadialGradient(-mPoolR * 0.2, -mPoolR * 0.25, mPoolR * 0.06, 0, 0, mPoolR);
-    mPoolG.addColorStop(0, mix(C.parchment, C.flame, 0.24, 0.96));
-    mPoolG.addColorStop(0.5, mix(C.parchmentAged, C.boneDim, 0.5, 0.78));
-    mPoolG.addColorStop(1, mix(C.boneDim, C.void, 0.55, 0.28));
-    mPoolPath();
-    ctx.fillStyle = mPoolG;
-    ctx.fill();
-    ctx.strokeStyle = shade(C.void, 0.7, 0.3); // the frozen lip
-    ctx.lineWidth = 1.2;
-    mPoolPath();
-    ctx.stroke();
-    // a glossy inner lip where her light lies on the fresh wax (daily's trick)
-    ctx.save();
-    ctx.scale(0.92, 0.92);
-    mPoolPath();
-    ctx.strokeStyle = mix(C.parchment, C.flameHi, 0.4, 0.22);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-    ctx.restore();
-    // her wick — trimmed and sound: kept, not neglected
-    const mWickY = mTopY + mch * 0.014;
-    const mfx = mcx + mcw * 0.005;
+    // wick - the live flame rides this
+    const wickLen = h * 0.021;
+    const wickTipX = pcx + pcw * 0.07;
+    const wickTipY = ptopY - wickLen;
     ctx.save();
     ctx.lineCap = "round";
-    ctx.strokeStyle = mix(C.ink, C.void, 0.4);
-    ctx.lineWidth = Math.max(2, h * 0.004);
-    line(mcx - mcw * 0.006, mWickY + mch * 0.004, mfx, mWickY - h * 0.011);
+    ctx.strokeStyle = mix(C.ink, C.void, 0.45);
+    ctx.lineWidth = Math.max(2, h * 0.0045);
+    ctx.beginPath();
+    ctx.moveTo(craterCx - pcw * 0.01, craterY - pch * 0.004);
+    ctx.quadraticCurveTo(pcx + pcw * 0.02, ptopY - wickLen * 0.55, wickTipX, wickTipY);
+    ctx.stroke();
+    ctx.fillStyle = shade(C.void, 0.9);
+    ctx.beginPath();
+    ctx.arc(wickTipX, wickTipY + 0.5, Math.max(1.4, h * 0.003), 0, TAU);
+    ctx.fill();
     ctx.restore();
-    // HER FLAME, painted in — tall, calm, a teardrop that holds its line
-    const mfH = h * 0.078;
-    const fB = mWickY - h * 0.006;
-    const fT = fB - mfH;
-    const heartY = fT + mfH * 0.52;
+    return { wickX: wickTipX, wickY: wickTipY };
+  };
+
+  let mother: MenuGeom["mother"];
+  if (rescued) {
+    // The First Flame come home - a FRESH, larger, paler replica of the daily
+    // pillar, seated behind-left of it on the same stone, her wax scored with
+    // the hundred tallies (D114). She grounds because she IS the daily candle.
+    const mcx = w * 0.1;
+    const mcw = cw * 1.3;
+    const mch = chFull * 1.34;
+    const mp = drawFreshPillar(mcx, mcw, mch, { tallies: true, pale: true });
+    // her light lifts the whole hall a shade warmer - hope, not vigil
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    const veilG = ctx.createRadialGradient(mfx, heartY, 0, mfx, heartY, mfH * 0.95);
-    veilG.addColorStop(0, shade(C.flame, 0.85, 0.3)); // the veil round the fire
-    veilG.addColorStop(0.55, shade(C.ember, 0.7, 0.09));
-    veilG.addColorStop(1, shade(C.ember, 0.7, 0));
-    ctx.fillStyle = veilG;
-    ctx.fillRect(mfx - mfH, heartY - mfH, mfH * 2, mfH * 2);
-    ctx.restore();
-    // (the flame BODY is not painted here: menu.ts breathes a LIVE flame at
-    // geom.mother — D109. The veil, crown, hearth and halo below stay static.)
-    // her light answers on the world — a response crown on her own wax…
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const mCrown = ctx.createRadialGradient(mcx, mTopY + mch * 0.01, 0, mcx, mTopY + mch * 0.01, mcw * 1.45);
-    mCrown.addColorStop(0, shade(C.flameHi, 0.7, 0.24));
-    mCrown.addColorStop(1, shade(C.flameHi, 0.7, 0));
-    ctx.fillStyle = mCrown;
-    ctx.fillRect(mcx - mcw * 1.5, mTopY + mch * 0.01 - mcw * 1.5, mcw * 3, mcw * 3);
-    // …a hearth-pool across plinth and ledge…
-    ctx.save();
-    ctx.translate(mcx, mBaseY + h * 0.004);
-    ctx.scale(1, 0.3);
-    const hearth = ctx.createRadialGradient(0, 0, 0, 0, 0, chFull * 1.1);
-    hearth.addColorStop(0, shade(C.flame, 0.6, 0.22));
-    hearth.addColorStop(0.45, shade(C.ember, 0.55, 0.09));
-    hearth.addColorStop(1, shade(C.ember, 0.55, 0));
-    ctx.fillStyle = hearth;
-    ctx.fillRect(-chFull * 1.15, -chFull * 1.15, chFull * 2.3, chFull * 2.3);
-    ctx.restore();
-    // …and the great halo: generous, calm — the whole hall breathes a shade
-    // warmer. It dies long before the top band (D83: the void stays pure).
-    const mHalo = ctx.createRadialGradient(mfx, heartY, 0, mfx, heartY, h * 0.8);
-    mHalo.addColorStop(0, shade(C.flame, 0.6, 0.14));
-    mHalo.addColorStop(0.3, shade(C.ember, 0.55, 0.065));
-    mHalo.addColorStop(0.65, shade(C.ember, 0.55, 0.022));
+    const mHalo = ctx.createRadialGradient(mp.wickX, mp.wickY, 0, mp.wickX, mp.wickY, h * 0.7);
+    mHalo.addColorStop(0, shade(C.flame, 0.6, 0.12));
+    mHalo.addColorStop(0.35, shade(C.ember, 0.55, 0.05));
     mHalo.addColorStop(1, shade(C.ember, 0.55, 0));
     ctx.fillStyle = mHalo;
-    ctx.fillRect(mfx - h * 0.82, heartY - h * 0.82, h * 1.64, h * 1.64);
+    ctx.fillRect(mp.wickX - h * 0.72, mp.wickY - h * 0.72, h * 1.44, h * 1.44);
     ctx.restore();
-    // the crest catches her hearth too — a second warm span on the ledge lip
-    const mCrest = ctx.createLinearGradient(mcx - w * 0.1, 0, mcx + w * 0.12, 0);
-    mCrest.addColorStop(0, mix(C.flame, C.bone, 0.42, 0));
-    mCrest.addColorStop(0.45, mix(C.flame, C.bone, 0.38, 0.4));
-    mCrest.addColorStop(1, mix(C.flame, C.bone, 0.42, 0));
-    ctx.strokeStyle = mCrest;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, crest[0]?.y ?? ledgeY);
-    for (const p of crest) ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    mother = { flameX: mfx / w, flameY: heartY / h, flameH: mfH / h };
+    // her live flame (menu.ts breathes it at geom.mother)
+    const mFlameH = h * 0.062;
+    mother = { flameX: mp.wickX / w, flameY: (mp.wickY - mFlameH * 0.48) / h, flameH: mFlameH / h };
   }
 
   // ── 10. THE CANDLE — thick, ancient, drip-skirted, waiting ───────────────

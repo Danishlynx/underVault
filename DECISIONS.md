@@ -1108,6 +1108,18 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+114. THE MOTHER IS NOW A REPLICA OF THE DAILY CANDLE (operator, final:
+    "delete the 2nd tall candle, replicate the very first candle and
+    place it just left of it"). The right call - the bespoke tall
+    candle floated no matter what (plinth, pool size, body lighting -
+    D110/111/112/113 all chased it). New drawFreshPillar() reproduces
+    the daily candle's EXACT grounded vocabulary (contact, seat, pool,
+    tapered body, drip skirt, wick) at fresh burn; the rescued mother
+    calls it at 1.3x width / 1.34x height, paler, with the hundred
+    tallies, seated behind-left on the same ledge. She grounds because
+    she IS the daily candle. The old tall-candle block (plinth/halo/
+    hearth/crest) is deleted. LESSON (again): copy what works.
+
 113. THE POOL WAS TOO SMALL (operator, out of time: "what do you
     see"). Final diagnosis: her wax pool radius was mcw*0.63 - SMALLER
     than the shaft - so it read as a detached plate under her foot,
