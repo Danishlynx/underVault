@@ -332,12 +332,26 @@ export class AudioGraph {
     this.applyMasterGain();
   }
 
-  /** Resume the context. Call ONLY inside the match-strike gesture. */
+  /** Resume the context. Call ONLY inside a user gesture (menu wake /
+   *  match-strike). D123: many mobile webviews leave the output SILENT after
+   *  resume() alone until a buffer has actually played inside the gesture — so
+   *  play a 1-sample silent buffer here to prime the route. Without it the menu
+   *  vigil (which only schedules notes 350 ms later) never sounded on Android,
+   *  while in-run music did (its match-strike cue primed the output). */
   unlock(): void {
     this.resumed = this.ctx.resume();
     this.resumed.catch(() => {
       // blocked or interrupted — the context stays locked, cues stay dropped
     });
+    try {
+      const buf = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.ctx.destination);
+      src.start(0);
+    } catch {
+      // no buffer support / already primed — resume() path still applies
+    }
   }
 
   get muted(): boolean {

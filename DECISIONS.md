@@ -1108,6 +1108,25 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+123. HOSTED FEEL FIXES (live playtest: menu silent, movement laggy +
+    dropped keys on BOTH mobile and desktop). Three causes, three
+    fixes: (a) MENU MUSIC — unlock() did ctx.resume() only; many
+    mobile webviews stay silent until a buffer plays inside the
+    gesture, and the menu only schedules notes 350 ms later (in-run
+    music was saved by the match-strike cue priming the output). Fix:
+    unlock() now plays a 1-sample silent buffer to prime the route.
+    (b) DROPPED KEYPRESSES — the remote rule-wait path cleared
+    this.queue while the server resolved an unknown interaction, so
+    keys pressed during the round-trip were eaten ("sometimes it
+    doesn't move"); the update loop already gates on !ruleWait, so the
+    clear was pure input loss — removed, queued moves now wait out the
+    round-trip. (c) MOBILE RENDER LAG — UI_MAX_DPR dropped 2 -> 1.5:
+    2x ran every filter + the whole scene at 4x fill and tanked phone
+    fps; 1.5x keeps most sharpness for ~56% of the cost. Plain walking
+    away from monsters is local/instant even on the remote build; the
+    remaining freezes are the (inherent, anti-cheat) unknown-rule
+    round-trips, which cache out over a run.
+
 122. IN-GAME "PLAY AGAIN (dev)" BUTTON — DEV-ONLY, REMOVE BEFORE
     PUBLIC (operator: "just for dev testing, don't forget to remove
     it later"). The mod-menu reset (D120) still meant leaving the

@@ -1877,7 +1877,10 @@ export class DescentScene extends Phaser.Scene {
       const first = tick(s0, stepIn, this.rules);
       if (isRuleRequest(first)) {
         this.ruleWait = true;
-        this.queue = [];
+        // NOTE: do NOT clear this.queue here (D123). The update loop already
+        // gates on !this.ruleWait, so queued moves wait out the round-trip
+        // instead of processing early — clearing them just ATE the keys the
+        // player pressed while the Vault answered ("sometimes it doesn't move").
         // the triggering act must ride the flush: ActRes.rules is the set the
         // server's replay consulted, and it only consults what the log holds —
         // logged here EXACTLY ONCE (the re-run below passes actLogged)
