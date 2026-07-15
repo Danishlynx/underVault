@@ -4,14 +4,26 @@
   "post": {
     "dir": "dist/client",
     "entrypoints": {
-      "default": { "inline": true, "entry": "splash.html" },
-      "game": { "entry": "game.html", "height": "tall" }
+      "default": {
+        "inline": true,
+        "entry": "splash.html"
+      },
+      "game": {
+        "entry": "game.html",
+        "height": "tall"
+      }
     }
   },
-  "server": { "dir": "dist/server", "entry": "index.cjs" },
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
   "permissions": {
     "redis": true,
-    "reddit": { "enable": true, "scope": "user" }
+    "reddit": {
+      "enable": true,
+      "scope": "user"
+    }
   },
   "menu": {
     "items": [
@@ -26,10 +38,15 @@
   },
   "scheduler": {
     "tasks": {
-      "reshuffle": { "endpoint": "/internal/jobs/reshuffle", "cron": "0 0 * * *" }
+      "reshuffle": {
+        "endpoint": "/internal/jobs/reshuffle",
+        "cron": "0 0 * * *"
+      }
     }
   },
-  "triggers": { "onAppInstall": "/internal/triggers/on-app-install" },
+  "triggers": {
+    "onAppInstall": "/internal/triggers/on-app-install"
+  },
   "scripts": {
     "build": "vite build -c vite.devvit.config.ts",
     "dev": "vite build --watch -c vite.devvit.config.ts"

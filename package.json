@@ -1,5 +1,5 @@
 {
-  "name": "undervault",
+  "name": "the-undervault",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -39,5 +39,6 @@
     "typescript-eslint": "^8",
     "vite": "^7",
     "vitest": "^3"
-  }
+  },
+  "license": "BSD-3-Clause"
 }
