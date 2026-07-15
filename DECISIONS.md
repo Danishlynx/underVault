@@ -1108,6 +1108,19 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+117. ONE drawPillar() FOR BOTH CANDLES (operator: "copy the animation
+    and everything of the first candle, place it slightly more left").
+    The daily candle's entire section 10 (pool, slump, body, drips,
+    crater, wick - all burn-animated) is now a drawPillar(pcx,pcw,pb)
+    function; the normal menu calls it once, the rescued menu calls it
+    twice - daily at 0.243w, the First Flame at 0.08w. They are now
+    pixel-identical in form and melt animation (same function, same
+    burn b), each with its own live flame (geom.flameX / geom.mother).
+    drawFreshPillar deleted; cwHalf/spread hoisted to outer scope for
+    the geom return. Normal menu verified unchanged. This is what all
+    of D110-D116 were groping toward: don't approximate the candle,
+    BE the candle.
+
 114. THE MOTHER IS NOW A REPLICA OF THE DAILY CANDLE (operator, final:
     "delete the 2nd tall candle, replicate the very first candle and
     place it just left of it"). The right call - the bespoke tall
