@@ -1830,7 +1830,7 @@ export class DescentScene extends Phaser.Scene {
       !this.overlayOpen &&
       !this.ruleWait &&
       !this.floorLoading &&
-      time - this.lastStep > 70 &&
+      time - this.lastStep > 48 && // 70 read as input lag on live (D129)
       time >= this.hitStopUntil
     ) {
       this.lastStep = time;
