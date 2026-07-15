@@ -1108,6 +1108,19 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+132. PRE-PUBLIC CLEANUP: DEV SCAFFOLDING OUT + BEGIN-FREEZE FIXED (operator:
+    done testing, "we dont have much time"). Removed the DEV-ONLY replay
+    scaffolding that would let a judge defeat the one-candle law: POST
+    /api/run/reset-dev (run.ts), apiRunResetDev (api.ts), the "Play again
+    (dev)" button on the refusal wall (main.ts), and both "Delve again today
+    (dev candle)" buttons on the epitaph + exit sheets. (The mod-menu reset in
+    internal.ts stays — mod-gated, judges never see it.) Also fixed the
+    BEGIN-twice soft-freeze (audit P1, D91): after a run ends, afterCeremony
+    sets a session SPENT flag and the menu reads it into MenuVitals.spent, so
+    BEGIN darkens ("The candle is spent") instead of starting a doomed local
+    run whose first act 404s against the ended server run. Gate green. Still
+    manual (operator): seed the shared world; live-verify the death-share.
+
 131. THE DEATH SHARE — THE REDDIT HOOK (necessary-bundle, "Games with a
     Hook"). The epitaph could not leave the webview; the game had no
     shareable artifact (audit: the main viral surface, unbuilt). New POST

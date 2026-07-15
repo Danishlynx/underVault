@@ -126,6 +126,7 @@ const GUIDES_KEY = "uv-guides"; // once-per-session lessons (memory only, inv. 3
 const VIEW_KEY = "uv-view"; // D67 camera experiment (memory only, inv. 3)
 const STORY_KEY = "uv-story-told"; // the telling plays once per session (D79)
 const RESCUED_KEY = "uv-rescued"; // witnessed the finale this session (D108)
+const SPENT_KEY = "uv-candle-spent"; // the day's candle is used — BEGIN darkens on return (D132)
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
   "XXI", "XXII", "XXIII", "XXIV", "XXV"];
@@ -488,6 +489,7 @@ export class DescentScene extends Phaser.Scene {
         // the counter fills, immediately for whoever witnessed the finale
         rescued: g.gatePct >= 100 || this.registry.get(RESCUED_KEY) === true,
         houseLine: g.houseLine,
+        spent: this.registry.get(SPENT_KEY) === true,
       },
     );
   }
@@ -2960,6 +2962,10 @@ export class DescentScene extends Phaser.Scene {
   }
 
   private afterCeremony(restAtDusk: boolean): void {
+    // the run is over — the candle is spent for the day. Mark it so the menu we
+    // restart into darkens BEGIN instead of letting a second click start a
+    // doomed local run whose first act 404s against the ended server run (D132).
+    this.registry.set(SPENT_KEY, true);
     const host = this.host();
     if (this.ports.heirloomDue() && host !== null) {
       openHeirloomSheet(host, (id) => {

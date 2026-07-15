@@ -248,9 +248,6 @@ export function openEpitaphSheet(
       });
       sheet.appendChild(share);
     }
-    const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
-    again.addEventListener("click", () => finish(false));
-    sheet.appendChild(again);
   });
   return close;
 }
@@ -279,12 +276,6 @@ export function openExitSheet(
     });
     sheet.appendChild(seal);
     sheet.appendChild(el("span", "uv-seal-label", "REST UNTIL DUSK"));
-    const again = el("button", "uv-ink-btn", "Delve again today (dev candle)") as HTMLButtonElement;
-    again.addEventListener("click", () => {
-      close();
-      onDone(false);
-    });
-    sheet.appendChild(again);
   });
   return close;
 }

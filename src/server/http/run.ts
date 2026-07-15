@@ -520,19 +520,6 @@ function buildActRes(
 // ── routes ─────────────────────────────────────────────────────────────────
 export const runRoutes = new Hono<UvEnv>();
 
-// ⚠ DEV-ONLY (D122) — REMOVE BEFORE PUBLIC LAUNCH. Wipes the caller's own run
-// for the current day so they can replay in-webview (the in-game "Play again
-// (dev)" button). This deliberately defeats the one-candle-a-day law and is
-// only tolerable on the private playtest sub. Tracked in docs/09 handoff.
-runRoutes.post("/reset-dev", async (c) => {
-  const uid = c.get("uid");
-  if (uid === null) fail(401, ErrCode.UNAUTHENTICATED, "the Guildhall does not know your face");
-  const r = c.get("redis");
-  const day = await new DayRepo(r).currentDay();
-  if (day !== null) await new RunRepo(r).clearRun(uid, day);
-  return c.json({ ok: true, day: day ?? 0 });
-});
-
 runRoutes.post("/start", async (c) => {
   const d = deps(c);
   zStartReq.parse(await c.req.json().catch(() => ({}))); // empty body tolerated, extra keys rejected
