@@ -1161,6 +1161,7 @@ export class DescentScene extends Phaser.Scene {
       kb.on("keydown-B", () => this.openSigns()); // plant a sign
       kb.on("keydown-V", () => this.toggleView()); // scout ↔ delve camera (D67)
       kb.on("keydown-M", () => this.devTeleport()); // DEV-ONLY: deleted at M2
+      kb.on("keydown-L", () => this.devOpenSeal()); // DEV-ONLY: deleted at M2
 
       const KC = Phaser.Input.Keyboard.KeyCodes;
       this.heldDirs = [
@@ -1864,6 +1865,17 @@ export class DescentScene extends Phaser.Scene {
         : `Fl. ${ROMAN[this.state.floor]}. The dark is thicker here.`,
       "warning",
     );
+  }
+
+  // DEV-ONLY: deleted at M2 — L forces the Seal open (VICTORY) from anywhere,
+  // so the operator can judge the Meeting without banking five truths.
+  private devOpenSeal(): void {
+    const s = this.state;
+    if (s === null || !this.running || this.overlayOpen || s.status !== Status.ALIVE) return;
+    s.status = Status.VICTORY;
+    this.audio.play("bank"); // stands in for the Seal grinding open
+    this.hud.toast("(dev) The Seal forgets its price.", "info");
+    this.time.delayedCall(600, () => this.openVictory());
   }
 
   // DEV-ONLY: deleted at M2 — operator floor-skip for judging every biome
