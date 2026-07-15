@@ -113,7 +113,9 @@ export function paintMenuBackdrop(
   // is load-bearing — the live flame sits on it — and it TRACKS the crater
   // as the candle shrinks. Never move the base.)
   const ledgeY = h * 0.865;
-  const cx = w * 0.205;
+  // when the First Flame is home she stands left; nudge the daily candle right
+  // so its spreading wax pool clears hers (D115). Normal menu keeps its tuning.
+  const cx = w * (rescued ? 0.26 : 0.205);
   const cw = Math.min(h * 0.085, w * 0.1); // thick — nearly a pillar
   const chFull = h * 0.26; // freshly cut at dusk
   const ch = chFull * (1 - 0.72 * b); // burn 1 → 28% of the fresh height
