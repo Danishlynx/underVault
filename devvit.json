@@ -57,5 +57,8 @@
   "scripts": {
     "build": "vite build -c vite.devvit.config.ts",
     "dev": "vite build --watch -c vite.devvit.config.ts"
+  },
+  "dev": {
+    "subreddit": "the_undervault_dev"
   }
 }
