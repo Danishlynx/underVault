@@ -1108,6 +1108,17 @@ candidates; flip them in the named data file, not in code.
     landmines, rigs, backlog) and meeting-probe.mjs preserved into
     tools/dev-harness.
 
+134. TEXT INPUTS SWALLOWED WASD (operator, live: "unable to type anything
+    that involves wasd, everything else types"). Phaser registers the movement
+    keys with global capture (kb.addKey preventDefaults W/A/S/D and the arrows
+    at the document level), so a focused DOM text field (the "Last words"
+    epitaph input, the house-name field) never received those letters. Fix:
+    drop Phaser's global keyboard capture while any input/textarea is focused
+    (focusin -> disableGlobalCapture, focusout -> enableGlobalCapture),
+    restored on scene shutdown. A genuine break-fix, not a redesign: naming a
+    house "Ash" or last words "watch the dark" was impossible before. Client-
+    only, gate green.
+
 132. PRE-PUBLIC CLEANUP: DEV SCAFFOLDING OUT + BEGIN-FREEZE FIXED (operator:
     done testing, "we dont have much time"). Removed the DEV-ONLY replay
     scaffolding that would let a judge defeat the one-candle law: POST

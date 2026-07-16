@@ -1228,6 +1228,25 @@ export class DescentScene extends Phaser.Scene {
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (kb !== null) {
+      // A focused DOM text field (last words, house name) must receive w/a/s/d.
+      // Phaser captures the movement keys at the document level and preventDefaults
+      // them, which swallows those letters before the input can see them. Drop the
+      // global capture while an input/textarea is focused, and restore it after.
+      const onFocusIn = (e: FocusEvent): void => {
+        const t = e.target as HTMLElement | null;
+        if (t !== null && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) {
+          kb.disableGlobalCapture();
+        }
+      };
+      const onFocusOut = (): void => {
+        kb.enableGlobalCapture();
+      };
+      document.addEventListener("focusin", onFocusIn);
+      document.addEventListener("focusout", onFocusOut);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        document.removeEventListener("focusin", onFocusIn);
+        document.removeEventListener("focusout", onFocusOut);
+      });
       const move = (d: number, op: number, ev?: KeyboardEvent): void => {
         // OS auto-repeat is IGNORED (D92 fix: it double-fed the queue with
         // the held-key poller — one tap walked 2-3 steps). A press is ONE
