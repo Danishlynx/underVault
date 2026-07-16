@@ -18,11 +18,10 @@ A few things make it tick:
 
 You come back because the rules changed overnight, the Codex grew, and the gate is one candle closer.
 
-
+<img width="1117" height="893" alt="Screenshot 2026-07-16 040626" src="https://github.com/user-attachments/assets/a3e7550e-bf9a-42b2-a3a4-4eb28ba0615f" />
 <img width="1060" height="878" alt="Screenshot 2026-07-16 040805" src="https://github.com/user-attachments/assets/89229d38-63b7-486d-853d-ad926b0be96a" />
 <img width="1120" height="896" alt="Screenshot 2026-07-16 040706" src="https://github.com/user-attachments/assets/60b3d2eb-d48e-481b-add3-5a322c0e1883" />
 <img width="1018" height="891" alt="Screenshot 2026-07-16 040756" src="https://github.com/user-attachments/assets/b13d398a-7001-4198-bea9-d70659ee31fc" />
-<img width="1117" height="893" alt="Screenshot 2026-07-16 040626" src="https://github.com/user-attachments/assets/a3e7550e-bf9a-42b2-a3a4-4eb28ba0615f" />
 
 
 ## How to play
