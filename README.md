@@ -1,4 +1,5 @@
-# The Undervault
+# The Undervault 
+https://www.reddit.com/r/the_undervault_dev/
 
 One shared dungeon. One candle a day. You get a single life, and the dungeon's rules are hidden from you. The only way to learn them is together: whatever one player discovers and banks into the Codex, everyone who plays after them gets to know.
 
@@ -16,6 +17,13 @@ A few things make it tick:
 - There's a season-long goal the whole sub chips away at. Someone is waiting at the bottom. When the town gives 100 candles between them, the gate opens and she comes home. It happens once, and everyone got her there.
 
 You come back because the rules changed overnight, the Codex grew, and the gate is one candle closer.
+
+
+<img width="1060" height="878" alt="Screenshot 2026-07-16 040805" src="https://github.com/user-attachments/assets/89229d38-63b7-486d-853d-ad926b0be96a" />
+<img width="1120" height="896" alt="Screenshot 2026-07-16 040706" src="https://github.com/user-attachments/assets/60b3d2eb-d48e-481b-add3-5a322c0e1883" />
+<img width="1018" height="891" alt="Screenshot 2026-07-16 040756" src="https://github.com/user-attachments/assets/b13d398a-7001-4198-bea9-d70659ee31fc" />
+<img width="1117" height="893" alt="Screenshot 2026-07-16 040626" src="https://github.com/user-attachments/assets/a3e7550e-bf9a-42b2-a3a4-4eb28ba0615f" />
+
 
 ## How to play
 
